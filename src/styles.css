@@ -3109,3 +3109,30 @@ button {
   color: var(--text-faint);
   font: 8px var(--mono);
 }
+/* Shared controls fill the console rather than leaving unused slider columns. */
+.app .gang-console .console-parameters {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+.console-parameters .enable-row {
+  grid-column: 1/-1;
+  min-height: 0;
+  padding: 8px 12px;
+}
+.console-parameters .enable-row > span {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+.console-parameters .enable-row small {
+  margin: 0;
+}
+@media (max-width: 1050px) {
+  .app .gang-console .console-parameters {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+@media (max-width: 560px) {
+  .app .gang-console .console-parameters {
+    grid-template-columns: 1fr;
+  }
+}

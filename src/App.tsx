@@ -105,13 +105,7 @@ export default function App() {
     setRelative(true)
   }
   const selectChannel = (id: string, additive = false) => {
-    if (additive)
-      selectMany(
-        toggleSelection(
-          selection.length ? selection : selectedChannel ? [selectedChannel.id] : [],
-          id,
-        ),
-      )
+    if (additive) selectMany(toggleSelection(targetIds, id))
     else {
       setSelection([])
       setSelected(id)
