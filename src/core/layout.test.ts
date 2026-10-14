@@ -1,7 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import { demoWorkspace } from './demo'
 import { sections } from './color'
-import { defaultLayout, quickControls, visibleSections } from './layout'
+import {
+  defaultLayout,
+  quickControls,
+  visibleSections,
+  visibleControlSections,
+  availableRgbFamilies,
+  rgbControls,
+} from './layout'
 import { validateWorkspace } from './persistence'
 
 describe('recoverable control layout', () => {
@@ -36,5 +43,34 @@ describe('recoverable control layout', () => {
     expect(restored.channels).toEqual(original.channels)
     expect(restored.gangs).toEqual(original.gangs)
     expect(restored.favorites).toEqual(['gain', 'black', 'saturation', 'hue'])
+  })
+  it('shows RGB families in Red / Green / Blue order without unsupported controls', () => {
+    const descriptors = [...demoWorkspace().channels[0].descriptors].reverse()
+    expect(availableRgbFamilies(descriptors)).toEqual(['Gain', 'Black', 'Gamma'])
+    for (const family of ['Gain', 'Black', 'Gamma'] as const)
+      expect(rgbControls(descriptors, family).map((d) => d.id)).toEqual([
+        `red${family}`,
+        `green${family}`,
+        `blue${family}`,
+      ])
+    const partial = descriptors.filter((d) => d.id === 'blueBlack')
+    expect(availableRgbFamilies(partial)).toEqual(['Black'])
+    expect(rgbControls(partial, 'Gain')).toEqual([])
+  })
+  it('hides Legalizer even for old pins and layouts that exposed only that section', () => {
+    const channel = demoWorkspace().channels[0]
+    expect(visibleControlSections([])).toEqual(['Proc amp', 'RGB correction'])
+    expect(visibleControlSections(['Proc amp', 'RGB correction'])).toEqual([
+      'Proc amp',
+      'RGB correction',
+    ])
+    expect(quickControls(channel, ['legalizer.white']).map((d) => d.id)).toEqual([
+      'gain',
+      'black',
+      'saturation',
+      'hue',
+    ])
+    expect(quickControls(channel, ['gain', 'legalizer.white']).map((d) => d.id)).toEqual(['gain'])
+    expect(channel.values['legalizer.white']).toBe(100)
   })
 })

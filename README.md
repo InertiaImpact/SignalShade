@@ -11,7 +11,7 @@ Open the dashboard: **https://inertiaimpact.github.io/SignalShade/**
 ## What works
 
 - 32-channel workspace with processor-bound labels, search, custom ordering, compact cards, and favorite controls.
-- Condensed channel cards with four Quick controls by default, inline label/value entry, themed sliders and end arrows. Proc Amp, RGB, and Legalizer tabs retain access to the full supported controls.
+- Condensed channel cards with four Quick controls by default, inline label/value entry, themed sliders and end arrows. Proc Amp and RGB tabs expose the supported controls; RGB defaults to a single Red / Green / Blue gain column with Gain, Black, and Gamma subtabs. Legalizer controls are hidden for now.
 - Ctrl/⌘-click and drag selection, plus multiple overlapping saved gang groups, with a full-width shared console, parameter masks, relative trims, and absolute sets. Members clamp independently; individual edits stay local.
 - Live command scheduling, verified hardware readback, per-channel locks, whole-desk UI lock, and per-member failure reports.
 - Neutral resets at parameter, section, channel, group, or all-channel scope; enables are preserved unless requested.
@@ -54,7 +54,7 @@ Authentication supports an optional session-only Basic Authorization header, sub
 - **Relative trim:** add a delta to each group member’s current value. Offsets remain until a member reaches its limit; limiting is reported in Activity.
 - **Absolute set:** set every member to the entered value, quantized and clamped for that device.
 - **Enabled/bypassed:** corrections do not automatically turn a bypassed stage on.
-- **Resets:** numerical Proc Amp/RGB parameters return to neutral; legalizer parameters use model defaults. This affects the active source-memory context only, not all stored input-format memories.
+- **Resets:** numerical Proc Amp/RGB parameters return to neutral; Legalizer values are left unchanged while its controls are hidden. This affects the active source-memory context only, not all stored input-format memories.
 - **Undo:** restores this session’s previous values after checking targets, source context, and current values. External changes can block undo. Hardware group operations cannot be atomic; failures are reported, and successful members are not automatically rolled back.
 - **Source identity:** labels follow processors, not physical inputs. Hardware source context is shown in native form until that firmware’s human-readable routing/status map is qualified.
 - **Workspace:** export before clearing browser storage or moving computers. Import never reconnects, arms, or writes hardware automatically. Device credentials are never saved or exported.

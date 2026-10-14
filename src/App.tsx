@@ -53,7 +53,15 @@ import {
 import { Modal } from './components/Modal'
 
 import { useChannelSelection } from './components/useChannelSelection'
-import { quickControls, visibleSections } from './core/layout'
+import {
+  quickControls,
+  visibleControlSections as visibleSections,
+  isVisibleControl,
+  rgbControls,
+  availableRgbFamilies,
+  type RgbFamily,
+} from './core/layout'
+import { RgbTabs } from './components/RgbTabs'
 import { toggleSelection } from './core/selection'
 import type { MouseEvent } from 'react'
 
@@ -76,7 +84,8 @@ export default function App() {
     }>({ ids: [] }),
     [relative, setRelative] = useState(true),
     [multiplier, setMultiplier] = useState(1),
-    [section, setSection] = useState<Section>('Proc amp')
+    [section, setSection] = useState<Section>('Proc amp'),
+    [rgbFamily, setRgbFamily] = useState<RgbFamily>('Gain')
   const [activity, setActivity] = useState(false),
     [editLayout, setEditLayout] = useState(false),
     [menu, setMenu] = useState(false),
@@ -150,13 +159,23 @@ export default function App() {
     )
   const activeDescriptors = [
     ...new Map(selectedChannels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values(),
-  ].filter((d) => !group?.parameters.length || group.parameters.includes(d.id))
+  ].filter(
+    (d) => isVisibleControl(d) && (!group?.parameters.length || group.parameters.includes(d.id)),
+  )
   const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
     activeDescriptors.some((d) => d.section === s),
   )
   const consoleSection = consoleSections.includes(section)
     ? section
     : (consoleSections[0] ?? section)
+  const consoleRgbFamilies = availableRgbFamilies(activeDescriptors)
+  const consoleRgbFamily = consoleRgbFamilies.includes(rgbFamily)
+    ? rgbFamily
+    : (consoleRgbFamilies[0] ?? 'Gain')
+  const consoleFields =
+    consoleSection === 'RGB correction'
+      ? rgbControls(activeDescriptors, consoleRgbFamily)
+      : activeDescriptors.filter((d) => d.section === consoleSection && d.id !== 'procEnabled')
   const lastActivity = snapshot.activities[0]
   useEffect(() => {
     if (!initialized) {
@@ -818,7 +837,17 @@ export default function App() {
                     </button>
                   ))}
                 </div>
-                <div className="detail-scroll console-parameters">
+                {consoleSection === 'RGB correction' && (
+                  <RgbTabs
+                    descriptors={activeDescriptors}
+                    value={consoleRgbFamily}
+                    onChange={setRgbFamily}
+                    label="Gang RGB controls"
+                  />
+                )}
+                <div
+                  className={`detail-scroll console-parameters ${consoleSection === 'RGB correction' ? 'rgb-parameters' : ''}`}
+                >
                   <div className="detail-section-title">
                     <span>
                       {consoleSection === 'RGB correction'
@@ -899,24 +928,18 @@ export default function App() {
                             )}
                           </div>
                         ))}
-                      {activeDescriptors
-                        .filter(
-                          (d) =>
-                            d.section === consoleSection &&
-                            !['procEnabled', 'rgbEnabled'].includes(d.id),
-                        )
-                        .map((d) => (
-                          <ParameterControl
-                            key={`${targetIds.join('|')}-${d.id}-${relative}`}
-                            descriptor={d}
-                            channels={selectedChannels}
-                            relative={batch && relative && d.kind === 'number'}
-                            disabled={controlsDisabled}
-                            multiplier={multiplier}
-                            favorite={w.favorites.includes(d.id)}
-                            toggleFavorite={readOnly ? undefined : () => toggleFavorite(d.id)}
-                          />
-                        ))}
+                      {consoleFields.map((d) => (
+                        <ParameterControl
+                          key={`${targetIds.join('|')}-${d.id}-${relative}`}
+                          descriptor={d}
+                          channels={selectedChannels}
+                          relative={batch && relative && d.kind === 'number'}
+                          disabled={controlsDisabled}
+                          multiplier={multiplier}
+                          favorite={w.favorites.includes(d.id)}
+                          toggleFavorite={readOnly ? undefined : () => toggleFavorite(d.id)}
+                        />
+                      ))}
                     </>
                   )}
                   {batch && (
@@ -1121,9 +1144,9 @@ export default function App() {
           <div className="help-content">
             <h3>Start with the demo</h3>
             <p>
-              Use the Quick tab for your chosen controls. Open Proc amp, RGB, or Legalizer on a card
-              for the full section. Restore default layout in Customize desk if controls are hidden.
-              All demo devices are simulated and generate no network traffic.
+              Use the Quick tab for your chosen controls. Open Proc amp or RGB on a card for the
+              full section. Restore default layout in Customize desk if controls are hidden. All
+              demo devices are simulated and generate no network traffic.
             </p>
             <h3>Trim together</h3>
             <p>
@@ -1209,6 +1232,9 @@ function ChannelCard({
   const [label, setLabel] = useState(c.label),
     [renaming, setRenaming] = useState(false)
   const [controlTab, setControlTab] = useState<Section | 'quick'>('quick')
+  const [rgbFamily, setRgbFamily] = useState<RgbFamily>('Gain')
+  const families = availableRgbFamilies(c.descriptors)
+  const activeRgbFamily = families.includes(rgbFamily) ? rgbFamily : (families[0] ?? 'Gain')
   const cardSections = visibleSections(w.hiddenSections).filter((section) =>
     c.descriptors.some((d) => d.section === section),
   )
@@ -1217,7 +1243,12 @@ function ChannelCard({
   const descriptors =
     activeTab === 'quick'
       ? quickControls(c, w.favorites)
-      : c.descriptors.filter((d) => d.section === activeTab)
+      : activeTab === 'RGB correction'
+        ? [
+            ...c.descriptors.filter((d) => d.id === 'rgbEnabled'),
+            ...rgbControls(c.descriptors, activeRgbFamily),
+          ]
+        : c.descriptors.filter((d) => d.section === activeTab)
   const blocked =
     disabled || c.locked || !device.armed || device.status !== 'online' || !!c.issue || !c.updatedAt
   const groups = w.gangs.filter((g) => g.members.includes(c.id))
@@ -1345,8 +1376,16 @@ function ChannelCard({
           </button>
         )}
       </div>
+      {activeTab === 'RGB correction' && (
+        <RgbTabs
+          descriptors={c.descriptors}
+          value={activeRgbFamily}
+          onChange={setRgbFamily}
+          label={`RGB controls for ${c.label}`}
+        />
+      )}
       <div
-        className="card-parameters"
+        className={`card-parameters ${activeTab === 'RGB correction' ? 'rgb-parameters' : ''}`}
         role="tabpanel"
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for ${c.label}`}
       >

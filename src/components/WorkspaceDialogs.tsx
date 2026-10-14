@@ -1,12 +1,17 @@
 import { useState } from 'react'
 import { Check, Download, Layers3, Plus, Save, Trash2 } from 'lucide-react'
-import { parameters, sections } from '../core/color'
+import { parameters } from '../core/color'
 import { downloadJson } from '../core/persistence'
 import { desk } from '../core/store'
 import type { ColorPreset, Gang, ParameterId, Section, Workspace } from '../core/types'
 import { Modal } from './Modal'
 import { message } from '../adapters/aja'
-import { defaultLayout, visibleSections } from '../core/layout'
+import {
+  defaultLayout,
+  controlSections as sections,
+  visibleControlSections as visibleSections,
+  isVisibleControl,
+} from '../core/layout'
 import { broadcastTheme } from '../theme'
 
 export function GangDialog({
@@ -26,7 +31,12 @@ export function GangDialog({
     [mask, setMask] = useState<ParameterId[]>(gang?.parameters ?? []),
     [error, setError] = useState('')
   const descriptors = [
-    ...new Map(workspace.channels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values(),
+    ...new Map(
+      workspace.channels
+        .flatMap((c) => c.descriptors)
+        .filter(isVisibleControl)
+        .map((d) => [d.id, d]),
+    ).values(),
   ]
   return (
     <Modal
@@ -372,7 +382,11 @@ export function PresetDialog({
 }
 
 export function LayoutDialog({ workspace, close }: { workspace: Workspace; close: () => void }) {
-  const [favorites, setFavorites] = useState(workspace.favorites),
+  const [favorites, setFavorites] = useState(
+      workspace.favorites.filter((id) => !id.startsWith('legalizer.')).length
+        ? workspace.favorites.filter((id) => !id.startsWith('legalizer.'))
+        : defaultLayout().favorites,
+    ),
     [density, setDensity] = useState(workspace.density),
     [hidden, setHidden] = useState<Section[]>(
       sections.filter((s) => !visibleSections(workspace.hiddenSections).includes(s)),
@@ -380,7 +394,7 @@ export function LayoutDialog({ workspace, close }: { workspace: Workspace; close
   const available = [
     ...new Map(
       [...parameters, ...workspace.channels.flatMap((c) => c.descriptors)]
-        .filter((d) => d.kind === 'number')
+        .filter((d) => d.kind === 'number' && isVisibleControl(d))
         .map((d) => [d.id, d]),
     ).values(),
   ]
@@ -486,6 +500,15 @@ export function ResetDialog({
   close: () => void
 }) {
   const [includeEnables, setIncludeEnables] = useState(false)
+  const resetMask = [
+    ...new Set(
+      workspace.channels
+        .filter((c) => ids.includes(c.id))
+        .flatMap((c) => c.descriptors)
+        .filter((d) => isVisibleControl(d) && (!mask?.length || mask.includes(d.id)))
+        .map((d) => d.id),
+    ),
+  ]
   return (
     <Modal
       title={section ? `Reset ${section.toLowerCase()}` : 'Reset channel colors'}
@@ -494,9 +517,8 @@ export function ResetDialog({
     >
       <div className="notice warning">
         <p>
-          Proc amp and RGB values return to unity. Legalizer controls return to device defaults when
-          included. Enable states are preserved unless selected below. Only the current
-          source-memory context is changed.
+          Proc amp and RGB values return to unity. Enable states are preserved unless selected
+          below. Only the current source-memory context is changed.
         </p>
       </div>
       <div className="reset-targets">
@@ -521,8 +543,9 @@ export function ResetDialog({
         </button>
         <button
           className="button warning-button"
+          disabled={!resetMask.length}
           onClick={() => {
-            desk.reset(ids, section, includeEnables, mask)
+            desk.reset(ids, section, includeEnables, resetMask)
             close()
           }}
         >

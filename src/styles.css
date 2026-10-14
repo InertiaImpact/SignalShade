@@ -3372,3 +3372,41 @@ button {
     flex-basis: 55px;
   }
 }
+.rgb-tabs {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px;
+  background: var(--surface-field);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  width: max-content;
+}
+.rgb-tabs > button {
+  padding: 4px 11px;
+  border-radius: 3px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.rgb-tabs > button[aria-selected='true'] {
+  background: var(--surface-hover);
+  color: var(--accent-text);
+}
+.channel-card > .rgb-tabs {
+  margin: 8px 12px 0;
+}
+.app .channel-card .card-parameters.rgb-parameters {
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+.app .gang-console > .rgb-tabs {
+  grid-column: 1/-1;
+  margin: 8px 16px 0;
+}
+.app .gang-console .console-parameters.rgb-parameters {
+  grid-template-columns: minmax(0, 1fr);
+}
+.console-parameters.rgb-parameters > .parameter {
+  width: 100%;
+  max-width: 760px;
+}
