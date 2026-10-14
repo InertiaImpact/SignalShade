@@ -35,6 +35,7 @@ import {
   X,
 } from 'lucide-react'
 import { desk } from './core/store'
+import { getWaitingUpdate, subscribeUpdates } from './core/updates'
 import { commonValue, isCompatible, sections } from './core/color'
 import type { Channel, Gang, ParameterId, Section } from './core/types'
 import { downloadJson, validateWorkspace } from './core/persistence'
@@ -80,7 +81,7 @@ export default function App() {
     }>(),
     [sidebar, setSidebar] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
-  const [update, setUpdate] = useState<ServiceWorker>()
+  const update = useSyncExternalStore(subscribeUpdates, getWaitingUpdate)
   const close = () => setDialog(null)
   const group = w.gangs.find((g) => g.id === selected)
   const selectedChannel = w.channels.find((c) => c.id === selected)
@@ -127,12 +128,6 @@ export default function App() {
     ...new Map(selectedChannels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values(),
   ].filter((d) => !group?.parameters.length || group.parameters.includes(d.id))
   const lastActivity = snapshot.activities[0]
-  useEffect(() => {
-    const updateAvailable = (event: Event) =>
-      setUpdate((event as CustomEvent<ServiceWorker>).detail)
-    window.addEventListener('signalshade-update', updateAvailable)
-    return () => window.removeEventListener('signalshade-update', updateAvailable)
-  }, [])
   useEffect(() => {
     if (!initialized) {
       initialized = true

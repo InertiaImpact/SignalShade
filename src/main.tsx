@@ -1,6 +1,7 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
+import { publishUpdate } from './core/updates'
 import './styles.css'
 
 createRoot(document.getElementById('root')!).render(
@@ -16,14 +17,21 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       .then((registration) => {
         const announce = () => {
           if (registration.waiting && navigator.serviceWorker.controller)
-            window.dispatchEvent(
-              new CustomEvent('signalshade-update', { detail: registration.waiting }),
-            )
+            publishUpdate(registration.waiting)
         }
         announce()
         registration.addEventListener('updatefound', () =>
           registration.installing?.addEventListener('statechange', announce),
         )
+        navigator.serviceWorker.addEventListener('controllerchange', () => publishUpdate(undefined))
+        const check = () => {
+          void registration
+            .update()
+            .then(announce)
+            .catch(() => {})
+        }
+        check()
+        setInterval(check, 5 * 60 * 1000)
       })
       .catch(() => {})
   })
