@@ -11,15 +11,17 @@ import { broadcastTheme } from '../theme'
 export function GangDialog({
   workspace,
   gang,
+  initialMembers = [],
   close,
 }: {
   workspace: Workspace
   gang?: Gang
+  initialMembers?: string[]
   close: () => void
 }) {
   const [name, setName] = useState(gang?.name ?? ''),
     [color, setColor] = useState<string>(gang?.color ?? broadcastTheme.accent),
-    [members, setMembers] = useState(gang?.members ?? []),
+    [members, setMembers] = useState(gang?.members ?? initialMembers),
     [mask, setMask] = useState<ParameterId[]>(gang?.parameters ?? []),
     [error, setError] = useState('')
   const descriptors = [

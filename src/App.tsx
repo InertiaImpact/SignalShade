@@ -52,6 +52,10 @@ import {
 } from './components/WorkspaceDialogs'
 import { Modal } from './components/Modal'
 
+import { useChannelSelection } from './components/useChannelSelection'
+import { toggleSelection } from './core/selection'
+import type { MouseEvent } from 'react'
+
 type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
 let initialized = false
 export default function App() {
@@ -59,6 +63,7 @@ export default function App() {
     { workspace: w } = snapshot
   const [view, setView] = useState('all'),
     [selected, setSelected] = useState('demo-ch-1'),
+    [selection, setSelection] = useState<string[]>([]),
     [query, setQuery] = useState(''),
     [sort, setSort] = useState('custom'),
     [dialog, setDialog] = useState<Dialog>(null)
@@ -85,12 +90,36 @@ export default function App() {
   const close = () => setDialog(null)
   const group = w.gangs.find((g) => g.id === selected)
   const selectedChannel = w.channels.find((c) => c.id === selected)
-  const selectedChannels = group
-    ? w.channels.filter((c) => group.members.includes(c.id))
-    : selectedChannel
-      ? [selectedChannel]
-      : []
+  const selectedChannels = selection.length
+    ? w.channels.filter((c) => selection.includes(c.id))
+    : group
+      ? w.channels.filter((c) => group.members.includes(c.id))
+      : selectedChannel
+        ? [selectedChannel]
+        : []
   const targetIds = selectedChannels.map((c) => c.id)
+  const batch = !!group || selectedChannels.length > 1
+  const selectMany = (ids: string[]) => {
+    setSelection(ids)
+    setSelected('')
+    setRelative(true)
+  }
+  const selectChannel = (id: string, additive = false) => {
+    if (additive)
+      selectMany(
+        toggleSelection(
+          selection.length ? selection : selectedChannel ? [selectedChannel.id] : [],
+          id,
+        ),
+      )
+    else {
+      setSelection([])
+      setSelected(id)
+      setRelative(false)
+    }
+  }
+  const selectionGesture = useChannelSelection(targetIds, selectMany, selectChannel)
+  const { rectangle, preview, ...gridSelectionHandlers } = selectionGesture
   const currentViewGang = w.gangs.find((g) => g.id === view)
   const channels = useMemo(() => {
     let list = w.channels.filter(
@@ -139,8 +168,13 @@ export default function App() {
     return () => clearInterval(interval)
   }, [])
   useEffect(() => {
-    if (!w.channels.some((c) => c.id === selected) && !w.gangs.some((g) => g.id === selected))
+    if (
+      selected &&
+      !w.channels.some((c) => c.id === selected) &&
+      !w.gangs.some((g) => g.id === selected)
+    )
       setSelected(w.channels[0]?.id ?? '')
+    setSelection((ids) => ids.filter((id) => w.channels.some((c) => c.id === id)))
     if (
       view !== 'all' &&
       view !== 'favorites' &&
@@ -160,6 +194,10 @@ export default function App() {
       if (e.key === 'Escape') {
         setMenu(false)
         setSidebar(false)
+        if (!group) {
+          setSelection([])
+          setSelected('')
+        }
       }
       if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
@@ -168,12 +206,13 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [dialog, readOnly])
+  }, [dialog, readOnly, group])
   const selectView = (id: string) => {
     setView(id)
     setSidebar(false)
     if (w.gangs.some((g) => g.id === id)) {
       setSelected(id)
+      setSelection([])
       setRelative(true)
     }
   }
@@ -488,6 +527,22 @@ export default function App() {
             <kbd>/</kbd>
           </div>
           <span className="channel-count">{channels.length} channels</span>
+          <span className="selection-help">Ctrl/⌘-click or drag headers to select</span>
+          <button className="button small" onClick={() => selectMany(channels.map((c) => c.id))}>
+            Select visible
+          </button>
+          <label className="arrow-step">
+            Arrow step
+            <select
+              aria-label="Arrow adjustment step"
+              value={multiplier}
+              onChange={(e) => setMultiplier(Number(e.target.value))}
+            >
+              <option value={1}>Fine</option>
+              <option value={5}>Normal ×5</option>
+              <option value={10}>Coarse ×10</option>
+            </select>
+          </label>
           <div className="toolbar-right">
             <select
               aria-label="Sort channels"
@@ -612,6 +667,7 @@ export default function App() {
               className="button small"
               onClick={() => {
                 setSelected(currentViewGang.id)
+                setSelection([])
                 setRelative(true)
               }}
             >
@@ -631,22 +687,325 @@ export default function App() {
             </button>
           </div>
         )}
-        <div className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}>
+        {batch && (
+          <section className="inspector gang-console" aria-label="Gang and selection controls">
+            <div className="inspector-heading">
+              <span className="eyebrow">{group ? 'SAVED GANG' : 'TEMPORARY SELECTION'}</span>
+              <div>
+                {!group && (
+                  <button
+                    className="button small"
+                    disabled={readOnly}
+                    onClick={() => {
+                      setEditGang(undefined)
+                      setDialog('gang')
+                    }}
+                  >
+                    <Plus size={13} />
+                    Save as gang
+                  </button>
+                )}
+                <button
+                  className="button small"
+                  onClick={() => {
+                    setSelected('')
+                    setSelection([])
+                  }}
+                >
+                  Clear selection
+                </button>
+                <button
+                  className="icon-button tiny"
+                  disabled={readOnly || !targetIds.length}
+                  aria-label="Reset selected colors"
+                  onClick={() => reset(targetIds, undefined, group?.parameters)}
+                >
+                  <RotateCcw size={15} />
+                </button>
+                <button
+                  className="icon-button tiny"
+                  aria-label="Save color preset"
+                  onClick={() => setDialog('presets')}
+                >
+                  <Save size={15} />
+                </button>
+              </div>
+            </div>
+            <div className="inspector-identity">
+              <div
+                className={`inspector-icon ${group ? 'gang' : ''}`}
+                style={group ? { color: group.color } : {}}
+              >
+                <Layers3 size={23} />
+              </div>
+              <div>
+                <h2>{group?.name ?? `${selectedChannels.length} channels selected`}</h2>
+                <p>
+                  {group
+                    ? `${selectedChannels.length} channels · explicit group controls`
+                    : selectedChannel
+                      ? `${w.devices.find((d) => d.id === selectedChannel.deviceId)?.label} · VID ${selectedChannel.processor}`
+                      : 'Adjust this selection together · card controls remain individual'}
+                </p>
+              </div>
+              {group && (
+                <button
+                  className="icon-button tiny"
+                  disabled={readOnly}
+                  aria-label="Edit gang"
+                  onClick={() => {
+                    setEditGang(group)
+                    setDialog('gang')
+                  }}
+                >
+                  <Edit3 size={14} />
+                </button>
+              )}
+            </div>
+            {!!targetIds.length && (
+              <>
+                <div className="inspector-state">
+                  <span>
+                    <span className={`status-dot ${controlsDisabled ? 'offline' : ''}`} />
+                    {controlsDisabled
+                      ? 'Controls locked'
+                      : snapshot.busy && selectedChannels.some((c) => c.pending)
+                        ? 'Confirming changes'
+                        : 'Ready to adjust'}
+                  </span>
+                  <span>
+                    {selectedChannels.every(
+                      (c) => w.devices.find((d) => d.id === c.deviceId)?.simulated,
+                    )
+                      ? 'DEMO'
+                      : 'HARDWARE'}
+                  </span>
+                </div>
+                {batch && (
+                  <>
+                    <div className="segmented">
+                      <button
+                        className={relative ? 'active' : ''}
+                        onClick={() => setRelative(true)}
+                      >
+                        Relative trim
+                      </button>
+                      <button
+                        className={!relative ? 'active' : ''}
+                        onClick={() => setRelative(false)}
+                      >
+                        Absolute set
+                      </button>
+                    </div>
+                    <p className="mode-explanation">
+                      {relative
+                        ? 'Add to each member’s current value. Members clamp independently at their limits.'
+                        : 'Set all compatible members to the same value. Each device enforces its own range.'}
+                    </p>
+                  </>
+                )}
+                <div className="detail-tabs" role="tablist" aria-label="Color control sections">
+                  {sections
+                    .filter((s) => !w.hiddenSections.includes(s))
+                    .map((s) => (
+                      <button
+                        role="tab"
+                        aria-selected={section === s}
+                        className={section === s ? 'active' : ''}
+                        key={s}
+                        onClick={() => setSection(s)}
+                      >
+                        {s === 'RGB correction' ? 'RGB' : s}
+                      </button>
+                    ))}
+                </div>
+                <div className="detail-scroll console-parameters">
+                  <div className="detail-section-title">
+                    <span>
+                      {section === 'RGB correction'
+                        ? 'RGB COLOR CORRECTION'
+                        : section.toUpperCase()}
+                    </span>
+                    <button
+                      className="icon-button tiny"
+                      disabled={controlsDisabled}
+                      aria-label={`Reset ${section} section`}
+                      title={`Reset ${section}`}
+                      onClick={() => reset(targetIds, section, group?.parameters)}
+                    >
+                      <RotateCcw size={12} />
+                    </button>
+                  </div>
+                  {w.hiddenSections.includes(section) ? (
+                    <p className="muted">This section is hidden. Restore it in Customize desk.</p>
+                  ) : !activeDescriptors.some((d) => d.section === section) ? (
+                    <div className="empty-small">
+                      <SlidersHorizontal size={22} />
+                      <p>No controls available in this section for the selected target.</p>
+                    </div>
+                  ) : (
+                    <>
+                      {activeDescriptors
+                        .filter(
+                          (d) =>
+                            d.section === section && ['procEnabled', 'rgbEnabled'].includes(d.id),
+                        )
+                        .map((d) => (
+                          <div className="enable-row" key={d.id}>
+                            <span>
+                              {d.label}
+                              <small>
+                                {commonValue(selectedChannels, d.id) === undefined
+                                  ? 'Mixed enable states'
+                                  : commonValue(selectedChannels, d.id)
+                                    ? 'Processing enabled'
+                                    : 'Processing bypassed'}
+                              </small>
+                            </span>
+                            {d.kind === 'toggle' ? (
+                              <button
+                                className={`toggle ${commonValue(selectedChannels, d.id) ? 'on' : ''}`}
+                                role="switch"
+                                aria-label={`Enable ${d.label}`}
+                                aria-checked={!!commonValue(selectedChannels, d.id)}
+                                disabled={controlsDisabled || !isCompatible(selectedChannels, d.id)}
+                                onClick={() =>
+                                  desk.adjust(
+                                    targetIds,
+                                    d.id,
+                                    commonValue(selectedChannels, d.id) ? 0 : 1,
+                                    'absolute',
+                                  )
+                                }
+                              >
+                                <span />
+                              </button>
+                            ) : (
+                              <select
+                                aria-label={d.label}
+                                disabled={controlsDisabled}
+                                value={commonValue(selectedChannels, d.id) ?? ''}
+                                onChange={(e) =>
+                                  desk.adjust(targetIds, d.id, Number(e.target.value), 'absolute')
+                                }
+                              >
+                                <option value="" disabled>
+                                  Mixed
+                                </option>
+                                {d.choices?.map((o) => (
+                                  <option value={o.value} key={o.value}>
+                                    {o.label}
+                                  </option>
+                                ))}
+                              </select>
+                            )}
+                          </div>
+                        ))}
+                      {activeDescriptors
+                        .filter(
+                          (d) =>
+                            d.section === section && !['procEnabled', 'rgbEnabled'].includes(d.id),
+                        )
+                        .map((d) => (
+                          <ParameterControl
+                            key={`${targetIds.join('|')}-${d.id}-${relative}`}
+                            descriptor={d}
+                            channels={selectedChannels}
+                            relative={batch && relative && d.kind === 'number'}
+                            disabled={controlsDisabled}
+                            multiplier={multiplier}
+                            favorite={w.favorites.includes(d.id)}
+                            toggleFavorite={readOnly ? undefined : () => toggleFavorite(d.id)}
+                          />
+                        ))}
+                    </>
+                  )}
+                  {batch && (
+                    <div className="member-summary">
+                      <div className="section-heading">
+                        <span>GROUP MEMBERS</span>
+                        <span>{selectedChannels.length}</span>
+                      </div>
+                      {selectedChannels.map((c) => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            selectChannel(c.id)
+                          }}
+                        >
+                          <span className="status-dot" />
+                          <span>{c.label}</span>
+                          <ChevronRight size={13} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                  {selectedChannel && (
+                    <div className="channel-meta">
+                      <span>
+                        INPUT ASSIGNMENT<strong>{selectedChannel.source}</strong>
+                      </span>
+                      <span>
+                        VIDEO FORMAT<strong>{selectedChannel.format}</strong>
+                      </span>
+                      <span>
+                        READBACK
+                        <strong>
+                          {selectedChannel.updatedAt
+                            ? new Date(selectedChannel.updatedAt).toLocaleTimeString()
+                            : 'Stale / not connected'}
+                        </strong>
+                      </span>
+                      {selectedChannel.issue && (
+                        <p className="text-error">{selectedChannel.issue}</p>
+                      )}
+                    </div>
+                  )}
+                </div>
+                <div className="inspector-footer">
+                  <span>ADJUSTMENT STEP</span>
+                  <div className="step-buttons">
+                    {[
+                      { n: 1, label: 'Fine' },
+                      { n: 5, label: 'Normal' },
+                      { n: 10, label: 'Coarse' },
+                    ].map((x) => (
+                      <button
+                        key={x.n}
+                        className={multiplier === x.n ? 'active' : ''}
+                        onClick={() => setMultiplier(x.n)}
+                      >
+                        {x.label}
+                      </button>
+                    ))}
+                  </div>
+                  <p>
+                    <Radio size={11} /> Changes apply live · readback verified
+                  </p>
+                </div>
+              </>
+            )}
+          </section>
+        )}
+        <div
+          className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}
+          {...gridSelectionHandlers}
+        >
           {channels.map((c, index) => (
             <ChannelCard
               key={c.id}
               channel={c}
               index={index}
               workspace={w}
-              selected={selected === c.id}
+              selected={(preview ?? targetIds).includes(c.id)}
               gangSelected={!!group?.members.includes(c.id)}
               edit={editLayout}
               disabled={readOnly}
-              onSelect={() => {
-                setSelected(c.id)
-                setRelative(false)
-              }}
-              onReset={() => reset([c.id])}
+              onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
+              multiplier={multiplier}
+              pinsOnly={view === 'favorites'}
+              onReset={(section) => reset([c.id], section)}
+              onToggleFavorite={readOnly ? undefined : toggleFavorite}
             />
           ))}
           <button className="add-channel-card" onClick={() => setDialog('devices')}>
@@ -675,271 +1034,19 @@ export default function App() {
           </span>
         </div>
       </main>
-      <aside className="inspector" aria-label="Channel detail controls">
-        <div className="inspector-heading">
-          <span className="eyebrow">{group ? 'GANG CONTROL' : 'CHANNEL CONTROL'}</span>
-          <div>
-            <button
-              className="icon-button tiny"
-              disabled={readOnly || !targetIds.length}
-              aria-label="Reset selected colors"
-              onClick={() => reset(targetIds, undefined, group?.parameters)}
-            >
-              <RotateCcw size={15} />
-            </button>
-            <button
-              className="icon-button tiny"
-              aria-label="Save color preset"
-              onClick={() => setDialog('presets')}
-            >
-              <Save size={15} />
-            </button>
-          </div>
-        </div>
-        <div className="inspector-identity">
-          <div
-            className={`inspector-icon ${group ? 'gang' : ''}`}
-            style={group ? { color: group.color } : {}}
-          >
-            {group ? <Layers3 size={23} /> : <Monitor size={23} />}
-          </div>
-          <div>
-            <h2>{group?.name ?? selectedChannel?.label ?? 'Select a channel'}</h2>
-            <p>
-              {group
-                ? `${selectedChannels.length} channels · explicit group controls`
-                : selectedChannel
-                  ? `${w.devices.find((d) => d.id === selectedChannel.deviceId)?.label} · VID ${selectedChannel.processor}`
-                  : 'Choose a card to see its controls'}
-            </p>
-          </div>
-          {group && (
-            <button
-              className="icon-button tiny"
-              disabled={readOnly}
-              aria-label="Edit gang"
-              onClick={() => {
-                setEditGang(group)
-                setDialog('gang')
-              }}
-            >
-              <Edit3 size={14} />
-            </button>
-          )}
-        </div>
-        {!!targetIds.length && (
-          <>
-            <div className="inspector-state">
-              <span>
-                <span className={`status-dot ${controlsDisabled ? 'offline' : ''}`} />
-                {controlsDisabled
-                  ? 'Controls locked'
-                  : snapshot.busy && selectedChannels.some((c) => c.pending)
-                    ? 'Confirming changes'
-                    : 'Ready to adjust'}
-              </span>
-              <span>
-                {selectedChannels.every(
-                  (c) => w.devices.find((d) => d.id === c.deviceId)?.simulated,
-                )
-                  ? 'DEMO'
-                  : 'HARDWARE'}
-              </span>
-            </div>
-            {group && (
-              <>
-                <div className="segmented">
-                  <button className={relative ? 'active' : ''} onClick={() => setRelative(true)}>
-                    Relative trim
-                  </button>
-                  <button className={!relative ? 'active' : ''} onClick={() => setRelative(false)}>
-                    Absolute set
-                  </button>
-                </div>
-                <p className="mode-explanation">
-                  {relative
-                    ? 'Add to each member’s current value. Members clamp independently at their limits.'
-                    : 'Set all compatible members to the same value. Each device enforces its own range.'}
-                </p>
-              </>
-            )}
-            <div className="detail-tabs" role="tablist" aria-label="Color control sections">
-              {sections
-                .filter((s) => !w.hiddenSections.includes(s))
-                .map((s) => (
-                  <button
-                    role="tab"
-                    aria-selected={section === s}
-                    className={section === s ? 'active' : ''}
-                    key={s}
-                    onClick={() => setSection(s)}
-                  >
-                    {s === 'RGB correction' ? 'RGB' : s}
-                  </button>
-                ))}
-            </div>
-            <div className="detail-scroll">
-              <div className="detail-section-title">
-                <span>
-                  {section === 'RGB correction' ? 'RGB COLOR CORRECTION' : section.toUpperCase()}
-                </span>
-                <button
-                  className="icon-button tiny"
-                  disabled={controlsDisabled}
-                  aria-label={`Reset ${section} section`}
-                  title={`Reset ${section}`}
-                  onClick={() => reset(targetIds, section, group?.parameters)}
-                >
-                  <RotateCcw size={12} />
-                </button>
-              </div>
-              {w.hiddenSections.includes(section) ? (
-                <p className="muted">This section is hidden. Restore it in Customize desk.</p>
-              ) : !activeDescriptors.some((d) => d.section === section) ? (
-                <div className="empty-small">
-                  <SlidersHorizontal size={22} />
-                  <p>No controls available in this section for the selected target.</p>
-                </div>
-              ) : (
-                <>
-                  {activeDescriptors
-                    .filter(
-                      (d) => d.section === section && ['procEnabled', 'rgbEnabled'].includes(d.id),
-                    )
-                    .map((d) => (
-                      <div className="enable-row" key={d.id}>
-                        <span>
-                          {d.label}
-                          <small>
-                            {commonValue(selectedChannels, d.id) === undefined
-                              ? 'Mixed enable states'
-                              : commonValue(selectedChannels, d.id)
-                                ? 'Processing enabled'
-                                : 'Processing bypassed'}
-                          </small>
-                        </span>
-                        {d.kind === 'toggle' ? (
-                          <button
-                            className={`toggle ${commonValue(selectedChannels, d.id) ? 'on' : ''}`}
-                            role="switch"
-                            aria-label={`Enable ${d.label}`}
-                            aria-checked={!!commonValue(selectedChannels, d.id)}
-                            disabled={controlsDisabled || !isCompatible(selectedChannels, d.id)}
-                            onClick={() =>
-                              desk.adjust(
-                                targetIds,
-                                d.id,
-                                commonValue(selectedChannels, d.id) ? 0 : 1,
-                                'absolute',
-                              )
-                            }
-                          >
-                            <span />
-                          </button>
-                        ) : (
-                          <select
-                            aria-label={d.label}
-                            disabled={controlsDisabled}
-                            value={commonValue(selectedChannels, d.id) ?? ''}
-                            onChange={(e) =>
-                              desk.adjust(targetIds, d.id, Number(e.target.value), 'absolute')
-                            }
-                          >
-                            <option value="" disabled>
-                              Mixed
-                            </option>
-                            {d.choices?.map((o) => (
-                              <option value={o.value} key={o.value}>
-                                {o.label}
-                              </option>
-                            ))}
-                          </select>
-                        )}
-                      </div>
-                    ))}
-                  {activeDescriptors
-                    .filter(
-                      (d) => d.section === section && !['procEnabled', 'rgbEnabled'].includes(d.id),
-                    )
-                    .map((d) => (
-                      <ParameterControl
-                        key={`${selected}-${d.id}-${relative}`}
-                        descriptor={d}
-                        channels={selectedChannels}
-                        relative={!!group && relative && d.kind === 'number'}
-                        disabled={controlsDisabled}
-                        multiplier={multiplier}
-                        favorite={w.favorites.includes(d.id)}
-                        toggleFavorite={readOnly ? undefined : () => toggleFavorite(d.id)}
-                      />
-                    ))}
-                </>
-              )}
-              {!!group && (
-                <div className="member-summary">
-                  <div className="section-heading">
-                    <span>GROUP MEMBERS</span>
-                    <span>{selectedChannels.length}</span>
-                  </div>
-                  {selectedChannels.map((c) => (
-                    <button
-                      key={c.id}
-                      onClick={() => {
-                        setSelected(c.id)
-                        setRelative(false)
-                      }}
-                    >
-                      <span className="status-dot" />
-                      <span>{c.label}</span>
-                      <ChevronRight size={13} />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {selectedChannel && (
-                <div className="channel-meta">
-                  <span>
-                    INPUT ASSIGNMENT<strong>{selectedChannel.source}</strong>
-                  </span>
-                  <span>
-                    VIDEO FORMAT<strong>{selectedChannel.format}</strong>
-                  </span>
-                  <span>
-                    READBACK
-                    <strong>
-                      {selectedChannel.updatedAt
-                        ? new Date(selectedChannel.updatedAt).toLocaleTimeString()
-                        : 'Stale / not connected'}
-                    </strong>
-                  </span>
-                  {selectedChannel.issue && <p className="text-error">{selectedChannel.issue}</p>}
-                </div>
-              )}
-            </div>
-            <div className="inspector-footer">
-              <span>ADJUSTMENT STEP</span>
-              <div className="step-buttons">
-                {[
-                  { n: 1, label: 'Fine' },
-                  { n: 5, label: 'Normal' },
-                  { n: 10, label: 'Coarse' },
-                ].map((x) => (
-                  <button
-                    key={x.n}
-                    className={multiplier === x.n ? 'active' : ''}
-                    onClick={() => setMultiplier(x.n)}
-                  >
-                    {x.label}
-                  </button>
-                ))}
-              </div>
-              <p>
-                <Radio size={11} /> Changes apply live · readback verified
-              </p>
-            </div>
-          </>
-        )}
-      </aside>
+
+      {rectangle && (
+        <div
+          className="selection-marquee"
+          aria-hidden="true"
+          style={{
+            left: rectangle.left,
+            top: rectangle.top,
+            width: rectangle.right - rectangle.left,
+            height: rectangle.bottom - rectangle.top,
+          }}
+        />
+      )}
       <footer className="statusbar">
         <button className={activity ? 'active' : ''} onClick={() => setActivity(!activity)}>
           <Activity size={14} />
@@ -991,7 +1098,9 @@ export default function App() {
         </section>
       )}
       {dialog === 'devices' && <DeviceDialog workspace={w} close={close} readOnly={readOnly} />}
-      {dialog === 'gang' && <GangDialog workspace={w} gang={editGang} close={close} />}
+      {dialog === 'gang' && (
+        <GangDialog workspace={w} gang={editGang} initialMembers={targetIds} close={close} />
+      )}
       {dialog === 'presets' && (
         <PresetDialog workspace={w} targetIds={targetIds} close={close} readOnly={readOnly} />
       )}
@@ -1015,14 +1124,16 @@ export default function App() {
           <div className="help-content">
             <h3>Start with the demo</h3>
             <p>
-              Adjust channel cards directly, or select one for the full control panel. All demo
-              devices are simulated and generate no network traffic.
+              Adjust sliders on each channel card. Expand or collapse Proc amp, RGB, and Legalizer
+              sections as needed. All demo devices are simulated and generate no network traffic.
             </p>
             <h3>Trim together</h3>
             <p>
-              Open a gang from the sidebar. Relative trim adds to each member’s existing values.
-              Absolute set gives every member the same value, within device limits. Single-channel
-              edits always stay local.
+              Ctrl/⌘-click channel headers to toggle a selection, or drag from a header or empty
+              grid space to select multiple cards. Ctrl/⌘-drag adds to the selection; Escape clears
+              it. Open a saved gang from the sidebar or save your selection as a gang. Relative trim
+              adds to each member’s existing values. Absolute set gives every member the same value,
+              within device limits. Single-channel edits always stay local.
             </p>
             <h3>Connect your fleet</h3>
             <p>
@@ -1062,6 +1173,7 @@ export default function App() {
               .then(() => {
                 setPendingWorkspace(undefined)
                 setSelected('')
+                setSelection([])
                 setView('all')
               })
               .catch((e) => desk.log(message(e), 'error'))
@@ -1082,6 +1194,9 @@ function ChannelCard({
   disabled,
   onSelect,
   onReset,
+  multiplier,
+  pinsOnly,
+  onToggleFavorite,
 }: {
   channel: Channel
   index: number
@@ -1090,8 +1205,11 @@ function ChannelCard({
   gangSelected: boolean
   edit: boolean
   disabled: boolean
-  onSelect: () => void
-  onReset: () => void
+  onSelect: (event: MouseEvent<HTMLButtonElement>) => void
+  multiplier: number
+  pinsOnly: boolean
+  onReset: (section?: Section) => void
+  onToggleFavorite?: (id: ParameterId) => void
 }) {
   const device = w.devices.find((d) => d.id === c.deviceId)!
   const [label, setLabel] = useState(c.label),
@@ -1103,10 +1221,18 @@ function ChannelCard({
     <article
       className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''}`}
       aria-label={`${c.label} channel`}
+      data-channel-id={c.id}
     >
       <div className="card-heading">
-        <button className="card-select" aria-label={`Select ${c.label}`} onClick={onSelect}>
-          <span className="channel-number">{(index + 1).toString().padStart(2, '0')}</span>
+        <button
+          className="card-select"
+          aria-label={`Select ${c.label}`}
+          aria-pressed={selected}
+          onClick={onSelect}
+        >
+          <span className="channel-number">
+            {selected ? <Check size={14} /> : (index + 1).toString().padStart(2, '0')}
+          </span>
           <span>
             <strong>{c.label}</strong>
             <small>
@@ -1193,22 +1319,61 @@ function ChannelCard({
         <span>{c.source}</span>
         <ChevronRight size={12} />
       </button>
-      <div className="card-parameters">
-        {w.favorites
-          .slice(0, w.density === 'compact' ? 2 : 8)
-          .map((id) => c.descriptors.find((d) => d.id === id))
-          .filter((d): d is NonNullable<typeof d> => !!d)
-          .map((d) => (
-            <ParameterControl
-              key={d.id}
-              descriptor={d}
-              channels={[c]}
-              relative={false}
-              disabled={blocked}
-              multiplier={1}
-              compact
-            />
-          ))}
+      <div className="card-control-sections">
+        {sections
+          .filter((s) => !w.hiddenSections.includes(s))
+          .map((s) => {
+            const descriptors = c.descriptors.filter(
+              (d) => d.section === s && (!pinsOnly || w.favorites.includes(d.id)),
+            )
+            if (!descriptors.length) return null
+            return (
+              <details
+                className="card-control-section"
+                key={s}
+                open={s === 'Proc amp' || (s === 'RGB correction' && w.density !== 'compact')}
+              >
+                <summary>
+                  <ChevronRight size={13} />
+                  <span>{s === 'RGB correction' ? 'RGB correction' : s}</span>
+                  <small>{descriptors.length} controls</small>
+                  <button
+                    className="icon-button tiny"
+                    disabled={blocked}
+                    aria-label={`Reset ${s} for ${c.label}`}
+                    onClick={(e) => {
+                      e.preventDefault()
+                      e.stopPropagation()
+                      onReset(s)
+                    }}
+                  >
+                    <RotateCcw size={12} />
+                  </button>
+                </summary>
+                <div className="card-parameters">
+                  {descriptors.map((d) => (
+                    <ParameterControl
+                      key={d.id}
+                      descriptor={d}
+                      channels={[c]}
+                      relative={false}
+                      disabled={blocked}
+                      multiplier={multiplier}
+                      compact
+                      favorite={w.favorites.includes(d.id)}
+                      toggleFavorite={onToggleFavorite ? () => onToggleFavorite(d.id) : undefined}
+                    />
+                  ))}
+                </div>
+              </details>
+            )
+          })}
+      </div>
+      <div className="card-readback">
+        <span>{c.format || 'Format unavailable'}</span>
+        <span>
+          {c.updatedAt ? 'Read ' + new Date(c.updatedAt).toLocaleTimeString() : 'No readback'}
+        </span>
       </div>
       <div className="card-bottom">
         <span className="group-tags">
@@ -1226,7 +1391,7 @@ function ChannelCard({
           aria-label={`Reset ${c.label} colors`}
           title="Reset channel colors"
           disabled={blocked}
-          onClick={onReset}
+          onClick={() => onReset()}
         >
           <RotateCcw size={12} />
         </button>

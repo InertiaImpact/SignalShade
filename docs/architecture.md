@@ -4,7 +4,7 @@ The React/TypeScript application is statically built by Vite. GitHub Pages serve
 
 ```mermaid
 flowchart LR
-  UI[Channel cards / gang inspector] --> Engine[Command engine]
+  UI[Channel cards / shared gang console] --> Engine[Command engine]
   Engine --> Sim[Simulated channels]
   Engine --> Adapter[AJA descriptor adapter]
   Adapter -->|Direct browser CORS requests| Device[AJA FS device on LAN]
@@ -33,6 +33,12 @@ Polling refreshes foreground hardware state every five seconds when the device i
 The Web Locks API holds one control owner per browser origin/profile. Additional tabs are read-only. This is a local coordination feature, not distributed ownership or device authentication. Browser storage and Web Locks are origin-scoped; deploy one SignalShade installation per origin when isolation matters.
 
 Workspace imports validate structure, ranges, IDs, references, and size; loading sends no network writes. Presets carry parameter metadata so recalls can reject incompatible units, scaling, enums, resolutions, and device models before enqueueing commands. There is no cross-model color equivalence assumption.
+
+## Selection and controls
+
+Channel cards expose descriptor-driven sections, with native range sliders, arrow nudges, numeric entry, and parameter/section/channel resets. Card commands always target one channel. Temporary multi-selection is UI state, separate from saved gangs; both use the same shared console and command engine. Saved gang masks apply only to the shared controls. Selection changes never enqueue writes.
+
+Mouse drags begin on card headers or grid backgrounds, excluding controls and actions. The marquee previews membership while keeping console geometry stable, then commits membership on release. Ctrl/Command toggles a clicked card or adds intersected cards during a drag. Touch and keyboard users can select through the header buttons; Select visible is available in the toolbar.
 
 ## Visual palette
 
