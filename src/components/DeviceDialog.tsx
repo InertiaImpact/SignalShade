@@ -129,7 +129,7 @@ export function DeviceDialog({
                 <div className="grow">
                   <strong>{d.label}</strong>
                   <p>{d.simulated ? 'Simulated · no network traffic' : d.address}</p>
-                  <small className={d.status === 'online' ? 'text-lime' : 'text-amber'}>
+                  <small className={d.status === 'online' ? 'text-success' : 'text-warning'}>
                     {d.status} · {d.model} ·{' '}
                     {d.simulated ? 'Demo' : d.armed ? 'Writes enabled' : 'Read-only'}
                   </small>

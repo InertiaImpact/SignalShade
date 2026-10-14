@@ -34,6 +34,10 @@ The Web Locks API holds one control owner per browser origin/profile. Additional
 
 Workspace imports validate structure, ranges, IDs, references, and size; loading sends no network writes. Presets carry parameter metadata so recalls can reject incompatible units, scaling, enums, resolutions, and device models before enqueueing commands. There is no cross-model color equivalence assumption.
 
+## Visual palette
+
+`src/theme.ts` contains the single active dark broadcast palette. Component CSS uses semantic custom properties for surfaces, text, borders, the gold accent, statuses, and RGB control tracks. The palette is applied before React renders; there is no theme picker, saved theme preference, or alternate theme yet. To reskin later, change the palette rather than individual component styles. Keep the static favicon, browser theme-color, and initial dark background fallback aligned with the palette. Custom gang colors remain part of each workspace.
+
 ## Offline and updates
 
 Vite emits a versioned service worker containing the app shell and hashed assets. Only same-origin application assets under the build base are eligible for caching. LAN URLs and API requests are never intercepted. A waiting worker is activated only by the operator’s update control, or after all old clients close. A clean first load still requires access to Pages.

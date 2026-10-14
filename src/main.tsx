@@ -2,7 +2,10 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { publishUpdate } from './core/updates'
+import { applyBroadcastTheme } from './theme'
 import './styles.css'
+
+applyBroadcastTheme(document.documentElement)
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

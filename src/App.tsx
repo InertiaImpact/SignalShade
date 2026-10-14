@@ -223,7 +223,7 @@ export default function App() {
                   : 'NO DEVICES'}
           </span>
           <button
-            className={`icon-button ${globalLock ? 'text-amber' : ''}`}
+            className={`icon-button ${globalLock ? 'text-warning' : ''}`}
             aria-label={globalLock ? 'Unlock desk' : 'Lock desk'}
             title={globalLock ? 'Unlock desk controls' : 'Lock desk controls'}
             onClick={() => setGlobalLock(!globalLock)}

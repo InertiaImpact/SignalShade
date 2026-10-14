@@ -1,5 +1,6 @@
 import { defaultFavorites, parameters } from './color'
 import type { Device, Workspace } from './types'
+import { broadcastTheme } from '../theme'
 
 export function demoWorkspace(): Workspace {
   const devices: Device[] = [
@@ -69,21 +70,21 @@ export function demoWorkspace(): Workspace {
       {
         id: 'gang-all',
         name: 'All',
-        color: '#c9ed83',
+        color: broadcastTheme.accent,
         members: Array.from({ length: 10 }, (_, i) => `demo-ch-${i + 1}`),
         parameters: [],
       },
       {
         id: 'gang-shaded',
         name: 'Shaded Cams',
-        color: '#ac9cfa',
+        color: broadcastTheme['gang-shaded'],
         members: ['demo-ch-1', 'demo-ch-2', 'demo-ch-3', 'demo-ch-4'],
         parameters: [],
       },
       {
         id: 'gang-handheld',
         name: 'Handheld Cams',
-        color: '#82c8ee',
+        color: broadcastTheme['gang-handheld'],
         members: ['demo-ch-5', 'demo-ch-6'],
         parameters: [],
       },

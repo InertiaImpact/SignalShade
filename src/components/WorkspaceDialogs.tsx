@@ -6,6 +6,7 @@ import { desk } from '../core/store'
 import type { ColorPreset, Gang, ParameterId, Section, Workspace } from '../core/types'
 import { Modal } from './Modal'
 import { message } from '../adapters/aja'
+import { broadcastTheme } from '../theme'
 
 export function GangDialog({
   workspace,
@@ -17,7 +18,7 @@ export function GangDialog({
   close: () => void
 }) {
   const [name, setName] = useState(gang?.name ?? ''),
-    [color, setColor] = useState(gang?.color ?? '#c9ed83'),
+    [color, setColor] = useState<string>(gang?.color ?? broadcastTheme.accent),
     [members, setMembers] = useState(gang?.members ?? []),
     [mask, setMask] = useState<ParameterId[]>(gang?.parameters ?? []),
     [error, setError] = useState('')
