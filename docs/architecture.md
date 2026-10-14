@@ -1,0 +1,39 @@
+# Architecture
+
+The React/TypeScript application is statically built by Vite. GitHub Pages serves only assets. There is no backend, proxy, telemetry, external font request, or Companion runtime dependency.
+
+```mermaid
+flowchart LR
+  UI[Channel cards / gang inspector] --> Engine[Command engine]
+  Engine --> Sim[Simulated channels]
+  Engine --> Adapter[AJA descriptor adapter]
+  Adapter -->|Direct browser CORS requests| Device[AJA FS device on LAN]
+  UI --> Store[IndexedDB workspace / presets]
+  Store --> Backup[JSON backup]
+```
+
+## Boundaries
+
+- `core/types.ts` defines channels, devices, parameter descriptors, presets, and adapters.
+- `core/store.ts` owns commands, per-device serialization, gesture history, readback, and workspace updates. Relative adjustments accumulate; queued updates from a slider gesture coalesce. Every operation deduplicates channel targets.
+- `core/color.ts` provides numeric quantization, compatibility, and common/mixed value calculation. Its conventional control definitions power simulation; hardware metadata comes from readable device descriptors instead.
+- `adapters/aja.ts` reads `desc.json`, recognizes a conservative allowlist of SDR color controls, reads native parameters, and guards the active source context around writes. Unknown or ambiguous metadata is not writable.
+- `core/persistence.ts` validates versioned JSON with Zod and persists it to IndexedDB. Hardware status, armed state, and freshness are cleared when loading. Credentials are held only by the in-memory adapter.
+
+## Command lifecycle
+
+An adjustment identifies an explicit channel set, semantic parameter, relative/absolute intent, and source context. Each device has one serialized write queue. Hardware values are freshly read before computing the target. The adapter checks source context again, sends the set command, reads the value back, and checks context after the write. Confirmed results update the UI and undo history.
+
+After an uncertain hardware write, the device is disarmed, marked offline, and remaining queued jobs are discarded. No retry or rollback occurs automatically. Reconnect runs the diagnostic path and requires explicit arming again. A group spanning devices may partially succeed, and results are reported per member.
+
+Polling refreshes foreground hardware state every five seconds when the device is idle. Polling and writes share the device queue ownership. Cached values older than fifteen seconds cannot initiate writes. The adapter currently favors conservative full-state reads; measure polling and write latency on each device before adjusting limits or optimizing reads.
+
+## Ownership and storage
+
+The Web Locks API holds one control owner per browser origin/profile. Additional tabs are read-only. This is a local coordination feature, not distributed ownership or device authentication. Browser storage and Web Locks are origin-scoped; deploy one SignalShade installation per origin when isolation matters.
+
+Workspace imports validate structure, ranges, IDs, references, and size; loading sends no network writes. Presets carry parameter metadata so recalls can reject incompatible units, scaling, enums, resolutions, and device models before enqueueing commands. There is no cross-model color equivalence assumption.
+
+## Offline and updates
+
+Vite emits a versioned service worker containing the app shell and hashed assets. Only same-origin application assets under the build base are eligible for caching. LAN URLs and API requests are never intercepted. A waiting worker is activated only by the operator’s update control, or after all old clients close. A clean first load still requires access to Pages.
