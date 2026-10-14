@@ -15,7 +15,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
       .register(`${import.meta.env.BASE_URL}sw.js`)
       .then((registration) => {
         const announce = () => {
-          if (registration.waiting)
+          if (registration.waiting && navigator.serviceWorker.controller)
             window.dispatchEvent(
               new CustomEvent('signalshade-update', { detail: registration.waiting }),
             )

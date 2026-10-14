@@ -103,6 +103,18 @@ describe('command engine', () => {
     expect(value('demo-ch-1')).toBe(1.02)
     expect(store.getSnapshot().activities[0].type).toBe('error')
   })
+  it('resets a masked gang as one undo operation and preserves unmasked values', async () => {
+    store.reset(['demo-ch-1', 'demo-ch-2'], undefined, false, ['gain'])
+    await settle()
+    expect(value('demo-ch-1')).toBe(1)
+    expect(value('demo-ch-1', 'saturation')).toBe(1.05)
+    expect(store.getSnapshot().history).toHaveLength(1)
+    expect(store.getSnapshot().history[0].changes).toHaveLength(2)
+    store.undo()
+    await settle()
+    expect(value('demo-ch-1')).toBe(1.02)
+    expect(value('demo-ch-2')).toBe(0.98)
+  })
   it('loads workspace data without automatically enabling hardware writes', async () => {
     const w = demoWorkspace()
     w.devices[0].simulated = false

@@ -1125,7 +1125,7 @@ function ChannelCard({
           aria-label={`${c.locked ? 'Unlock' : 'Lock'} ${c.label}`}
           onClick={() => desk.updateChannel(c.id, { locked: !c.locked })}
         >
-          {c.locked ? <Lock size={13} /> : <MoreHorizontal size={17} />}
+          {c.locked ? <Lock size={13} /> : <Unlock size={13} />}
         </button>
       </div>
       {edit && (

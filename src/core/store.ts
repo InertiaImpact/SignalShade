@@ -309,7 +309,7 @@ export class DeskStore {
         context: channel.context,
       })
   }
-  reset(ids: string[], section?: string, includeEnables = false) {
+  reset(ids: string[], section?: string, includeEnables = false, mask?: ParameterId[]) {
     if (!this.canEdit()) return
     const operationId = crypto.randomUUID()
     for (const id of new Set(ids)) {
@@ -318,6 +318,7 @@ export class DeskStore {
       for (const d of channel.descriptors)
         if (
           (!section || d.section === section) &&
+          (!mask?.length || mask.includes(d.id)) &&
           (includeEnables || !['procEnabled', 'rgbEnabled'].includes(d.id))
         )
           this.enqueue({

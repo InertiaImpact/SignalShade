@@ -6,7 +6,7 @@ A browser-based color control desk for AJA FS processors. Open the dashboard, al
 
 **Status: initial release / hardware integration experimental.** The simulated desk is implemented and tested. FS-family browser CORS, authentication, parameter mappings, and write/readback need qualification on actual hardware before production use. A supported model name is not a claim that every firmware can connect from a public HTTPS origin.
 
-Planned Pages address: **https://inertiaimpact.github.io/SignalShade/**
+Open the dashboard: **https://inertiaimpact.github.io/SignalShade/**
 
 ## What works
 

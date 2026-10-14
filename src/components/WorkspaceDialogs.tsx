@@ -504,19 +504,7 @@ export function ResetDialog({
         <button
           className="button warning-button"
           onClick={() => {
-            if (mask?.length) {
-              for (const id of ids) {
-                const c = workspace.channels.find((c) => c.id === id)
-                if (!c) continue
-                for (const d of c.descriptors)
-                  if (
-                    mask.includes(d.id) &&
-                    (!section || section === d.section) &&
-                    (includeEnables || !['procEnabled', 'rgbEnabled'].includes(d.id))
-                  )
-                    desk.adjust([id], d.id, d.neutral, 'absolute')
-              }
-            } else desk.reset(ids, section, includeEnables)
+            desk.reset(ids, section, includeEnables, mask)
             close()
           }}
         >
