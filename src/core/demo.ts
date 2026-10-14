@@ -5,7 +5,7 @@ export function demoWorkspace(): Workspace {
   const devices: Device[] = [
     {
       id: 'demo-a',
-      label: 'FS4 · Rack A',
+      label: 'FS1',
       model: 'FS4',
       firmware: 'Demo',
       address: 'Demo device A',
@@ -15,7 +15,7 @@ export function demoWorkspace(): Workspace {
     },
     {
       id: 'demo-b',
-      label: 'FS4 · Rack B',
+      label: 'FS2',
       model: 'FS4',
       firmware: 'Demo',
       address: 'Demo device B',
@@ -25,7 +25,7 @@ export function demoWorkspace(): Workspace {
     },
     {
       id: 'demo-c',
-      label: 'FS2 · Rack C',
+      label: 'FS3',
       model: 'FS2',
       firmware: 'Demo',
       address: 'Demo device C',
@@ -34,18 +34,10 @@ export function demoWorkspace(): Workspace {
       armed: true,
     },
   ]
-  const labels = [
-    'Camera 01 · Wide',
-    'Camera 02 · Tight',
-    'Camera 03 · Stage L',
-    'Camera 04 · Stage R',
-    'Camera 05 · Handheld',
-    'Camera 06 · Jib',
-    'Playback A',
-    'Playback B',
-    'Remote 01',
-    'Remote 02',
-  ]
+  const labels = Array.from(
+    { length: 10 },
+    (_, i) => `${devices[Math.floor(i / 4)].label} - Input ${(i % 4) + 1}`,
+  )
   return {
     version: 1,
     name: 'Studio A · Show workspace',
@@ -75,24 +67,24 @@ export function demoWorkspace(): Workspace {
     })),
     gangs: [
       {
-        id: 'gang-cameras',
-        name: 'Studio cameras',
+        id: 'gang-all',
+        name: 'All',
         color: '#c9ed83',
-        members: Array.from({ length: 6 }, (_, i) => `demo-ch-${i + 1}`),
+        members: Array.from({ length: 10 }, (_, i) => `demo-ch-${i + 1}`),
         parameters: [],
       },
       {
-        id: 'gang-stage',
-        name: 'Stage pair',
+        id: 'gang-shaded',
+        name: 'Shaded Cams',
         color: '#ac9cfa',
-        members: ['demo-ch-3', 'demo-ch-4'],
+        members: ['demo-ch-1', 'demo-ch-2', 'demo-ch-3', 'demo-ch-4'],
         parameters: [],
       },
       {
-        id: 'gang-remotes',
-        name: 'Remote feeds',
+        id: 'gang-handheld',
+        name: 'Handheld Cams',
         color: '#82c8ee',
-        members: ['demo-ch-9', 'demo-ch-10'],
+        members: ['demo-ch-5', 'demo-ch-6'],
         parameters: [],
       },
     ],

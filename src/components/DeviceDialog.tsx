@@ -279,7 +279,7 @@ export function DeviceDialog({
                   Device label
                   <input
                     maxLength={100}
-                    placeholder="FS4 · Rack A"
+                    placeholder="FS1 (automatic when left blank)"
                     value={label}
                     onChange={(e) => setLabel(e.target.value)}
                     disabled={busy || readOnly}

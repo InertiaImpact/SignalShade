@@ -221,6 +221,12 @@ export class DeskStore {
       throw new Error('Wait for pending commands before replacing a device connection')
     const workspace = this.state.workspace
     const old = workspace.devices.find((d) => d.id === result.address)
+    let deviceNumber = 1
+    while (
+      workspace.devices.some((d) => d.id !== result.address && d.label === `FS${deviceNumber}`)
+    )
+      deviceNumber++
+    const deviceLabel = label.trim() || old?.label || `FS${deviceNumber}`
     const others = workspace.channels.filter((c) => c.deviceId !== result.address)
     if (others.length + result.channels.length > 32)
       throw new Error(
@@ -230,7 +236,9 @@ export class DeskStore {
     this.adapters.set(result.address, adapter)
     const channels = result.channels.map((c) => ({
       ...c,
-      label: workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.label ?? c.label,
+      label:
+        workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.label ??
+        `${deviceLabel} - Input ${c.processor}`,
     }))
     const ids = new Set([...others, ...channels].map((c) => c.id))
     this.workspace({
@@ -239,8 +247,7 @@ export class DeskStore {
         ...workspace.devices.filter((d) => d.id !== result.address),
         {
           id: result.address,
-          label:
-            label.trim() || old?.label || `${result.model} · ${new URL(result.address).hostname}`,
+          label: deviceLabel,
           model: result.model,
           firmware: result.firmware ?? 'Unknown',
           address: result.address,
@@ -252,7 +259,7 @@ export class DeskStore {
       channels: [...others, ...channels],
       gangs: workspace.gangs.map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) })),
     })
-    this.log(`Connected ${label || result.model} in read-only mode`, 'success')
+    this.log(`Connected ${deviceLabel} in read-only mode`, 'success')
   }
   armDevice(id: string, armed: boolean) {
     if (!this.canEdit()) return
