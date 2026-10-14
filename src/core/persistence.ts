@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import type { Workspace } from './types'
+import { visibleSections } from './layout'
 
 const finite = z.number().finite()
 const paramId = z
@@ -106,6 +107,10 @@ const schema = z.object({
 })
 export function validateWorkspace(input: unknown): Workspace {
   const parsed = schema.parse(input) as Workspace
+  const shown = visibleSections(parsed.hiddenSections)
+  parsed.hiddenSections = [...new Set(parsed.hiddenSections)].filter(
+    (section) => !shown.includes(section),
+  )
   const deviceIds = new Set(parsed.devices.map((d) => d.id))
   const channelIds = new Set(parsed.channels.map((c) => c.id))
   if (

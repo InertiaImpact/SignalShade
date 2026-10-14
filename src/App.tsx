@@ -36,7 +36,7 @@ import {
 } from 'lucide-react'
 import { desk } from './core/store'
 import { getWaitingUpdate, subscribeUpdates } from './core/updates'
-import { commonValue, isCompatible, sections } from './core/color'
+import { commonValue, isCompatible } from './core/color'
 import type { Channel, Gang, ParameterId, Section } from './core/types'
 import { downloadJson, validateWorkspace } from './core/persistence'
 import { message } from './adapters/aja'
@@ -53,6 +53,7 @@ import {
 import { Modal } from './components/Modal'
 
 import { useChannelSelection } from './components/useChannelSelection'
+import { quickControls, visibleSections } from './core/layout'
 import { toggleSelection } from './core/selection'
 import type { MouseEvent } from 'react'
 
@@ -119,7 +120,7 @@ export default function App() {
     let list = w.channels.filter(
       (c) =>
         (view === 'all' ||
-          (view === 'favorites' && w.favorites.some((id) => c.values[id] !== undefined)) ||
+          view === 'favorites' ||
           currentViewGang?.members.includes(c.id) ||
           c.deviceId === view) &&
         `${c.label} ${c.source} ${w.devices.find((d) => d.id === c.deviceId)?.label}`
@@ -150,6 +151,12 @@ export default function App() {
   const activeDescriptors = [
     ...new Map(selectedChannels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values(),
   ].filter((d) => !group?.parameters.length || group.parameters.includes(d.id))
+  const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
+    activeDescriptors.some((d) => d.section === s),
+  )
+  const consoleSection = consoleSections.includes(section)
+    ? section
+    : (consoleSections[0] ?? section)
   const lastActivity = snapshot.activities[0]
   useEffect(() => {
     if (!initialized) {
@@ -799,40 +806,36 @@ export default function App() {
                   </>
                 )}
                 <div className="detail-tabs" role="tablist" aria-label="Color control sections">
-                  {sections
-                    .filter((s) => !w.hiddenSections.includes(s))
-                    .map((s) => (
-                      <button
-                        role="tab"
-                        aria-selected={section === s}
-                        className={section === s ? 'active' : ''}
-                        key={s}
-                        onClick={() => setSection(s)}
-                      >
-                        {s === 'RGB correction' ? 'RGB' : s}
-                      </button>
-                    ))}
+                  {consoleSections.map((s) => (
+                    <button
+                      role="tab"
+                      aria-selected={consoleSection === s}
+                      className={consoleSection === s ? 'active' : ''}
+                      key={s}
+                      onClick={() => setSection(s)}
+                    >
+                      {s === 'RGB correction' ? 'RGB' : s}
+                    </button>
+                  ))}
                 </div>
                 <div className="detail-scroll console-parameters">
                   <div className="detail-section-title">
                     <span>
-                      {section === 'RGB correction'
+                      {consoleSection === 'RGB correction'
                         ? 'RGB COLOR CORRECTION'
-                        : section.toUpperCase()}
+                        : consoleSection.toUpperCase()}
                     </span>
                     <button
                       className="icon-button tiny"
                       disabled={controlsDisabled}
-                      aria-label={`Reset ${section} section`}
-                      title={`Reset ${section}`}
-                      onClick={() => reset(targetIds, section, group?.parameters)}
+                      aria-label={`Reset ${consoleSection} section`}
+                      title={`Reset ${consoleSection}`}
+                      onClick={() => reset(targetIds, consoleSection, group?.parameters)}
                     >
                       <RotateCcw size={12} />
                     </button>
                   </div>
-                  {w.hiddenSections.includes(section) ? (
-                    <p className="muted">This section is hidden. Restore it in Customize desk.</p>
-                  ) : !activeDescriptors.some((d) => d.section === section) ? (
+                  {!activeDescriptors.some((d) => d.section === consoleSection) ? (
                     <div className="empty-small">
                       <SlidersHorizontal size={22} />
                       <p>No controls available in this section for the selected target.</p>
@@ -842,7 +845,8 @@ export default function App() {
                       {activeDescriptors
                         .filter(
                           (d) =>
-                            d.section === section && ['procEnabled', 'rgbEnabled'].includes(d.id),
+                            d.section === consoleSection &&
+                            ['procEnabled', 'rgbEnabled'].includes(d.id),
                         )
                         .map((d) => (
                           <div className="enable-row" key={d.id}>
@@ -898,7 +902,8 @@ export default function App() {
                       {activeDescriptors
                         .filter(
                           (d) =>
-                            d.section === section && !['procEnabled', 'rgbEnabled'].includes(d.id),
+                            d.section === consoleSection &&
+                            !['procEnabled', 'rgbEnabled'].includes(d.id),
                         )
                         .map((d) => (
                           <ParameterControl
@@ -997,9 +1002,7 @@ export default function App() {
               disabled={readOnly}
               onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
               multiplier={multiplier}
-              pinsOnly={view === 'favorites'}
               onReset={(section) => reset([c.id], section)}
-              onToggleFavorite={readOnly ? undefined : toggleFavorite}
             />
           ))}
           <button className="add-channel-card" onClick={() => setDialog('devices')}>
@@ -1118,8 +1121,9 @@ export default function App() {
           <div className="help-content">
             <h3>Start with the demo</h3>
             <p>
-              Adjust sliders on each channel card. Expand or collapse Proc amp, RGB, and Legalizer
-              sections as needed. All demo devices are simulated and generate no network traffic.
+              Use the Quick tab for your chosen controls. Open Proc amp, RGB, or Legalizer on a card
+              for the full section. Restore default layout in Customize desk if controls are hidden.
+              All demo devices are simulated and generate no network traffic.
             </p>
             <h3>Trim together</h3>
             <p>
@@ -1189,8 +1193,6 @@ function ChannelCard({
   onSelect,
   onReset,
   multiplier,
-  pinsOnly,
-  onToggleFavorite,
 }: {
   channel: Channel
   index: number
@@ -1201,13 +1203,21 @@ function ChannelCard({
   disabled: boolean
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void
   multiplier: number
-  pinsOnly: boolean
   onReset: (section?: Section) => void
-  onToggleFavorite?: (id: ParameterId) => void
 }) {
   const device = w.devices.find((d) => d.id === c.deviceId)!
   const [label, setLabel] = useState(c.label),
     [renaming, setRenaming] = useState(false)
+  const [controlTab, setControlTab] = useState<Section | 'quick'>('quick')
+  const cardSections = visibleSections(w.hiddenSections).filter((section) =>
+    c.descriptors.some((d) => d.section === section),
+  )
+  const activeTab =
+    controlTab === 'quick' || !cardSections.includes(controlTab) ? 'quick' : controlTab
+  const descriptors =
+    activeTab === 'quick'
+      ? quickControls(c, w.favorites)
+      : c.descriptors.filter((d) => d.section === activeTab)
   const blocked =
     disabled || c.locked || !device.armed || device.status !== 'online' || !!c.issue || !c.updatedAt
   const groups = w.gangs.filter((g) => g.members.includes(c.id))
@@ -1230,10 +1240,29 @@ function ChannelCard({
           <span>
             <strong>{c.label}</strong>
             <small>
-              {device.label} <span>·</span> VID {c.processor}
+              {device.label} <span>·</span> VID {c.processor} <span>·</span> {c.source}
             </small>
           </span>
         </button>
+        <span
+          className="card-state"
+          title={`${c.source} · ${c.format} · ${c.updatedAt ? 'Read ' + new Date(c.updatedAt).toLocaleTimeString() : 'No readback'}`}
+        >
+          <span
+            className={`status-dot ${device.status !== 'online' || c.issue ? 'offline' : c.pending ? 'pending' : ''}`}
+          />
+          {device.simulated
+            ? 'DEMO'
+            : c.issue
+              ? 'UNVERIFIED'
+              : device.status !== 'online'
+                ? 'OFFLINE'
+                : c.pending
+                  ? 'PENDING'
+                  : !device.armed
+                    ? 'READ ONLY'
+                    : 'LIVE'}
+        </span>
         <button
           className="icon-button tiny"
           disabled={disabled}
@@ -1293,81 +1322,50 @@ function ChannelCard({
           </button>
         </div>
       )}
-      <button className="card-signal" onClick={onSelect}>
-        <span
-          className={`status-dot ${device.status !== 'online' || c.issue ? 'offline' : c.pending ? 'pending' : ''}`}
-        />
-        <span>
-          {device.simulated
-            ? 'SIMULATED'
-            : c.issue
-              ? 'UNVERIFIED'
-              : device.status !== 'online'
-                ? 'OFFLINE'
-                : c.pending
-                  ? 'PENDING'
-                  : !device.armed
-                    ? 'READ ONLY'
-                    : 'CONNECTED'}
-        </span>
-        <span>{c.source}</span>
-        <ChevronRight size={12} />
-      </button>
-      <div className="card-control-sections">
-        {sections
-          .filter((s) => !w.hiddenSections.includes(s))
-          .map((s) => {
-            const descriptors = c.descriptors.filter(
-              (d) => d.section === s && (!pinsOnly || w.favorites.includes(d.id)),
-            )
-            if (!descriptors.length) return null
-            return (
-              <details
-                className="card-control-section"
-                key={s}
-                open={s === 'Proc amp' || (s === 'RGB correction' && w.density !== 'compact')}
-              >
-                <summary>
-                  <ChevronRight size={13} />
-                  <span>{s === 'RGB correction' ? 'RGB correction' : s}</span>
-                  <small>{descriptors.length} controls</small>
-                  <button
-                    className="icon-button tiny"
-                    disabled={blocked}
-                    aria-label={`Reset ${s} for ${c.label}`}
-                    onClick={(e) => {
-                      e.preventDefault()
-                      e.stopPropagation()
-                      onReset(s)
-                    }}
-                  >
-                    <RotateCcw size={12} />
-                  </button>
-                </summary>
-                <div className="card-parameters">
-                  {descriptors.map((d) => (
-                    <ParameterControl
-                      key={d.id}
-                      descriptor={d}
-                      channels={[c]}
-                      relative={false}
-                      disabled={blocked}
-                      multiplier={multiplier}
-                      compact
-                      favorite={w.favorites.includes(d.id)}
-                      toggleFavorite={onToggleFavorite ? () => onToggleFavorite(d.id) : undefined}
-                    />
-                  ))}
-                </div>
-              </details>
-            )
-          })}
+      <div className="card-control-tabs" role="tablist" aria-label={`Controls for ${c.label}`}>
+        {(['quick', ...cardSections] as const).map((tab) => (
+          <button
+            key={tab}
+            role="tab"
+            aria-selected={activeTab === tab}
+            onClick={() => setControlTab(tab)}
+          >
+            {tab === 'quick' ? 'Quick' : tab === 'RGB correction' ? 'RGB' : tab}
+          </button>
+        ))}
+        {activeTab !== 'quick' && (
+          <button
+            className="icon-button tiny section-reset"
+            disabled={blocked}
+            aria-label={`Reset ${activeTab} for ${c.label}`}
+            title="Reset section"
+            onClick={() => onReset(activeTab)}
+          >
+            <RotateCcw size={12} />
+          </button>
+        )}
       </div>
-      <div className="card-readback">
-        <span>{c.format || 'Format unavailable'}</span>
-        <span>
-          {c.updatedAt ? 'Read ' + new Date(c.updatedAt).toLocaleTimeString() : 'No readback'}
-        </span>
+      <div
+        className="card-parameters"
+        role="tabpanel"
+        aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for ${c.label}`}
+      >
+        {descriptors.map((d) => (
+          <ParameterControl
+            key={d.id}
+            descriptor={d}
+            channels={[c]}
+            relative={false}
+            disabled={blocked}
+            multiplier={multiplier}
+            compact
+          />
+        ))}
+        {!descriptors.length && (
+          <div className="card-controls-empty">
+            <p>No supported color controls on this channel.</p>
+          </div>
+        )}
       </div>
       <div className="card-bottom">
         <span className="group-tags">

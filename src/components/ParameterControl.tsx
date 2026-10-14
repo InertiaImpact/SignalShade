@@ -91,54 +91,33 @@ export function ParameterControl({
         ' ',
       )}
     >
-      <div className="parameter-title">
+      <div className="parameter-heading">
         <label className="function-tag" htmlFor={inputId}>
           {d.label}
         </label>
-        <span className="parameter-actions">
-          {toggleFavorite && (
-            <button
-              className={'icon-button tiny ' + (favorite ? 'favorite' : '')}
-              aria-label={(favorite ? 'Unpin ' : 'Pin ') + d.label}
-              onClick={toggleFavorite}
-            >
-              <Star size={12} fill={favorite ? 'currentColor' : 'none'} />
-            </button>
-          )}
-          <button
-            className="icon-button tiny"
+
+        {toggle || d.kind === 'enum' ? (
+          <select
+            id={inputId}
             disabled={lock}
-            title={'Reset ' + d.label + ' to ' + formatValue(d.neutral, d)}
-            aria-label={'Reset ' + d.label}
-            onClick={() => send(d.neutral, 'absolute')}
+            value={current ?? ''}
+            onChange={(e) => send(Number(e.target.value), 'absolute')}
           >
-            <RotateCcw size={12} />
-          </button>
-        </span>
-      </div>
-      {toggle || d.kind === 'enum' ? (
-        <select
-          id={inputId}
-          disabled={lock}
-          value={current ?? ''}
-          onChange={(e) => send(Number(e.target.value), 'absolute')}
-        >
-          <option value="" disabled>
-            Mixed
-          </option>
-          {(
-            d.choices ?? [
-              { value: 0, label: 'Off' },
-              { value: 1, label: 'On' },
-            ]
-          ).map((c) => (
-            <option key={c.value} value={c.value}>
-              {c.label}
+            <option value="" disabled>
+              Mixed
             </option>
-          ))}
-        </select>
-      ) : (
-        <>
+            {(
+              d.choices ?? [
+                { value: 0, label: 'Off' },
+                { value: 1, label: 'On' },
+              ]
+            ).map((c) => (
+              <option key={c.value} value={c.value}>
+                {c.label}
+              </option>
+            ))}
+          </select>
+        ) : (
           <div className="slider-readout">
             {relative && <span className="delta">Δ</span>}
             <input
@@ -165,6 +144,30 @@ export function ParameterControl({
             <span className="unit">{d.unit}</span>
             {mixed && !relative && <span className="mixed-label">Mixed</span>}
           </div>
+        )}
+        <span className="parameter-actions">
+          {toggleFavorite && (
+            <button
+              className={'icon-button tiny ' + (favorite ? 'favorite' : '')}
+              aria-label={(favorite ? 'Unpin ' : 'Pin ') + d.label}
+              onClick={toggleFavorite}
+            >
+              <Star size={12} fill={favorite ? 'currentColor' : 'none'} />
+            </button>
+          )}
+          <button
+            className="icon-button tiny"
+            disabled={lock}
+            title={'Reset ' + d.label + ' to ' + formatValue(d.neutral, d)}
+            aria-label={'Reset ' + d.label}
+            onClick={() => send(d.neutral, 'absolute')}
+          >
+            <RotateCcw size={12} />
+          </button>
+        </span>
+      </div>
+      {!toggle && d.kind !== 'enum' && (
+        <>
           <div className="slider-control">
             <button
               aria-label={'Decrease ' + d.label}

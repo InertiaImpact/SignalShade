@@ -6,6 +6,7 @@ import { desk } from '../core/store'
 import type { ColorPreset, Gang, ParameterId, Section, Workspace } from '../core/types'
 import { Modal } from './Modal'
 import { message } from '../adapters/aja'
+import { defaultLayout, visibleSections } from '../core/layout'
 import { broadcastTheme } from '../theme'
 
 export function GangDialog({
@@ -373,7 +374,9 @@ export function PresetDialog({
 export function LayoutDialog({ workspace, close }: { workspace: Workspace; close: () => void }) {
   const [favorites, setFavorites] = useState(workspace.favorites),
     [density, setDensity] = useState(workspace.density),
-    [hidden, setHidden] = useState<Section[]>(workspace.hiddenSections)
+    [hidden, setHidden] = useState<Section[]>(
+      sections.filter((s) => !visibleSections(workspace.hiddenSections).includes(s)),
+    )
   const available = [
     ...new Map(
       [...parameters, ...workspace.channels.flatMap((c) => c.descriptors)]
@@ -390,16 +393,17 @@ export function LayoutDialog({ workspace, close }: { workspace: Workspace; close
       <label className="field">
         Card density
         <select value={density} onChange={(e) => setDensity(e.target.value as typeof density)}>
-          <option value="comfortable">Comfortable · all card controls</option>
-          <option value="compact">Compact · two card controls</option>
+          <option value="comfortable">Standard · compact channel cards</option>
+          <option value="compact">Dense · smaller cards and spacing</option>
         </select>
       </label>
       <div className="section-heading">
-        <span>FAVORITE CONTROLS</span>
+        <span>QUICK CONTROLS</span>
         <span>{favorites.length} / 8</span>
       </div>
       <p className="muted">
-        Pinned controls appear on every compatible channel card, in selection order.
+        Choose up to eight quick controls. Four keeps the cards compact. All other controls remain
+        available in the section tabs.
       </p>
       <div className="checkbox-grid">
         {available.map((d) => (
@@ -422,7 +426,7 @@ export function LayoutDialog({ workspace, close }: { workspace: Workspace; close
         ))}
       </div>
       <div className="section-heading">
-        <span>DETAIL SECTIONS</span>
+        <span>AVAILABLE CONTROL TABS</span>
       </div>
       <div className="checkbox-grid">
         {sections.map((s) => (
@@ -430,6 +434,7 @@ export function LayoutDialog({ workspace, close }: { workspace: Workspace; close
             <input
               type="checkbox"
               checked={!hidden.includes(s)}
+              disabled={!hidden.includes(s) && visibleSections(hidden).length === 1}
               onChange={(e) =>
                 setHidden(e.target.checked ? hidden.filter((v) => v !== s) : [...hidden, s])
               }
@@ -439,9 +444,19 @@ export function LayoutDialog({ workspace, close }: { workspace: Workspace; close
         ))}
       </div>
       <p className="muted">
-        Hidden sections retain their settings. You can always restore them here.
+        Checked tabs are available on each card and in the gang console. Quick controls always
+        remain accessible. At least one section tab must stay available.
       </p>
       <div className="modal-footer">
+        <button
+          className="button"
+          onClick={() => {
+            desk.updateWorkspace(defaultLayout())
+            close()
+          }}
+        >
+          Restore default layout
+        </button>
         <button
           className="button primary"
           onClick={() => {

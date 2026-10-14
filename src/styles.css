@@ -2674,12 +2674,12 @@ button {
   grid-column: 2;
 }
 .app .channel-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 430px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 350px), 1fr));
   gap: 20px;
   padding: 3px 3px 24px;
 }
 .app.compact .channel-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 370px), 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
 }
 .app .activity-panel {
   right: 0;
@@ -2716,31 +2716,6 @@ button {
   width: calc(100% - 36px);
   padding-block: 11px;
 }
-.card-control-section {
-  border-bottom: 1px solid var(--border-subtle);
-}
-.card-control-section > summary {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px 18px;
-  cursor: pointer;
-  list-style: none;
-  color: var(--text-secondary);
-  font-size: 11px;
-  user-select: none;
-}
-.card-control-section > summary::-webkit-details-marker {
-  display: none;
-}
-.card-control-section[open] > summary > svg {
-  transform: rotate(90deg);
-}
-.card-control-section > summary > small {
-  margin-left: auto;
-  font: 9px var(--mono);
-  color: var(--text-muted);
-}
 .app .channel-card .card-parameters {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   padding: 0 18px 18px;
@@ -2771,11 +2746,7 @@ button {
 .tone-legalizer {
   --control-color: var(--control-legalizer);
 }
-.app .parameter .parameter-title {
-  min-height: 24px;
-  margin-bottom: 6px;
-  gap: 5px;
-}
+
 .app .parameter .function-tag {
   color: var(--control-color);
   border: 1px solid color-mix(in srgb, var(--control-color) 25%, transparent);
@@ -3022,7 +2993,7 @@ button {
     grid-template-columns: 175px minmax(0, 1fr);
   }
   .app .channel-grid {
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, 370px), 1fr));
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 310px), 1fr));
   }
 }
 @media (max-width: 800px) {
@@ -3134,5 +3105,270 @@ button {
 @media (max-width: 560px) {
   .app .gang-console .console-parameters {
     grid-template-columns: 1fr;
+  }
+}
+/* Condensed channel cards: one section at a time, with inline values. */
+.app .channel-grid {
+  gap: 12px;
+}
+.app .channel-card {
+  min-height: 0;
+  background: var(--surface-panel);
+}
+.app .channel-card.selected {
+  background: var(--surface-panel);
+}
+.app .card-heading {
+  padding: 10px 12px;
+  gap: 7px;
+}
+.app .card-select {
+  gap: 7px;
+}
+.app .card-select strong {
+  font-size: 12px;
+}
+.app .card-select small {
+  font-size: 8px;
+  margin-top: 2px;
+}
+.app .channel-number {
+  width: 24px;
+  height: 27px;
+  font-size: 8px;
+}
+.card-state {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--text-muted);
+  font: 7px var(--mono);
+  white-space: nowrap;
+}
+.card-state .status-dot {
+  height: 4px;
+  width: 4px;
+}
+.card-control-tabs {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border-block: 1px solid var(--border-subtle);
+  padding: 0 12px;
+}
+.card-control-tabs > button[role='tab'] {
+  position: relative;
+  padding: 8px 0;
+  color: var(--text-muted);
+  font-size: 9px;
+  white-space: nowrap;
+}
+.card-control-tabs > button[aria-selected='true'] {
+  color: var(--accent-text);
+}
+.card-control-tabs > button[aria-selected='true']:after {
+  content: '';
+  height: 2px;
+  position: absolute;
+  bottom: -1px;
+  inset-inline: 0;
+  background: var(--accent);
+}
+.card-control-tabs .section-reset {
+  margin-left: auto;
+  min-height: 25px;
+}
+.app .channel-card .card-parameters {
+  padding: 11px 12px;
+  gap: 10px 16px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+.parameter-heading {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  height: 27px;
+}
+.app .parameter .function-tag {
+  background: none;
+  border: 0;
+  border-radius: 0;
+  padding: 0;
+  font-size: 10px;
+  font-weight: 450;
+  min-width: 0;
+  line-height: 1.3;
+}
+.app .parameter-heading .slider-readout {
+  margin-left: auto;
+  flex: 0 1 76px;
+  width: 76px;
+  min-width: 55px;
+  height: 24px;
+  padding: 0 4px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 4px;
+  gap: 2px;
+}
+.app .parameter-heading .slider-readout:focus-within {
+  border-color: var(--control-color);
+}
+.app .parameter-heading .slider-readout input {
+  font-size: 11px;
+  padding: 2px 0;
+}
+.app .parameter-heading .unit {
+  font-size: 8px;
+}
+.app .parameter-heading .parameter-actions {
+  gap: 0;
+  flex-shrink: 0;
+}
+.app .parameter-heading .parameter-actions button {
+  min-width: 17px;
+  min-height: 23px;
+  padding: 0;
+}
+.app .parameter.small .parameter-actions {
+  opacity: 0;
+  transition: opacity 0.12s;
+}
+.app .parameter.small:hover .parameter-actions,
+.app .parameter.small:focus-within .parameter-actions {
+  opacity: 1;
+}
+.app .parameter-heading > select {
+  margin-left: auto;
+  width: auto;
+  min-width: 62px;
+  max-width: 100px;
+  min-height: 24px;
+  height: 24px;
+  padding: 2px 17px 2px 5px;
+  font-size: 10px;
+}
+.app .slider-control {
+  height: 22px;
+  margin-top: 2px;
+  gap: 6px;
+}
+.app .slider-control > button {
+  height: 22px;
+  width: 20px;
+  background: transparent;
+  border-color: transparent;
+  color: var(--text-faint);
+}
+.app .slider-control > button:hover {
+  background: var(--surface-hover);
+  color: var(--control-color);
+}
+.app .slider-control .color-slider {
+  height: 3px;
+}
+.app .color-slider::-webkit-slider-thumb {
+  width: 8px;
+  height: 12px;
+  border-width: 1px;
+  border-radius: 2px;
+}
+.app .color-slider::-moz-range-thumb {
+  width: 7px;
+  height: 10px;
+  border-width: 1px;
+  border-radius: 2px;
+}
+.app .card-bottom {
+  padding: 6px 12px;
+  min-height: 30px;
+  border-top: 1px solid var(--border-subtle);
+}
+.app .group-tags {
+  gap: 5px;
+}
+.app .group-tags button {
+  border: 0;
+  background: none;
+  font-size: 8px;
+  padding: 2px 0;
+  color: var(--text-muted);
+}
+.app .card-bottom .icon-button {
+  min-height: 20px;
+  min-width: 20px;
+}
+.card-controls-empty {
+  grid-column: 1/-1;
+  padding: 10px;
+  color: var(--text-muted);
+  font-size: 10px;
+}
+.app .gang-console .inspector-heading {
+  padding: 9px 16px;
+}
+.app .gang-console .inspector-identity {
+  padding: 12px 16px 8px;
+}
+.app .gang-console .inspector-identity h2 {
+  font-size: 15px;
+}
+.app .gang-console .inspector-state {
+  padding: 12px 16px;
+}
+.app .gang-console .mode-explanation {
+  padding-bottom: 10px;
+  font-size: 10px;
+}
+.app .gang-console .console-parameters {
+  gap: 12px;
+  padding: 12px 16px;
+}
+.app .gang-console .console-parameters .detail-section-title {
+  margin: 0;
+}
+.app .gang-console .inspector-footer {
+  padding: 9px 16px;
+}
+.app .main-heading {
+  margin-bottom: 18px;
+}
+.app .demo-banner {
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+.app .fleet-stats {
+  padding-block: 13px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .app .parameter.small .parameter-actions {
+    transition: none;
+  }
+}
+@media (hover: none) {
+  .app .parameter.small .parameter-actions {
+    opacity: 0.5;
+  }
+}
+@media (max-width: 560px) {
+  .app .channel-card .card-parameters {
+    gap: 8px 12px;
+  }
+  .app .parameter-heading .slider-readout {
+    flex-basis: 66px;
+    width: 66px;
+  }
+}
+@media (max-width: 380px) {
+  .app .channel-card .card-parameters {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px 10px;
+  }
+  .app .parameter .function-tag {
+    font-size: 9px;
+  }
+  .app .parameter-heading .slider-readout {
+    min-width: 47px;
+    flex-basis: 55px;
   }
 }

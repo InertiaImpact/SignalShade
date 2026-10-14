@@ -11,7 +11,7 @@ Open the dashboard: **https://inertiaimpact.github.io/SignalShade/**
 ## What works
 
 - 32-channel workspace with processor-bound labels, search, custom ordering, compact cards, and favorite controls.
-- Wide channel cards with themed sliders, end arrows, numeric entry, per-parameter resets, and expandable Proc Amp, RGB correction, enables, and recognized legalizer controls.
+- Condensed channel cards with four Quick controls by default, inline label/value entry, themed sliders and end arrows. Proc Amp, RGB, and Legalizer tabs retain access to the full supported controls.
 - Ctrl/⌘-click and drag selection, plus multiple overlapping saved gang groups, with a full-width shared console, parameter masks, relative trims, and absolute sets. Members clamp independently; individual edits stay local.
 - Live command scheduling, verified hardware readback, per-channel locks, whole-desk UI lock, and per-member failure reports.
 - Neutral resets at parameter, section, channel, group, or all-channel scope; enables are preserved unless requested.
@@ -48,6 +48,7 @@ Authentication supports an optional session-only Basic Authorization header, sub
 
 ## Operator notes
 
+- **Customize cards:** choose up to eight Quick controls in Customize desk (four by default). Other controls are available through the card tabs. Restore default layout resets only the presentation preferences; labels, gangs, presets, and signal values stay intact. Layouts that previously hid all sections recover their tabs on load, and unsupported pins fall back to controls available on that channel.
 - **Select channels:** click a channel header for one channel; Ctrl/⌘-click toggles membership. Drag from a header or empty grid space to select intersecting cards; Ctrl/⌘-drag adds to the selection. Escape clears a temporary selection. Selection never sends commands. Card controls always adjust that channel; the shared console explicitly adjusts the selected members. Save a temporary selection as a named gang when needed.
 - **Sliders and arrows:** tracks and function tags share colors; numeric entry remains available. Arrows use the selected Fine/Normal/Coarse step. With mixed absolute group values, first enter or slide to a common value, or switch to Relative trim.
 - **Relative trim:** add a delta to each group member’s current value. Offsets remain until a member reaches its limit; limiting is reported in Activity.
