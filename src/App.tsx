@@ -61,7 +61,7 @@ import {
 } from './core/layout'
 import { RgbTabs } from './components/RgbTabs'
 import { toggleSelection } from './core/selection'
-import type { MouseEvent } from 'react'
+import type { CSSProperties, MouseEvent } from 'react'
 
 type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
 let initialized = false
@@ -119,7 +119,7 @@ export default function App() {
     }
   }
   const selectionGesture = useChannelSelection(targetIds, selectMany, selectChannel)
-  const { rectangle, preview, ...gridSelectionHandlers } = selectionGesture
+  const { rectangle, preview, ...paneSelectionHandlers } = selectionGesture
   const currentViewGang = w.gangs.find((g) => g.id === view)
   const channels = useMemo(() => {
     let list = w.channels.filter(
@@ -414,7 +414,7 @@ export default function App() {
           </div>
         </div>
       </aside>
-      <main className="main">
+      <main className="main" {...paneSelectionHandlers}>
         <div className="main-heading">
           <button
             className="icon-button mobile-menu"
@@ -638,7 +638,11 @@ export default function App() {
           </div>
         )}
         {batch && (
-          <section className="inspector gang-console" aria-label="Gang and selection controls">
+          <section
+            className="inspector gang-console"
+            aria-label="Gang and selection controls"
+            style={{ '--gang-color': group?.color ?? 'var(--accent)' } as CSSProperties}
+          >
             <div className="inspector-heading">
               <div className="console-title">
                 <Layers3 size={17} />
@@ -785,10 +789,7 @@ export default function App() {
             )}
           </section>
         )}
-        <div
-          className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}
-          {...gridSelectionHandlers}
-        >
+        <div className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}>
           {channels.map((c, index) => (
             <ChannelCard
               key={c.id}
@@ -797,6 +798,7 @@ export default function App() {
               workspace={w}
               selected={(preview ?? targetIds).includes(c.id)}
               gangSelected={!!group?.members.includes(c.id)}
+              selectionColor={group?.color}
               edit={editLayout}
               disabled={readOnly}
               onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
@@ -969,6 +971,7 @@ function ChannelCard({
   workspace: w,
   selected,
   gangSelected,
+  selectionColor,
   edit,
   disabled,
   onSelect,
@@ -980,6 +983,7 @@ function ChannelCard({
   workspace: ReturnType<typeof desk.getSnapshot>['workspace']
   selected: boolean
   gangSelected: boolean
+  selectionColor?: string
   edit: boolean
   disabled: boolean
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void
@@ -1015,6 +1019,7 @@ function ChannelCard({
       className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''}`}
       aria-label={`${c.label} channel`}
       data-channel-id={c.id}
+      style={{ '--selection-color': selectionColor ?? 'var(--accent)' } as CSSProperties}
     >
       <div className="card-heading">
         <button
@@ -1115,6 +1120,9 @@ function ChannelCard({
         {(['quick', ...cardSections] as const).map((tab) => (
           <button
             key={tab}
+            data-control-section={
+              tab === 'RGB correction' ? 'rgb' : tab === 'Proc amp' ? 'procamp' : 'quick'
+            }
             role="tab"
             aria-selected={activeTab === tab}
             onClick={() => setControlTab(tab)}
@@ -1144,6 +1152,9 @@ function ChannelCard({
       )}
       <div
         className={`card-parameters ${activeTab === 'RGB correction' ? 'rgb-parameters' : ''}`}
+        data-control-section={
+          activeTab === 'RGB correction' ? 'rgb' : activeTab === 'Proc amp' ? 'procamp' : 'quick'
+        }
         role="tabpanel"
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for ${c.label}`}
       >
@@ -1167,7 +1178,12 @@ function ChannelCard({
       <div className="card-bottom">
         <span className="group-tags">
           {groups.slice(0, 2).map((g) => (
-            <button key={g.id} title={g.name} onClick={onSelect}>
+            <button
+              key={g.id}
+              title={g.name}
+              onClick={onSelect}
+              style={{ '--gang-color': g.color } as CSSProperties}
+            >
               <span className="group-dot" style={{ background: g.color }} />
               {g.name}
             </button>

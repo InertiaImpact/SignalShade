@@ -66,21 +66,24 @@ export function ParameterControl({
   const lock = disabled || !compatible
   // An absolute group needs a common starting value before an arrow can step it.
   const arrowLock = lock || (!relative && channels.length > 1 && mixed)
-  const tone = d.id.startsWith('red')
-    ? 'red'
-    : d.id.startsWith('green')
-      ? 'green'
-      : d.id.startsWith('blue')
-        ? 'blue'
-        : d.id === 'hue'
-          ? 'hue'
-          : d.id === 'saturation'
-            ? 'saturation'
-            : d.section === 'Legalizer'
-              ? 'legalizer'
-              : d.id === 'black'
-                ? 'black'
-                : 'gain'
+  const tone =
+    d.id === 'rgbEnabled'
+      ? 'rgb'
+      : d.id.startsWith('red')
+        ? 'red'
+        : d.id.startsWith('green')
+          ? 'green'
+          : d.id.startsWith('blue')
+            ? 'blue'
+            : d.id === 'hue'
+              ? 'hue'
+              : d.id === 'saturation'
+                ? 'saturation'
+                : d.section === 'Legalizer'
+                  ? 'legalizer'
+                  : d.id === 'black'
+                    ? 'black'
+                    : 'gain'
   const inputId = (compact ? 'card' : 'detail') + '-' + channels[0]?.id + '-' + d.id
   const sliderValue = sliding ?? (relative ? 0 : (current ?? d.neutral))
   const min = relative ? -rangeSpan : d.min,

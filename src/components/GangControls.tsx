@@ -84,6 +84,7 @@ export function GangControls({
                   {families.map((f) => (
                     <div
                       key={f}
+                      data-rgb-family={f.toLowerCase()}
                       className={`gang-rgb-family ${f === activeFamily ? 'active' : ''}`}
                       role="group"
                       aria-label={`RGB ${f}`}

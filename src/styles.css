@@ -3925,3 +3925,105 @@ button {
     padding-top: 0;
   }
 }
+
+/* Group colors identify boundaries; control colors continue to identify R/G/B. */
+.tone-rgb {
+  --control-color: var(--section-rgb);
+}
+[data-rgb-family='gain'] {
+  --family-color: var(--family-gain);
+}
+[data-rgb-family='black'] {
+  --family-color: var(--family-black);
+}
+[data-rgb-family='gamma'] {
+  --family-color: var(--family-gamma);
+}
+[data-control-section='procamp'],
+.gang-procamp {
+  --section-color: var(--section-procamp);
+}
+[data-control-section='rgb'],
+.gang-rgb {
+  --section-color: var(--section-rgb);
+}
+.gang-control-section {
+  border-top: 2px solid var(--section-color);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--section-color) 3%, var(--surface-panel));
+}
+.gang-section-heading {
+  padding: 6px 12px 0;
+}
+.gang-section-heading h3 {
+  color: var(--section-color);
+}
+.gang-section-enable {
+  padding-inline: 12px;
+}
+.gang-procamp-fields {
+  padding-inline: 12px;
+  padding-bottom: 12px;
+}
+.gang-rgb-toggle {
+  padding-inline: 12px;
+}
+.gang-rgb-family {
+  border: 1px solid color-mix(in srgb, var(--family-color) 24%, var(--border-subtle));
+  border-top: 2px solid var(--family-color);
+  border-radius: 5px;
+  padding: 12px;
+  background: color-mix(in srgb, var(--family-color) 4%, var(--surface-panel));
+}
+.gang-rgb-family > h4 {
+  color: var(--family-color);
+  min-height: 24px;
+  font-weight: 600;
+}
+.app .rgb-tabs > button {
+  border: 1px solid transparent;
+  color: var(--family-color);
+}
+.app .rgb-tabs > button[aria-selected='true'] {
+  border-color: color-mix(in srgb, var(--family-color) 50%, transparent);
+  background: color-mix(in srgb, var(--family-color) 14%, var(--surface-field));
+  color: var(--family-color);
+}
+.app .card-control-tabs > button[aria-selected='true'][data-control-section] {
+  color: var(--section-color, var(--accent-text));
+}
+.app .card-control-tabs > button[aria-selected='true'][data-control-section]:after {
+  background: var(--section-color, var(--accent));
+}
+.card-parameters[data-control-section='procamp'],
+.card-parameters[data-control-section='rgb'] {
+  background: color-mix(in srgb, var(--section-color) 3%, transparent);
+}
+.app .gang-console {
+  border-color: color-mix(in srgb, var(--gang-color) 55%, var(--border-subtle));
+}
+.app .gang-console .inspector-heading {
+  background: color-mix(in srgb, var(--gang-color) 13%, var(--surface-panel));
+  border-bottom-color: color-mix(in srgb, var(--gang-color) 30%, var(--border-subtle));
+}
+.console-title > svg {
+  color: var(--gang-color);
+}
+.app .group-tags > button {
+  border: 1px solid color-mix(in srgb, var(--gang-color) 28%, transparent);
+  background: color-mix(in srgb, var(--gang-color) 7%, var(--surface-panel));
+  border-radius: 4px;
+  padding: 3px 6px;
+}
+.app .channel-card.selected {
+  border-color: var(--selection-color);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--selection-color) 12%, transparent);
+  background: linear-gradient(
+    150deg,
+    color-mix(in srgb, var(--selection-color) 6%, var(--surface-panel)),
+    var(--surface-panel)
+  );
+}
+.channel-card .selected-marker {
+  background: var(--selection-color);
+}

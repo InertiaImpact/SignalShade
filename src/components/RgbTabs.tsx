@@ -17,6 +17,7 @@ export function RgbTabs({
       {availableRgbFamilies(descriptors).map((family) => (
         <button
           key={family}
+          data-rgb-family={family.toLowerCase()}
           role="tab"
           aria-selected={value === family}
           onClick={() => onChange(family)}

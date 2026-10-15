@@ -1,7 +1,7 @@
 import { useRef, useState, type PointerEvent, type MouseEvent } from 'react'
 import { combineSelection, intersects, selectionRect, type SelectionRect } from '../core/selection'
 
-/** Header/background gestures select cards. Inputs and other card actions never start selection. */
+/** Pane backgrounds and card headers select cards; controls and the gang console are excluded. */
 export function useChannelSelection(
   ids: string[],
   select: (ids: string[]) => void,
@@ -22,14 +22,22 @@ export function useChannelSelection(
   return {
     rectangle,
     preview,
-    onPointerDown(e: PointerEvent<HTMLDivElement>) {
+    onPointerDown(e: PointerEvent<HTMLElement>) {
+      suppressClick.current = false
       if (e.button !== 0 || e.pointerType !== 'mouse') return
       const target = e.target as HTMLElement
       if (
         target.closest(
-          'input, select, summary, a, .card-edit, .card-parameters, .card-bottom, .add-channel-card',
+          'input, select, textarea, label, summary, a, [contenteditable], [role="slider"], [role="tablist"], .gang-console, .card-edit, .card-parameters, .card-bottom, .add-channel-card',
         ) ||
         (target.closest('button') && !target.closest('.card-select'))
+      )
+        return
+      // A native scrollbar is part of the pane, but must retain its normal drag behavior.
+      const bounds = e.currentTarget.getBoundingClientRect()
+      if (
+        e.clientX >= bounds.left + e.currentTarget.clientWidth ||
+        e.clientY >= bounds.top + e.currentTarget.clientHeight
       )
         return
       const card = target.closest<HTMLElement>('[data-channel-id]')
@@ -45,7 +53,7 @@ export function useChannelSelection(
       e.currentTarget.setPointerCapture(e.pointerId)
       e.preventDefault()
     },
-    onPointerMove(e: PointerEvent<HTMLDivElement>) {
+    onPointerMove(e: PointerEvent<HTMLElement>) {
       const g = gesture.current
       if (!g) return
       if (!g.moved && Math.hypot(e.clientX - g.x, e.clientY - g.y) < 6) return
@@ -58,7 +66,7 @@ export function useChannelSelection(
       g.result = combineSelection(g.base, hits, g.additive)
       setPreview(g.result)
     },
-    onPointerUp(e: PointerEvent<HTMLDivElement>) {
+    onPointerUp(e: PointerEvent<HTMLElement>) {
       const g = gesture.current
       if (!g) return
       if (!g.moved) {
@@ -76,8 +84,14 @@ export function useChannelSelection(
       gesture.current = null
       setRectangle(null)
       setPreview(null)
+      suppressClick.current = false
     },
-    onClickCapture(e: MouseEvent<HTMLDivElement>) {
+    onLostPointerCapture() {
+      gesture.current = null
+      setRectangle(null)
+      setPreview(null)
+    },
+    onClickCapture(e: MouseEvent<HTMLElement>) {
       if (suppressClick.current && e.detail > 0) {
         e.stopPropagation()
         e.preventDefault()
