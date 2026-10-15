@@ -191,6 +191,67 @@ describe('recorder command lifecycle', () => {
   })
 })
 describe('recorder protocol and persistence', () => {
+  it('discovers HELO Plus using its observed Product ID and Installed descriptors', async () => {
+    // Minimal descriptor fields from the supplied HELO Plus export; no device settings or secrets.
+    const descriptors = [
+      { param_id: 'eParamID_ProductID', param_name: 'Product ID' },
+      { param_id: 'eParamID_CurrentlyRunningImageVersion', param_name: 'Installed' },
+      {
+        param_id: 'eParamID_ReplicatorRecordState',
+        enum_values: [
+          { value: 1, text: 'eRRSIdle' },
+          { value: 2, text: 'eRRSRecording' },
+        ],
+      },
+      {
+        param_id: 'eParamID_ReplicatorCommand',
+        enum_values: [
+          { value: 1, text: 'Record Command' },
+          { value: 2, text: 'Stop Recording Command' },
+        ],
+      },
+    ]
+    const fetcher = vi.fn(async (url: string) => {
+      const uri = new URL(url)
+      const id = uri.searchParams.get('paramid')
+      return {
+        ok: true,
+        json: async () =>
+          uri.pathname === '/desc.json'
+            ? descriptors
+            : {
+                paramid: '2097225226',
+                name: id,
+                value:
+                  id === 'eParamID_ProductID'
+                    ? 'HELO-PLUS'
+                    : id === 'eParamID_CurrentlyRunningImageVersion'
+                      ? 'test-version'
+                      : '1',
+              },
+      }
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const adapter = new AjaRecorderAdapter({ ...config, model: 'HELO Plus' })
+    expect(await adapter.read(false)).toMatchObject({
+      state: 'idle',
+      canControl: true,
+      firmware: 'test-version',
+    })
+    expect(fetcher.mock.calls.every(([url]) => !url.includes('action=set'))).toBe(true)
+    adapter.dispose()
+    const wrongModel = new AjaRecorderAdapter({ ...config, model: 'HELO' })
+    expect((await wrongModel.read(false)).canControl).toBe(false)
+    wrongModel.dispose()
+  })
+  it('identifies the failing endpoint when the browser cannot read a response', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockRejectedValue(new TypeError('Failed to fetch')))
+    const adapter = new AjaRecorderAdapter(config)
+    await expect(adapter.read(false)).rejects.toThrow(
+      'Browser could not read recorder response: desc.json',
+    )
+    adapter.dispose()
+  })
   it('matches symbolic names alongside numeric IDs and rejects unrelated responses', () => {
     expect(
       parameterResponse(

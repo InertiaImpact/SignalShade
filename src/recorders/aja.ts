@@ -148,7 +148,18 @@ export class AjaRecorderAdapter implements RecorderAdapter {
         targetAddressSpace: 'local',
         redirect: 'error',
       }
-      const response = await fetch(`${this.address}/${path}`, options)
+      let response: Response
+      try {
+        response = await fetch(`${this.address}/${path}`, options)
+      } catch (error) {
+        if (controller.signal.aborted)
+          throw new Error(this.closed ? 'Connection closed' : `Recorder request timed out: ${path}`)
+        if (error instanceof TypeError)
+          throw new Error(
+            `Browser could not read recorder response: ${path}. Check the browser Console for CORS or local-network restrictions. Opening the device directly does not verify cross-origin access.`,
+          )
+        throw error
+      }
       if (!response.ok)
         throw new Error(`Recorder HTTP ${response.status}; reconnect/check authentication`)
       return await response.json()
@@ -175,13 +186,20 @@ export class AjaRecorderAdapter implements RecorderAdapter {
     const descriptors = extractDescriptors(await this.request('desc.json'))
     if (!descriptors.some((d) => d.param_id === this.stateId))
       throw new Error('Selected recorder model does not expose the expected transport API')
-    for (const d of descriptors.filter((d) =>
-      /^(product( name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
-        String(d.param_name),
-      ),
+    for (const d of descriptors.filter(
+      (d) =>
+        d.param_id === 'eParamID_ProductID' ||
+        d.param_id === 'eParamID_CurrentlyRunningImageVersion' ||
+        /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
+          String(d.param_name),
+        ),
     )) {
       const value = String((await this.get(String(d.param_id))).value)
-      if (/version|firmware/i.test(String(d.param_name))) this.firmware += ` ${value}`
+      if (
+        d.param_id === 'eParamID_CurrentlyRunningImageVersion' ||
+        /version|firmware/i.test(String(d.param_name))
+      )
+        this.firmware += ` ${value}`
       else if (!this.identity) this.identity = value
     }
     const compact = (s: string) =>
