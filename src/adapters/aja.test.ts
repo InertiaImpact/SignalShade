@@ -7,6 +7,7 @@ import {
   normalizeAddress,
   readValue,
 } from './aja'
+import fs2Descriptors from './fixtures/fs2-descriptors.json'
 
 const gain = {
   param_id: 'eParamID_ProcAmpGain_Vid1',
@@ -20,6 +21,67 @@ const gain = {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('AJA browser transport', () => {
+  it.each(['FS2', 'FS2_R'])(
+    'connects %s with two active processors from repeated per-input descriptor banks',
+    async (product) => {
+      let selected = 0
+      const values = new Map<string, number>()
+      const calls: string[] = []
+      const fetcher = vi.fn(async (url: string) => {
+        calls.push(url)
+        const u = new URL(url),
+          id = u.searchParams.get('paramid')!
+        if (u.pathname === '/desc.json')
+          return new Response(
+            JSON.stringify([
+              { param_id: 'eParamID_ProductID', param_name: 'Product ID' },
+              ...fs2Descriptors,
+            ]),
+          )
+        if (id === 'eParamID_ProductID')
+          return new Response(JSON.stringify({ name: id, value: product }))
+        // The active aliases must be used, never a saved SDI/HDMI memory.
+        expect(id).not.toMatch(/_(SDI[12]|HDMI)$/)
+        if (/VideoInput$/.test(id))
+          return new Response(JSON.stringify({ name: id, value: selected }))
+        if (/DetectedInputFormat$/.test(id))
+          return new Response(JSON.stringify({ name: id, value: 56 }))
+        const definition = fs2Descriptors.find((d) => d.param_id.startsWith(id + '_'))
+        if (!definition) throw new Error(`Unexpected parameter ${id}`)
+        if (u.searchParams.get('action') === 'set')
+          values.set(id, Number(u.searchParams.get('value')))
+        return new Response(
+          JSON.stringify({ name: id, value: values.get(id) ?? definition.default_value }),
+        )
+      })
+      vi.stubGlobal('fetch', fetcher)
+      const adapter = new AjaAdapter('10.0.0.2'),
+        report = await adapter.probe()
+      expect(report.checks.filter((c) => c.status === 'fail')).toEqual([])
+      expect(report.model).toBe('FS2')
+      expect(report.channels.map((c) => c.processor).sort()).toEqual([1, 2])
+      for (const c of report.channels) {
+        expect(c.descriptors).toHaveLength(15)
+        expect(c.descriptors.find((d) => d.id === 'gain')?.nativeId).toBe(
+          `eParamID_Vid${c.processor}YUVProcAmpGain`,
+        )
+      }
+      const channel = report.channels.find((c) => c.processor === 2)!,
+        gain = channel.descriptors.find((d) => d.id === 'gain')!
+      expect(calls.some((url) => url.includes('action=set'))).toBe(false)
+      expect(await adapter.write(channel, gain, 110)).toBe(110)
+      expect(values.get('eParamID_Vid2YUVProcAmpGain')).toBe(110)
+      selected = 1
+      const count = calls.filter((url) => url.includes('action=set')).length
+      await expect(adapter.write(channel, gain, 111)).rejects.toThrow('Source changed')
+      expect(calls.filter((url) => url.includes('action=set'))).toHaveLength(count)
+      const refreshed = await adapter.read(channel)
+      expect(refreshed.context).not.toBe(channel.context)
+      // After a routing refresh, controls still address the active alias.
+      expect(await adapter.write({ ...channel, ...refreshed }, gain, 112)).toBe(112)
+      adapter.dispose()
+    },
+  )
   it('probes original FS1 native reads without enabling controls or issuing a write', async () => {
     const fetcher = vi.fn(async (url: string) => {
       const u = new URL(url)
@@ -105,6 +167,36 @@ describe('AJA browser transport', () => {
   it('extracts nested descriptors and accepts only explicit readable numeric responses', () => {
     expect(extractDescriptors({ parameters: { colors: [gain] } })).toEqual([gain])
     expect(readValue([{ paramid: gain.param_id, value: '1000' }], gain.param_id)).toBe(1000)
+    expect(
+      readValue(
+        { name: 'eParamID_Vid2YUVProcAmpGain_HDMI', paramid: '12345', value: '110' },
+        'eParamID_Vid2YUVProcAmpGain',
+      ),
+    ).toBe(110)
+    expect(() =>
+      readValue(
+        { name: 'eParamID_Vid1YUVProcAmpGain_HDMI', paramid: '12345', value: '110' },
+        'eParamID_Vid2YUVProcAmpGain',
+      ),
+    ).toThrow()
+    expect(
+      readValue(
+        [
+          { value: '0', selected: 'false' },
+          { value: '1', selected: 'true' },
+        ],
+        gain.param_id,
+      ),
+    ).toBe(1)
+    expect(() =>
+      readValue(
+        [
+          { value: '0', selected: true },
+          { value: '1', selected: true },
+        ],
+        gain.param_id,
+      ),
+    ).toThrow()
     expect(
       readValue({ paramid: '2097225226', name: gain.param_id, value: '1000' }, gain.param_id),
     ).toBe(1000)

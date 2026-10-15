@@ -1,4 +1,5 @@
 import { AjaTransport } from './transport'
+import { activeFsDescriptors, activeFsId } from '../../extension/fs-parameters.js'
 import type {
   Channel,
   DeviceAdapter,
@@ -11,6 +12,18 @@ import type {
 
 type Raw = Record<string, unknown>
 export type ContextParameter = { id: string; label: string }
+const processorOf = (id: string) =>
+  Number(id.match(/(?:Vid|Video|Processor|Ch)([1-4])(?=[A-Z_]|$)/i)?.[1] ?? '1')
+function modelName(value: string): Model | undefined {
+  const match = value
+    .match(/\bFS[- ]?HDR(?=\b|_)|\bFS1[- ]X(?=\b|_)|\bFS[124](?=\b|_)/i)?.[0]
+    .toUpperCase()
+    .replace(' ', '-')
+  return match === 'FSHDR' ? 'FS-HDR' : (match as Model | undefined)
+}
+function contextLabel(name: string) {
+  return name.replace(/\b(?:vid|video|processor|channel)\s*[1-4]\s*/gi, '').trim()
+}
 export function normalizeAddress(input: string): string {
   const url = new URL(input.includes('://') ? input : `http://${input}`)
   if (
@@ -62,6 +75,7 @@ const semanticNames: Record<string, ParameterId> = {
   procampenableyuv: 'procEnabled',
   procampyuv: 'procEnabled',
   procampenable: 'procEnabled',
+  procamp: 'procEnabled',
   colorcorrectorrgb: 'rgbEnabled',
   colorcorrectorenable: 'rgbEnabled',
   colorcorrector: 'rgbEnabled',
@@ -81,6 +95,11 @@ const semanticNames: Record<string, ParameterId> = {
 const toNumber = (v: unknown) =>
   typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN
 export function mapDescriptor(raw: Raw): ParameterDescriptor | undefined {
+  if (
+    (Array.isArray(raw.class_names) && raw.class_names.includes('readonly')) ||
+    /read_only/.test(String(raw.param_type))
+  )
+    return
   const nativeId = String(raw.param_id ?? '')
   if (!/^eParamID_[a-zA-Z0-9_]+$/.test(nativeId)) return
   const name = String(raw.param_name ?? '')
@@ -143,18 +162,33 @@ export function mapDescriptor(raw: Raw): ParameterDescriptor | undefined {
     choices,
   }
 }
+function selectedResponse(input: unknown, paramId?: string): unknown {
+  if (!Array.isArray(input)) return input
+  const matches = input.filter(
+    (x) =>
+      x &&
+      typeof x === 'object' &&
+      paramId &&
+      [x.name, x.paramid, x.param_id].some(
+        (v) => v === paramId || (typeof v === 'string' && activeFsId(v) === paramId),
+      ),
+  )
+  const candidates = matches.length ? matches : input
+  if (candidates.length === 1) return candidates[0]
+  const selected = candidates.filter(
+    (x) => x && typeof x === 'object' && (x.selected === true || x.selected === 'true'),
+  )
+  return selected.length === 1 ? selected[0] : undefined
+}
 export function readValue(input: unknown, paramId: string): number {
-  const object = Array.isArray(input)
-    ? (input.find(
-        (x) => x && typeof x === 'object' && [x.name, x.paramid, x.param_id].includes(paramId),
-      ) ?? (input.length === 1 ? input[0] : undefined))
-    : input
+  const object = selectedResponse(input, paramId)
   if (!object || typeof object !== 'object') throw new Error(`Unrecognized response for ${paramId}`)
   const o = object as Raw
   if (
     o.name !== paramId &&
-    ((typeof o.paramid === 'string' && o.paramid !== paramId) ||
-      (typeof o.param_id === 'string' && o.param_id !== paramId))
+    !(typeof o.name === 'string' && activeFsId(o.name) === paramId) &&
+    ((typeof o.paramid === 'string' && activeFsId(o.paramid) !== paramId) ||
+      (typeof o.param_id === 'string' && activeFsId(o.param_id) !== paramId))
   )
     throw new Error('Device returned a different parameter')
   const value = toNumber(o.value)
@@ -162,7 +196,7 @@ export function readValue(input: unknown, paramId: string): number {
   return value
 }
 function stringValue(input: unknown): string {
-  const v = Array.isArray(input) ? input[0] : input
+  const v = selectedResponse(input)
   return v && typeof v === 'object' && 'value' in v ? String(v.value) : ''
 }
 export class AjaAdapter implements DeviceAdapter {
@@ -185,7 +219,7 @@ export class AjaAdapter implements DeviceAdapter {
     const abort = () => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) controller.abort()
-    const timeout = setTimeout(abort, /^(desc.json|descriptors\?)/.test(path) ? 22000 : 3500)
+    const timeout = setTimeout(abort, /^(desc.json|descriptors\?)/.test(path) ? 22000 : 4500)
     try {
       const options: RequestInit & { targetAddressSpace?: string } = {
         mode: 'cors',
@@ -296,9 +330,10 @@ export class AjaAdapter implements DeviceAdapter {
     let raw: Raw[]
     try {
       const response = await this.readDescriptors(signal)
-      raw = extractDescriptors(response)
-      result.rawDescriptorCount = raw.length
-      result.rawDescriptors = raw
+      const extracted = extractDescriptors(response)
+      result.rawDescriptorCount = extracted.length
+      result.rawDescriptors = extracted
+      raw = activeFsDescriptors(extracted)
       if (!raw.length) throw new Error('No recognized parameter descriptors in desc.json')
       result.checks.push({
         name: 'Readable API',
@@ -345,7 +380,7 @@ export class AjaAdapter implements DeviceAdapter {
             }
           }
           const readable = result.legacyReadbacks.filter(
-            (r) => r.response && typeof r.response === 'object' && 'value' in r.response,
+            (r) => stringValue(r.response) !== '',
           ).length
           result.checks.push({
             name: 'Original FS1 interface',
@@ -378,11 +413,19 @@ export class AjaAdapter implements DeviceAdapter {
         /* reported below */
       }
     }
-    const model = identification
-      .match(/\bFS[- ]?HDR\b|\bFS1[- ]X\b|\bFS4\b|\bFS2\b|\bFS1\b/i)?.[0]
-      .toUpperCase()
-      .replace(' ', '-')
-    result.model = model === 'FSHDR' ? 'FS-HDR' : (model as Model | undefined)
+    result.model = modelName(identification)
+    if (!result.model) {
+      try {
+        result.webIdentity = (await this.request(
+          'device-info',
+          signal,
+        )) as ProbeResult['webIdentity']
+        if (/\bAJA\b/i.test(result.webIdentity?.title ?? ''))
+          result.model = modelName(result.webIdentity?.model ?? result.webIdentity?.title ?? '')
+      } catch {
+        /* Retain the API identity failure below. */
+      }
+    }
     if (result.model && !['FS4', 'FS2', 'FS1-X', 'FS1', 'FS-HDR'].includes(result.model))
       result.model = undefined
     result.firmware = identification.trim() || 'Unidentified'
@@ -404,9 +447,7 @@ export class AjaAdapter implements DeviceAdapter {
     for (const r of raw) {
       const mapped = mapDescriptor(r)
       if (!mapped) continue
-      const processor = Number(
-        String(r.param_id).match(/(?:Vid|Video|Processor|Ch)([1-4])(?:_|$)/i)?.[1] ?? '1',
-      )
+      const processor = processorOf(String(r.param_id))
       const list = groups.get(processor) ?? []
       if (list.some((d) => d.id === mapped.id)) {
         result.checks.push({
@@ -426,15 +467,17 @@ export class AjaAdapter implements DeviceAdapter {
         .filter(
           (r) =>
             /^(video )?(input|source)( select| selection| source| format)?$/i.test(
-              String(r.param_name),
+              contextLabel(String(r.param_name)),
             ) ||
             /^(input format|operating mode|channel mode|system mode)$/i.test(String(r.param_name)),
         )
         .filter((r) => {
-          const p = String(r.param_id).match(/(?:Vid|Video|Processor|Ch)([1-4])(?:_|$)/i)
-          return !p || Number(p[1]) === processor
+          const native = String(r.param_id)
+          return (
+            !/(?:Vid|Video|Processor|Ch)[1-4]/i.test(native) || processorOf(native) === processor
+          )
         })
-        .map((r) => ({ id: String(r.param_id), label: String(r.param_name) }))
+        .map((r) => ({ id: String(r.param_id), label: contextLabel(String(r.param_name)) }))
       this.contextParameters.set(id, context)
       const channel: Channel = {
         id,

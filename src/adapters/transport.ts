@@ -194,7 +194,7 @@ export class AjaTransport {
                 : undefined,
           },
           options.signal ?? undefined,
-          /^(desc.json|descriptors\?)/.test(path) ? 20000 : 3000,
+          /^(desc.json|descriptors\?)/.test(path) ? 21000 : 4000,
         )
         return new Response(JSON.stringify(data), {
           status: 200,

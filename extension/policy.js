@@ -106,6 +106,8 @@ export function descriptors(input, depth = 0) {
 export function validateWrite(op, list) {
   const d = list.find((d) => d.param_id === op.id)
   if (!d) throw new Error('Parameter was not discovered on this device')
+  if (d.class_names?.includes('readonly') || /read_only/.test(String(d.param_type)))
+    throw new Error('Parameter is read-only')
   if (['eParamID_ReplicatorCommand', 'eParamID_TransportCommand'].includes(op.id)) {
     const helo = op.id === 'eParamID_ReplicatorCommand'
     if (!(helo ? [1, 2] : [3, 4]).includes(op.value))
@@ -128,7 +130,7 @@ export function validateWrite(op, list) {
     .replace(/\b(vid|video|processor|channel)\s*\d+\b/g, '')
     .replace(/[^a-z]/g, '')
   if (
-    !/^(procamp(gain|black|blacklevel|hue|sat|saturation|enableyuv|yuv|enable)|colorcorrector(rgb|enable)?|color(red|green|blue)(gain|black|blacklevel|gamma))$/.test(
+    !/^(procamp(gain|black|blacklevel|hue|sat|saturation|enableyuv|yuv|enable)?|colorcorrector(rgb|enable)?|color(red|green|blue)(gain|black|blacklevel|gamma))$/.test(
       name,
     )
   )

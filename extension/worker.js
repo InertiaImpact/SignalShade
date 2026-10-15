@@ -6,6 +6,7 @@ import {
   validateWrite,
   scanOrigins,
 } from './policy.js'
+import { activeFsDescriptors } from './fs-parameters.js'
 
 const queues = new Map()
 const discovered = new Map()
@@ -28,7 +29,7 @@ async function fetchJson(origin, path, m = {}) {
     Math.max(
       1,
       Math.min(
-        /^(desc.json|descriptors\?)/.test(path) ? 20000 : 6000,
+        /^(desc.json|descriptors\?)/.test(path) ? 20000 : 3000,
         (m.deadline ?? Date.now() + 6000) - Date.now(),
       ),
     ),
@@ -87,7 +88,11 @@ async function fetchJson(origin, path, m = {}) {
     return JSON.parse(result)
   } catch (e) {
     if (e.name === 'AbortError')
-      throw new Error('Device request timed out; command outcome may be unknown')
+      throw new Error(
+        path.includes('action=set')
+          ? 'Device request timed out; command outcome may be unknown'
+          : 'Device request timed out',
+      )
     if (e instanceof TypeError)
       throw new Error(
         'Connect could not reach the device. Check network, device access, and browser policy.',
@@ -201,7 +206,7 @@ async function handle(m, sender) {
             if (!/HTTP (404|410)\b/.test(e.message)) throw e
             raw = await fetchJson(origin, 'descriptors?paramid=*', m)
           }
-          list = descriptors(raw)
+          list = activeFsDescriptors(descriptors(raw))
           discovered.set(`${owner}:${origin}`, list)
         }
         validateWrite(op, list)
@@ -220,7 +225,10 @@ async function handle(m, sender) {
         throw new Error('Request expired before dispatch; read device state')
       const result = await fetchJson(origin, m.path, m)
       if (op.kind === 'descriptors')
-        discovered.set(`${sender.tab.id}:${sender.documentId}:${origin}`, descriptors(result))
+        discovered.set(
+          `${sender.tab.id}:${sender.documentId}:${origin}`,
+          activeFsDescriptors(descriptors(result)),
+        )
       // Login responses never expose cookies or other authentication metadata.
       return op.kind === 'login'
         ? { login: result?.login === 'success' ? 'success' : 'failed' }

@@ -32,5 +32,5 @@ function offlineShell() {
 export default defineConfig({
   plugins: [react(), offlineShell()],
   base: process.env.GITHUB_ACTIONS ? '/SignalShade/' : '/',
-  test: { environment: 'node', include: ['src/**/*.test.ts'] },
+  test: { environment: 'node', include: ['src/**/*.test.{ts,tsx}'] },
 })

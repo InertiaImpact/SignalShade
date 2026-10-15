@@ -5,6 +5,7 @@ import { resolve } from 'node:path'
 const names = [
   'manifest.json',
   'policy.js',
+  'fs-parameters.js',
   'worker.js',
   'content.js',
   'approve.html',

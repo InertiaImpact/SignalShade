@@ -28,12 +28,15 @@ export function DeviceDialog({
     [end, setEnd] = useState('')
   const [busy, setBusy] = useState<string>(),
     [scanState, setScanState] = useState('Not started')
+  const [scanning, setScanning] = useState(false),
+    [scanApproving, setScanApproving] = useState(false)
   const [results, setResults] = useState<Record<string, DiscoveryResult>>({})
   const [reports, setReports] = useState<Record<string, ProbeResult>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState(''),
     [scanError, setScanError] = useState('')
   const abort = useRef<AbortController | undefined>(undefined),
+    scanAbort = useRef<AbortController | undefined>(undefined),
     activeAdapters = useRef(new Set<AjaAdapter>())
   const scanRange = useRef<{ start: string; end: string } | undefined>(undefined)
   const mounted = useRef(true)
@@ -46,6 +49,7 @@ export function DeviceDialog({
     return () => {
       mounted.current = false
       abort.current?.abort()
+      scanAbort.current?.abort()
       activeAdapters.current.forEach((a) => a.dispose())
     }
   }, [])
@@ -57,6 +61,7 @@ export function DeviceDialog({
       browser: navigator.userAgent,
     })
   const addDevice = async (ip: string, name = '', fromScan = false) => {
+    if (abort.current || scanApproving || readOnly) return
     let origin: string
     try {
       origin = normalizeAddress(ip)
@@ -70,14 +75,16 @@ export function DeviceDialog({
     const controller = new AbortController()
     abort.current = controller
     let adapter: AjaAdapter | undefined,
-      kept = false
+      kept = false,
+      scanAccess = false
     try {
-      if (fromScan) {
+      if ((fromScan || scanRange.current) && (await detectConnect())) {
         const status = (await bridgeMessage('scan-status', { start: origin, end: origin })) as {
           allowed: boolean
         }
-        if (!status.allowed) await ensureDeviceAccess(origin)
-      } else await ensureDeviceAccess(origin)
+        scanAccess = status.allowed
+      }
+      if (!scanAccess) await ensureDeviceAccess(origin)
       if (controller.signal.aborted) return
       let auth: string | undefined
       if (username || password)
@@ -101,7 +108,7 @@ export function DeviceDialog({
         }))
         return
       }
-      if (fromScan && (await detectConnect())) await bridgeMessage('adopt', { origin })
+      if (scanAccess) await bridgeMessage('adopt', { origin })
       if (controller.signal.aborted) return
       desk.connect(adapter, report, name)
       kept = true
@@ -116,9 +123,11 @@ export function DeviceDialog({
         if (!kept) adapter.dispose()
       }
       if (mounted.current) setBusy(undefined)
+      if (abort.current === controller) abort.current = undefined
     }
   }
   const runScan = async () => {
+    if (scanAbort.current || abort.current || readOnly) return
     let ips: string[]
     try {
       ips = ipv4Range(start, end)
@@ -128,13 +137,15 @@ export function DeviceDialog({
     }
     const range = { start: normalizeAddress(ips[0]), end: normalizeAddress(ips.at(-1)!) }
     const controller = new AbortController()
-    abort.current = controller
-    setBusy('scan')
+    scanAbort.current = controller
+    setScanning(true)
+    setScanApproving(true)
     setScanError('')
     setScanState('Waiting for scan access…')
     try {
       await ensureDeviceAccess(range.start, range)
       if (controller.signal.aborted) return
+      setScanApproving(false)
       scanRange.current = range
       setScanState(`0 / ${ips.length} checked`)
       await scanDevices(
@@ -150,10 +161,14 @@ export function DeviceDialog({
     } catch (e) {
       if (mounted.current) {
         if (!controller.signal.aborted) setScanError(message(e))
-        setScanState('Not completed')
+        setScanState(controller.signal.aborted ? 'Stopped' : 'Not completed')
       }
     } finally {
-      if (mounted.current) setBusy(undefined)
+      if (mounted.current) {
+        setScanning(false)
+        setScanApproving(false)
+      }
+      if (scanAbort.current === controller) scanAbort.current = undefined
     }
   }
   const reportDetails = (origin: string) => {
@@ -227,7 +242,7 @@ export function DeviceDialog({
                 <>
                   <button
                     className="button small"
-                    disabled={!!busy || readOnly}
+                    disabled={!!busy || scanApproving || readOnly}
                     onClick={() => void addDevice(d.address, d.label)}
                   >
                     <RefreshCw size={14} />
@@ -251,7 +266,7 @@ export function DeviceDialog({
               <button
                 className="icon-button"
                 aria-label={`Remove ${d.label}`}
-                disabled={!!busy || readOnly}
+                disabled={!!busy || scanApproving || readOnly}
                 onClick={() => {
                   try {
                     desk.removeDevice(d.id)
@@ -297,7 +312,7 @@ export function DeviceDialog({
                     }
                   }
                 }}
-                disabled={!!busy || readOnly}
+                disabled={!!busy || scanApproving || readOnly}
               />
             </label>
             <label className="field grow">
@@ -310,7 +325,7 @@ export function DeviceDialog({
                 disabled={!!busy || readOnly}
               />
             </label>
-            <button className="button primary" disabled={!!busy || readOnly}>
+            <button className="button primary" disabled={!!busy || scanApproving || readOnly}>
               {busy === currentOrigin ? 'Adding…' : 'Add device'}
             </button>
           </div>
@@ -362,7 +377,7 @@ export function DeviceDialog({
                 placeholder="10.215.20.1"
                 value={start}
                 onChange={(e) => setStart(e.target.value)}
-                disabled={!!busy || readOnly}
+                disabled={scanning || !!busy || readOnly}
               />
             </label>
             <label className="field grow">
@@ -372,12 +387,12 @@ export function DeviceDialog({
                 placeholder="10.215.20.254"
                 value={end}
                 onChange={(e) => setEnd(e.target.value)}
-                disabled={!!busy || readOnly}
+                disabled={scanning || !!busy || readOnly}
               />
             </label>
-            <button className="button primary" disabled={!!busy || readOnly}>
+            <button className="button primary" disabled={scanning || !!busy || readOnly}>
               <Search size={14} />
-              {busy === 'scan' ? 'Scanning…' : 'Scan network'}
+              {scanning ? 'Scanning…' : 'Scan network'}
             </button>
           </div>
         </form>
@@ -408,7 +423,7 @@ export function DeviceDialog({
                 </div>
                 <button
                   className="button small"
-                  disabled={added || !!busy || readOnly}
+                  disabled={added || !!busy || scanApproving || readOnly}
                   onClick={() => void addDevice(r.address, '', true)}
                 >
                   {added ? 'Added' : busy === r.address ? 'Adding…' : 'Add'}
@@ -444,9 +459,20 @@ export function DeviceDialog({
         )}
       </section>
       {notice && <p role="status">{notice}</p>}
+      {scanning && (
+        <button
+          className="button"
+          onClick={() => {
+            scanAbort.current?.abort()
+            if (scanApproving) window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))
+          }}
+        >
+          Stop scan
+        </button>
+      )}
       {busy && (
         <button className="button" onClick={cancel}>
-          {busy === 'scan' ? 'Stop scan' : 'Cancel connection'}
+          Cancel connection
         </button>
       )}
     </Modal>

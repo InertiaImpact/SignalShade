@@ -1,0 +1,3898 @@
+[
+  {
+    "param_id": "eParamID_Vid2DetectedInputFormat",
+    "param_name": "Input Format",
+    "param_type": "enum",
+    "class_names": [
+      "readonly"
+    ],
+    "min_value": 0,
+    "max_value": 56,
+    "default_value": 56,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 2,
+        "text": "525PsF29.97",
+        "short_text": "525sF29"
+      },
+      {
+        "value": 3,
+        "text": "525i59.94",
+        "short_text": "525i59"
+      },
+      {
+        "value": 6,
+        "text": "625PsF25",
+        "short_text": "625sF25"
+      },
+      {
+        "value": 7,
+        "text": "625i50",
+        "short_text": "625i50"
+      },
+      {
+        "value": 11,
+        "text": "720p23.98",
+        "short_text": "720p23."
+      },
+      {
+        "value": 12,
+        "text": "720p24",
+        "short_text": "720p24"
+      },
+      {
+        "value": 13,
+        "text": "720p25",
+        "short_text": "720p25"
+      },
+      {
+        "value": 14,
+        "text": "720p29.97",
+        "short_text": "720p29."
+      },
+      {
+        "value": 15,
+        "text": "720p30",
+        "short_text": "720p30"
+      },
+      {
+        "value": 16,
+        "text": "720p50",
+        "short_text": "720p50"
+      },
+      {
+        "value": 17,
+        "text": "720p59.94",
+        "short_text": "720p59"
+      },
+      {
+        "value": 18,
+        "text": "720p60",
+        "short_text": "720p60"
+      },
+      {
+        "value": 19,
+        "text": "1080i50",
+        "short_text": "1080i50"
+      },
+      {
+        "value": 20,
+        "text": "1080i59.94",
+        "short_text": "1080i59"
+      },
+      {
+        "value": 21,
+        "text": "1080i60",
+        "short_text": "1080i60"
+      },
+      {
+        "value": 22,
+        "text": "1080PsF23.98",
+        "short_text": "1080sF23"
+      },
+      {
+        "value": 23,
+        "text": "1080PsF24",
+        "short_text": "1080sF24"
+      },
+      {
+        "value": 24,
+        "text": "1080PsF25",
+        "short_text": "1080sF25"
+      },
+      {
+        "value": 25,
+        "text": "1080PsF29.97",
+        "short_text": "1080sF29"
+      },
+      {
+        "value": 26,
+        "text": "1080PsF30",
+        "short_text": "1080sF30"
+      },
+      {
+        "value": 27,
+        "text": "1080p23.98",
+        "short_text": "1080p23."
+      },
+      {
+        "value": 28,
+        "text": "1080p24",
+        "short_text": "1080p24"
+      },
+      {
+        "value": 29,
+        "text": "1080p25",
+        "short_text": "1080p25"
+      },
+      {
+        "value": 30,
+        "text": "1080p29.97",
+        "short_text": "1080p29."
+      },
+      {
+        "value": 31,
+        "text": "1080p30",
+        "short_text": "1080p30"
+      },
+      {
+        "value": 32,
+        "text": "1080p50",
+        "short_text": "1080p50"
+      },
+      {
+        "value": 33,
+        "text": "1080p59.94",
+        "short_text": "1080p59."
+      },
+      {
+        "value": 34,
+        "text": "1080p60",
+        "short_text": "1080p60"
+      },
+      {
+        "value": 43,
+        "text": "2K1080p23.98",
+        "short_text": "2k108023"
+      },
+      {
+        "value": 44,
+        "text": "2K1080p24",
+        "short_text": "2k108024"
+      },
+      {
+        "value": 45,
+        "text": "2K1080p25",
+        "short_text": "2k108025"
+      },
+      {
+        "value": 46,
+        "text": "2K1080p29.97",
+        "short_text": "2k108029"
+      },
+      {
+        "value": 47,
+        "text": "2K1080p30",
+        "short_text": "2k108030"
+      },
+      {
+        "value": 48,
+        "text": "2K1080p50",
+        "short_text": "2k108050"
+      },
+      {
+        "value": 49,
+        "text": "2K1080p59.94",
+        "short_text": "2k108059"
+      },
+      {
+        "value": 50,
+        "text": "2K1080p60",
+        "short_text": "2k108060"
+      },
+      {
+        "value": 56,
+        "text": "No Input",
+        "short_text": "No Input"
+      }
+    ],
+    "integer_attributes": []
+  },
+  {
+    "param_id": "eParamID_Vid1DetectedInputFormat",
+    "param_name": "Input Format",
+    "param_type": "enum",
+    "class_names": [
+      "readonly"
+    ],
+    "min_value": 0,
+    "max_value": 56,
+    "default_value": 56,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 2,
+        "text": "525PsF29.97",
+        "short_text": "525sF29"
+      },
+      {
+        "value": 3,
+        "text": "525i59.94",
+        "short_text": "525i59"
+      },
+      {
+        "value": 6,
+        "text": "625PsF25",
+        "short_text": "625sF25"
+      },
+      {
+        "value": 7,
+        "text": "625i50",
+        "short_text": "625i50"
+      },
+      {
+        "value": 11,
+        "text": "720p23.98",
+        "short_text": "720p23."
+      },
+      {
+        "value": 12,
+        "text": "720p24",
+        "short_text": "720p24"
+      },
+      {
+        "value": 13,
+        "text": "720p25",
+        "short_text": "720p25"
+      },
+      {
+        "value": 14,
+        "text": "720p29.97",
+        "short_text": "720p29."
+      },
+      {
+        "value": 15,
+        "text": "720p30",
+        "short_text": "720p30"
+      },
+      {
+        "value": 16,
+        "text": "720p50",
+        "short_text": "720p50"
+      },
+      {
+        "value": 17,
+        "text": "720p59.94",
+        "short_text": "720p59"
+      },
+      {
+        "value": 18,
+        "text": "720p60",
+        "short_text": "720p60"
+      },
+      {
+        "value": 19,
+        "text": "1080i50",
+        "short_text": "1080i50"
+      },
+      {
+        "value": 20,
+        "text": "1080i59.94",
+        "short_text": "1080i59"
+      },
+      {
+        "value": 21,
+        "text": "1080i60",
+        "short_text": "1080i60"
+      },
+      {
+        "value": 22,
+        "text": "1080PsF23.98",
+        "short_text": "1080sF23"
+      },
+      {
+        "value": 23,
+        "text": "1080PsF24",
+        "short_text": "1080sF24"
+      },
+      {
+        "value": 24,
+        "text": "1080PsF25",
+        "short_text": "1080sF25"
+      },
+      {
+        "value": 25,
+        "text": "1080PsF29.97",
+        "short_text": "1080sF29"
+      },
+      {
+        "value": 26,
+        "text": "1080PsF30",
+        "short_text": "1080sF30"
+      },
+      {
+        "value": 27,
+        "text": "1080p23.98",
+        "short_text": "1080p23."
+      },
+      {
+        "value": 28,
+        "text": "1080p24",
+        "short_text": "1080p24"
+      },
+      {
+        "value": 29,
+        "text": "1080p25",
+        "short_text": "1080p25"
+      },
+      {
+        "value": 30,
+        "text": "1080p29.97",
+        "short_text": "1080p29."
+      },
+      {
+        "value": 31,
+        "text": "1080p30",
+        "short_text": "1080p30"
+      },
+      {
+        "value": 32,
+        "text": "1080p50",
+        "short_text": "1080p50"
+      },
+      {
+        "value": 33,
+        "text": "1080p59.94",
+        "short_text": "1080p59."
+      },
+      {
+        "value": 34,
+        "text": "1080p60",
+        "short_text": "1080p60"
+      },
+      {
+        "value": 43,
+        "text": "2K1080p23.98",
+        "short_text": "2k108023"
+      },
+      {
+        "value": 44,
+        "text": "2K1080p24",
+        "short_text": "2k108024"
+      },
+      {
+        "value": 45,
+        "text": "2K1080p25",
+        "short_text": "2k108025"
+      },
+      {
+        "value": 46,
+        "text": "2K1080p29.97",
+        "short_text": "2k108029"
+      },
+      {
+        "value": 47,
+        "text": "2K1080p30",
+        "short_text": "2k108030"
+      },
+      {
+        "value": 48,
+        "text": "2K1080p50",
+        "short_text": "2k108050"
+      },
+      {
+        "value": 49,
+        "text": "2K1080p59.94",
+        "short_text": "2k108059"
+      },
+      {
+        "value": 50,
+        "text": "2K1080p60",
+        "short_text": "2k108060"
+      },
+      {
+        "value": 56,
+        "text": "No Input",
+        "short_text": "No Input"
+      }
+    ],
+    "integer_attributes": []
+  },
+  {
+    "param_id": "eParamID_Vid2ActualVideoInput",
+    "param_name": "Video2 Input",
+    "param_type": "enum",
+    "class_names": [
+      "readonly"
+    ],
+    "min_value": 0,
+    "max_value": 8,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "SDI1",
+        "short_text": "SDI1"
+      },
+      {
+        "value": 1,
+        "text": "SDI1-1",
+        "short_text": "SDI1-1"
+      },
+      {
+        "value": 2,
+        "text": "SDI1-2",
+        "short_text": "SDI1-2"
+      },
+      {
+        "value": 3,
+        "text": "SDI2",
+        "short_text": "SDI2"
+      },
+      {
+        "value": 4,
+        "text": "SDI2-1",
+        "short_text": "SDI2-1"
+      },
+      {
+        "value": 5,
+        "text": "SDI2-2",
+        "short_text": "SDI2-2"
+      },
+      {
+        "value": 6,
+        "text": "SDI DualLink",
+        "short_text": "SDI Dual"
+      },
+      {
+        "value": 7,
+        "text": "Fiber1",
+        "short_text": "Fiber1"
+      },
+      {
+        "value": 8,
+        "text": "Fiber1-1",
+        "short_text": "Fiber1-1"
+      },
+      {
+        "value": 9,
+        "text": "Fiber1-2",
+        "short_text": "Fiber1-2"
+      },
+      {
+        "value": 10,
+        "text": "Fiber2",
+        "short_text": "Fiber2"
+      },
+      {
+        "value": 11,
+        "text": "Fiber2-1",
+        "short_text": "Fiber2-1"
+      },
+      {
+        "value": 12,
+        "text": "Fiber2-2",
+        "short_text": "Fiber2-2"
+      },
+      {
+        "value": 13,
+        "text": "Fiber Dual",
+        "short_text": "Fib Dual"
+      },
+      {
+        "value": 14,
+        "text": "HDMI",
+        "short_text": "HDMI"
+      },
+      {
+        "value": 15,
+        "text": "Composite",
+        "short_text": "Cmposite"
+      },
+      {
+        "value": 16,
+        "text": "Component",
+        "short_text": "Cmponent"
+      }
+    ],
+    "integer_attributes": []
+  },
+  {
+    "param_id": "eParamID_Vid1ActualVideoInput",
+    "param_name": "Video1 Input",
+    "param_type": "enum",
+    "class_names": [
+      "readonly"
+    ],
+    "min_value": 0,
+    "max_value": 8,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "SDI1",
+        "short_text": "SDI1"
+      },
+      {
+        "value": 1,
+        "text": "SDI1-1",
+        "short_text": "SDI1-1"
+      },
+      {
+        "value": 2,
+        "text": "SDI1-2",
+        "short_text": "SDI1-2"
+      },
+      {
+        "value": 3,
+        "text": "SDI2",
+        "short_text": "SDI2"
+      },
+      {
+        "value": 4,
+        "text": "SDI2-1",
+        "short_text": "SDI2-1"
+      },
+      {
+        "value": 5,
+        "text": "SDI2-2",
+        "short_text": "SDI2-2"
+      },
+      {
+        "value": 6,
+        "text": "SDI DualLink",
+        "short_text": "SDI Dual"
+      },
+      {
+        "value": 7,
+        "text": "Fiber1",
+        "short_text": "Fiber1"
+      },
+      {
+        "value": 8,
+        "text": "Fiber1-1",
+        "short_text": "Fiber1-1"
+      },
+      {
+        "value": 9,
+        "text": "Fiber1-2",
+        "short_text": "Fiber1-2"
+      },
+      {
+        "value": 10,
+        "text": "Fiber2",
+        "short_text": "Fiber2"
+      },
+      {
+        "value": 11,
+        "text": "Fiber2-1",
+        "short_text": "Fiber2-1"
+      },
+      {
+        "value": 12,
+        "text": "Fiber2-2",
+        "short_text": "Fiber2-2"
+      },
+      {
+        "value": 13,
+        "text": "Fiber Dual",
+        "short_text": "Fib Dual"
+      },
+      {
+        "value": 14,
+        "text": "HDMI",
+        "short_text": "HDMI"
+      },
+      {
+        "value": 15,
+        "text": "Composite",
+        "short_text": "Cmposite"
+      },
+      {
+        "value": 16,
+        "text": "Component",
+        "short_text": "Cmponent"
+      }
+    ],
+    "integer_attributes": []
+  },
+  {
+    "param_id": "eParamID_Vid1VideoInput",
+    "param_name": "Video1 Input",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 8,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "SDI1",
+        "short_text": "SDI1"
+      },
+      {
+        "value": 1,
+        "text": "SDI2",
+        "short_text": "SDI2"
+      },
+      {
+        "value": 2,
+        "text": "SDI DualLink",
+        "short_text": "SDI Dual"
+      },
+      {
+        "value": 3,
+        "text": "Fiber1",
+        "short_text": "Fiber1"
+      },
+      {
+        "value": 4,
+        "text": "Fiber2",
+        "short_text": "Fiber2"
+      },
+      {
+        "value": 5,
+        "text": "Fiber Dual",
+        "short_text": "Fib Dual"
+      },
+      {
+        "value": 6,
+        "text": "HDMI",
+        "short_text": "HDMI"
+      },
+      {
+        "value": 7,
+        "text": "Composite",
+        "short_text": "Cmposite"
+      },
+      {
+        "value": 8,
+        "text": "Component",
+        "short_text": "Cmponent"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 7
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2VideoInput",
+    "param_name": "Video2 Input",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 8,
+    "default_value": 1,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "SDI1",
+        "short_text": "SDI1"
+      },
+      {
+        "value": 1,
+        "text": "SDI2",
+        "short_text": "SDI2"
+      },
+      {
+        "value": 2,
+        "text": "SDI DualLink",
+        "short_text": "SDI Dual"
+      },
+      {
+        "value": 3,
+        "text": "Fiber1",
+        "short_text": "Fiber1"
+      },
+      {
+        "value": 4,
+        "text": "Fiber2",
+        "short_text": "Fiber2"
+      },
+      {
+        "value": 5,
+        "text": "Fiber Dual",
+        "short_text": "Fib Dual"
+      },
+      {
+        "value": 6,
+        "text": "HDMI",
+        "short_text": "HDMI"
+      },
+      {
+        "value": 7,
+        "text": "Composite",
+        "short_text": "Cmposite"
+      },
+      {
+        "value": 8,
+        "text": "Component",
+        "short_text": "Cmponent"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 9
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpEnable_SDI1",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpEnable_SDI1",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpEnable_SDI1",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpEnable_SDI2",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpEnable_SDI2",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpEnable_SDI2",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpEnable_HDMI",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpEnable_HDMI",
+    "param_name": "ProcAmp",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpGain_SDI2",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpGain_HDMI",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpGain_SDI1",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpGain_HDMI",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpGain_SDI1",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpGain_SDI2",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpGain_SDI1",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpGain_SDI2",
+    "param_name": "ProcAmp Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpBlack_HDMI",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpBlack_SDI1",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpBlack_SDI2",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpBlack_SDI2",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpBlack_SDI1",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpBlack_SDI2",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpBlack_SDI1",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpBlack_HDMI",
+    "param_name": "ProcAmp Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpHue_SDI2",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpHue_SDI1",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpHue_SDI1",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpHue_SDI1",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpHue_HDMI",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpHue_HDMI",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpHue_SDI2",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpHue_SDI2",
+    "param_name": "ProcAmp Hue",
+    "param_type": "integer",
+    "class_names": [
+      "show_when_disabled",
+      "wrap_setting"
+    ],
+    "min_value": -179,
+    "max_value": 180,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "degrees",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpSat_SDI1",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpSat_SDI2",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpSat_SDI1",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpSat_SDI2",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpSat_SDI2",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1YUVProcAmpSat_HDMI",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpSat_SDI1",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2YUVProcAmpSat_HDMI",
+    "param_name": "ProcAmp Sat",
+    "param_type": "decimal",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpEnable_SDI2",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpEnable_HDMI",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpEnable_HDMI",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpEnable_SDI2",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpEnable_SDI1",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpEnable_SDI2",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpEnable_SDI1",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpEnable_SDI1",
+    "param_name": "Color Corrector",
+    "param_type": "enum",
+    "class_names": [],
+    "min_value": 0,
+    "max_value": 1,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Off",
+        "short_text": "Off"
+      },
+      {
+        "value": 1,
+        "text": "On",
+        "short_text": "On"
+      }
+    ],
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainRed_HDMI",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainRed_SDI1",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainRed_SDI1",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainRed_HDMI",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainRed_SDI1",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainRed_SDI2",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainRed_SDI2",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainRed_SDI2",
+    "param_name": "Color Red Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackRed_HDMI",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackRed_HDMI",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackRed_SDI2",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackRed_SDI2",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackRed_SDI1",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackRed_SDI2",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackRed_SDI1",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackRed_SDI1",
+    "param_name": "Color Red Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaRed_SDI2",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaRed_SDI2",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaRed_HDMI",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaRed_SDI1",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaRed_SDI1",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaRed_HDMI",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaRed_SDI2",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaRed_SDI1",
+    "param_name": "Color Red Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainGreen_SDI2",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainGreen_SDI2",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainGreen_SDI2",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainGreen_SDI1",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainGreen_SDI1",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainGreen_SDI1",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainGreen_HDMI",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainGreen_HDMI",
+    "param_name": "Color Green Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackGreen_SDI2",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackGreen_HDMI",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackGreen_SDI1",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackGreen_SDI1",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackGreen_SDI1",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackGreen_SDI2",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackGreen_SDI2",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackGreen_HDMI",
+    "param_name": "Color Green Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaGreen_HDMI",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaGreen_SDI2",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaGreen_SDI1",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaGreen_SDI1",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaGreen_HDMI",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaGreen_SDI2",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaGreen_SDI2",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaGreen_SDI1",
+    "param_name": "Color Green Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainBlue_SDI1",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainBlue_SDI2",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainBlue_HDMI",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainBlue_HDMI",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainBlue_SDI2",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainBlue_SDI2",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGainBlue_SDI1",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGainBlue_SDI1",
+    "param_name": "Color Blue Gain",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": 0,
+    "max_value": 150,
+    "default_value": 100,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackBlue_SDI2",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackBlue_SDI1",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackBlue_HDMI",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackBlue_SDI1",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackBlue_SDI2",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpBlackBlue_SDI1",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackBlue_HDMI",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpBlackBlue_SDI2",
+    "param_name": "Color Blue Black",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -200,
+    "max_value": 200,
+    "default_value": 0,
+    "adjust_by": 5,
+    "scale_by": 10,
+    "offset_by": 0,
+    "units": "IRE",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaBlue_HDMI",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaBlue_SDI2",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaBlue_SDI1",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaBlue_SDI1",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaBlue_SDI1",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaBlue_SDI2",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid2RGBProcAmpGammaBlue_HDMI",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 2
+      }
+    ]
+  },
+  {
+    "param_id": "eParamID_Vid1RGBProcAmpGammaBlue_SDI2",
+    "param_name": "Color Blue Gamma",
+    "param_type": "decimal",
+    "class_names": [
+      "show_when_disabled"
+    ],
+    "min_value": -100,
+    "max_value": 100,
+    "default_value": 0,
+    "adjust_by": 1,
+    "scale_by": 100,
+    "offset_by": 0,
+    "units": "",
+    "integer_attributes": [
+      {
+        "name": "ParamGroup",
+        "value": 0
+      },
+      {
+        "name": "proc_no",
+        "value": 1
+      }
+    ]
+  }
+]
