@@ -22,6 +22,7 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
     runtime: {
       id: 'test',
       getManifest: () => ({ version: '0.1.0' }),
+      getURL: (path) => `chrome-extension://test/${path}`,
       onMessage: { addListener: (fn) => (listener = fn) },
     },
     storage: { local: storage({ origins: [origin] }), session: storage({}) },
@@ -73,14 +74,23 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
     const write = {
       path: 'config?action=set&paramid=eParamID_ReplicatorCommand&value=1&configid=0',
     }
-    assert.equal((await send(write)).ok, false)
+    // A restarted worker can recover descriptors and validate before the first write.
+    assert.equal((await send(write)).ok, true)
+    assert.equal(calls[0].url, `${origin}/desc.json`)
     assert.equal((await send()).ok, true)
     const id = crypto.randomUUID()
     assert.equal((await send({ ...write, id })).ok, true)
     assert.equal((await send({ ...write, id })).ok, false)
     assert.equal((await send({ ...write, deadline: Date.now() - 1 })).ok, false)
     assert.equal((await send(write, { ...sender, tab: { id: 2 }, documentId: 'doc2' })).ok, false)
-    assert.equal(calls.filter((c) => c.url.includes('action=set')).length, 1)
+    assert.equal(calls.filter((c) => c.url.includes('action=set')).length, 2)
+    const approval = await send({ type: 'permission' })
+    assert.equal(approval.ok, true)
+    assert.match(
+      approval.data.approvalUrl,
+      /^chrome-extension:\/\/test\/approve.html\?tab=1&token=/,
+    )
+    // No windows API is provided by this fixture: approval is returned for embedding, never opened as a popup.
     assert.equal(
       calls.every((c) => c.options.redirect === 'error'),
       true,

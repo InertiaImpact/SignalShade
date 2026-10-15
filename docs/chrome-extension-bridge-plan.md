@@ -2,7 +2,7 @@
 
 Status: GitHub preview implementation, 2026-10-15. See [extension README](../extension/README.md) for installation, scope, and remaining qualification. Not submitted to the Chrome Web Store.
 
-Preview implementation differs from the target design below: a production-page-only content relay discovers unpacked installations without a stable store ID; it forwards messages to the service worker, which performs network requests. Installation is manual through Developer mode. Reconnect after granting access. Permissions are revoked using Chrome's extension settings. Multi-tab writes have a 30-second ownership guard, not the proposed explicit takeover UI. Hardware/browser qualification remains pending, so this is distributed as a preview.
+Preview implementation differs from the target design below: a production-page-only content relay discovers unpacked installations without a stable store ID; it forwards messages to the service worker, which performs network requests. Installation is manual through Developer mode. In v0.2.0, an extension-owned approval frame is embedded in the connection dialog and the pending Connect action resumes after approval. Permissions are revoked using Chrome's extension settings. Multi-tab writes have a 30-second ownership guard, not the proposed explicit takeover UI. The extension recovers descriptors after worker restarts. Configured recorders resume monitoring on load and retain control intent only within the current tab and after fresh verified state; uncertain commands disarm it. Basic HELO Plus connectivity was reported working by the user; wider hardware/browser qualification remains pending.
 
 ## Outcome
 

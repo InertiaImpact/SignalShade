@@ -166,6 +166,7 @@ function stringValue(input: unknown): string {
   return v && typeof v === 'object' && 'value' in v ? String(v.value) : ''
 }
 export class AjaAdapter implements DeviceAdapter {
+  private legacyDescriptors = false
   private transport = new AjaTransport()
   readonly address: string
   private controllers = new Set<AbortController>()
@@ -204,7 +205,9 @@ export class AjaAdapter implements DeviceAdapter {
     }
   }
   async readParameter(id: string) {
-    return this.request(`config?${new URLSearchParams({ action: 'get', paramid: id })}`)
+    return this.request(
+      `config?${new URLSearchParams({ action: 'get', paramid: id, ...(this.legacyDescriptors ? { configid: '0', alt: 'json' } : {}) })}`,
+    )
   }
   async read(channel: Channel): ReturnType<DeviceAdapter['read']> {
     const values: Values = {}
@@ -283,7 +286,15 @@ export class AjaAdapter implements DeviceAdapter {
     }
     let raw: Raw[]
     try {
-      raw = extractDescriptors(await this.request('desc.json', signal))
+      let response
+      try {
+        response = await this.request('desc.json', signal)
+      } catch (e) {
+        if (!/HTTP (404|410)\b/.test(message(e))) throw e
+        response = await this.request('descriptors?paramid=*', signal)
+        this.legacyDescriptors = true
+      }
+      raw = extractDescriptors(response)
       result.rawDescriptorCount = raw.length
       result.rawDescriptors = raw
       if (!raw.length) throw new Error('No recognized parameter descriptors in desc.json')
@@ -296,12 +307,14 @@ export class AjaAdapter implements DeviceAdapter {
       result.checks.push({
         name: 'Readable API',
         status: 'fail',
-        detail: `${message(e)}. Check LAN permission, device address, CORS, and authentication. Browsers may not distinguish these causes.`,
+        detail: /HTTP (404|410)\b/.test(message(e))
+          ? `${message(e)}. Neither modern nor legacy AJA descriptor endpoint was found. Device access is allowed; approval cannot fix a missing endpoint. Check the model/firmware and export this report.`
+          : `${message(e)}. Check network, device address, browser access, and authentication.`,
       })
       return result
     }
     const identity = raw.filter((r) =>
-      /^(product( name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
+      /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
         String(r.param_name),
       ),
     )

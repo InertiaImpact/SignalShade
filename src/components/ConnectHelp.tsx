@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import {
-  bridgeMessage,
+  ensureDeviceAccess,
   connectInstructions,
   connectRelease,
   detectConnect,
@@ -11,6 +11,7 @@ export function ConnectHelp() {
   const [origin, setOrigin] = useState('')
   const [note, setNote] = useState('')
   const [expanded, setExpanded] = useState(false)
+  const [approval, setApproval] = useState<{ origin: string; url: string }>()
   useEffect(() => {
     let alive = true
     const detect = () =>
@@ -22,12 +23,22 @@ export function ConnectHelp() {
       setExpanded(true)
     }
     detect()
+    const open = (e: Event) => {
+      setApproval((e as CustomEvent<{ origin: string; url: string }>).detail)
+      setExpanded(true)
+    }
+    const close = () => setApproval(undefined)
+    window.addEventListener('signalshade-approval-open', open)
+    window.addEventListener('signalshade-approval-close', close)
     window.addEventListener('focus', detect)
     window.addEventListener('signalshade-connection-help', help)
     return () => {
       alive = false
       window.removeEventListener('focus', detect)
       window.removeEventListener('signalshade-connection-help', help)
+      window.removeEventListener('signalshade-approval-open', open)
+      window.removeEventListener('signalshade-approval-close', close)
+      window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))
     }
   }, [])
   return (
@@ -41,9 +52,18 @@ export function ConnectHelp() {
       </summary>
       {version ? (
         <>
+          {version === '0.1.0' && (
+            <p>
+              Update Connect to use approval inside this window.{' '}
+              <a href={connectRelease}>Download latest ZIP</a> ·{' '}
+              <a href={connectInstructions} target="_blank" rel="noreferrer">
+                Update instructions
+              </a>
+            </p>
+          )}
           <p>
-            Connections use the extension. Approve each device once, then click Connect again.
-            Reload after an extension update.
+            Connections use the extension. Approve a new device here; connection testing resumes
+            automatically. Reload after an extension update.
           </p>
           {origin && (
             <button
@@ -51,10 +71,8 @@ export function ConnectHelp() {
               className="button"
               onClick={async () => {
                 try {
-                  await bridgeMessage('permission', { origin })
-                  setNote(
-                    'Approve the device in the Connect window, then click Connect again here.',
-                  )
+                  await ensureDeviceAccess(origin)
+                  setNote('Device allowed. Click Connect to test it.')
                 } catch (e) {
                   setNote(e instanceof Error ? e.message : String(e))
                 }
@@ -95,6 +113,18 @@ export function ConnectHelp() {
             extension.
           </p>
         </>
+      )}
+      {approval && (
+        <div className="connect-approval">
+          <iframe title={`Allow ${approval.origin}`} src={approval.url} />
+          <button
+            className="button"
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))}
+          >
+            Cancel approval
+          </button>
+        </div>
       )}
       {note && <p role="status">{note}</p>}
     </details>

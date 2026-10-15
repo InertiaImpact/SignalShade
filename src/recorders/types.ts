@@ -18,6 +18,7 @@ export interface RecorderConfig {
   model: RecorderModel
   simulated: boolean
   warningMinutes: number
+  autoConnect?: boolean
 }
 export type TransportState =
   | 'idle'

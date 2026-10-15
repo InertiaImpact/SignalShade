@@ -55,3 +55,9 @@ No Companion source code was copied into the implementation.
 - Browser checks passed for simulated Record, inline Stop confirmation, three simultaneous recorder configurations, all-media details, low-time warnings and their aggregate count, and desk-lock enforcement for both recorder and color controls.
 - A channel adjustment and Undo worked independently while a simulated recorder ran. Reload retained all three recorder configurations and returned their controls to disabled.
 - A 390 px viewport kept page content within the viewport; the recorder row scrolls horizontally. The normal viewport was restored after testing.
+
+# Connection follow-up — 2026-10-15
+
+SignalShade Connect v0.2.0 embeds device approval in the dashboard and resumes the explicit connection action afterward. Background polls never open approval windows. Device HTTP errors no longer dispatch approval help. The FS1 field report showed 404 on the modern descriptor endpoint; the FS adapter now tries AJA's documented `/descriptors?paramid=*` endpoint on 404/410, and requests legacy parameter reads with `alt=json`. This fallback is software-tested; FS1 field verification is pending.
+
+Recorder monitoring resumes for stored configurations (with a Reconnect on load opt-out). Same-tab control intent survives poll failures and reload, but remains ineffective while offline or unverified. Uncertain command errors clear control intent. Passwords are not persisted. Extension worker metadata recovery uses descriptor reads, not command replays. Automated coverage: 84 dashboard tests and 5 extension tests at this revision, plus TypeScript/Vite and extension packaging builds.

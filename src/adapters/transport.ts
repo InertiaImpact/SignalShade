@@ -1,4 +1,5 @@
 type Reply = { ok: boolean; data?: unknown; error?: string }
+export class BridgeAccessError extends Error {}
 export const connectRelease =
   'https://github.com/InertiaImpact/SignalShade/releases/latest/download/signalshade-connect.zip'
 export const connectInstructions =
@@ -35,7 +36,14 @@ export function bridgeMessage(
       )
         return
       const reply = event.data as Reply
-      finish(reply.ok ? undefined : new Error(reply.error || 'Connect request failed'), reply.data)
+      finish(
+        reply.ok
+          ? undefined
+          : reply.error?.startsWith('Device access required')
+            ? new BridgeAccessError(reply.error)
+            : new Error(reply.error || 'Connect request failed'),
+        reply.data,
+      )
     }
     const timer = setTimeout(
       () =>
@@ -69,7 +77,7 @@ export function bridgeMessage(
 }
 export async function detectConnect(): Promise<string | undefined> {
   try {
-    const reply = (await bridgeMessage('hello', {}, undefined, 350)) as {
+    const reply = (await bridgeMessage('hello', {}, undefined, 1000)) as {
       version: string
       protocol: number
     }
@@ -81,6 +89,73 @@ export async function detectConnect(): Promise<string | undefined> {
 function notify(origin: string) {
   if (typeof window !== 'undefined')
     window.dispatchEvent(new CustomEvent('signalshade-connection-help', { detail: origin }))
+}
+
+let pendingApproval: { origin: string; promise: Promise<void> } | undefined
+/** Called only by explicit Connect actions. Polls never open approval UI. */
+export async function ensureDeviceAccess(origin: string): Promise<void> {
+  const version = await detectConnect()
+  if (!version) return
+  if (version === '0.1.0')
+    throw new Error(
+      'Update SignalShade Connect to v0.2.0 or newer, reload the extension, then reload SignalShade.',
+    )
+  const status = (await bridgeMessage('status', { origin })) as { allowed: boolean }
+  if (status.allowed) return
+  if (pendingApproval) {
+    if (pendingApproval.origin === origin) return pendingApproval.promise
+    throw new Error('Finish the current device approval first')
+  }
+  const promise = (async () => {
+    const reply = (await bridgeMessage('permission', { origin })) as { approvalUrl?: string }
+    if (!reply.approvalUrl)
+      throw new Error(
+        'Update SignalShade Connect to v0.2.0 or newer, reload it, and reload SignalShade.',
+      )
+    const url = new URL(reply.approvalUrl)
+    if (url.protocol !== 'chrome-extension:' || url.pathname !== '/approve.html')
+      throw new Error('Invalid approval page')
+    const token = url.searchParams.get('token')
+    await new Promise<void>((resolve, reject) => {
+      const finish = (error?: Error) => {
+        clearTimeout(timer)
+        window.removeEventListener('message', receive)
+        window.removeEventListener('signalshade-approval-cancel', cancel)
+        window.dispatchEvent(new CustomEvent('signalshade-approval-close'))
+        if (error) reject(error)
+        else resolve()
+      }
+      const cancel = () => finish(new Error('Device approval cancelled'))
+      const receive = (e: MessageEvent) => {
+        if (
+          e.origin !== `chrome-extension://${url.host}` ||
+          e.data?.source !== 'signalshade-connect-approval' ||
+          e.data.token !== token
+        )
+          return
+        finish(e.data.approved === true ? undefined : new Error('Device access was not granted'))
+      }
+      const timer = setTimeout(
+        () => finish(new Error('Device approval expired. Click Connect to try again.')),
+        120000,
+      )
+      window.addEventListener('message', receive)
+      window.addEventListener('signalshade-approval-cancel', cancel)
+      window.dispatchEvent(
+        new CustomEvent('signalshade-approval-open', {
+          detail: { origin, url: reply.approvalUrl },
+        }),
+      )
+    })
+    const verified = (await bridgeMessage('status', { origin })) as { allowed: boolean }
+    if (!verified.allowed) throw new Error('Device permission was not saved')
+  })()
+  pendingApproval = { origin, promise }
+  try {
+    await promise
+  } finally {
+    pendingApproval = undefined
+  }
 }
 
 /** One route per adapter instance. An uncertain write is never retried on another route. */
@@ -111,7 +186,7 @@ export class AjaTransport {
           headers: { 'Content-Type': 'application/json' },
         })
       } catch (error) {
-        notify(origin)
+        if (error instanceof BridgeAccessError) notify(origin)
         throw error
       }
     }

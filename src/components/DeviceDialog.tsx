@@ -19,6 +19,7 @@ import { downloadJson } from '../core/persistence'
 import type { ProbeResult, Workspace } from '../core/types'
 import { Modal } from './Modal'
 import { ConnectHelp } from './ConnectHelp'
+import { ensureDeviceAccess } from '../adapters/transport'
 
 export function DeviceDialog({
   workspace,
@@ -62,6 +63,7 @@ export function DeviceDialog({
     abort.current?.abort()
     abort.current = new AbortController()
     try {
+      await ensureDeviceAccess(new URL(ip.includes('://') ? ip : `http://${ip}`).origin)
       let auth: string | undefined
       if (username || password)
         auth = `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${username}:${password}`)))}`

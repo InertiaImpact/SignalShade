@@ -7,6 +7,7 @@ import { demoRecorder } from '../recorders/demo'
 import { downloadJson } from '../core/persistence'
 import { Modal } from './Modal'
 import { ConnectHelp } from './ConnectHelp'
+import { ensureDeviceAccess } from '../adapters/transport'
 
 export function RecorderDialog({
   configs,
@@ -36,6 +37,7 @@ export function RecorderDialog({
     setBusy(config.id)
     setError('')
     try {
+      if (!config.simulated) await ensureDeviceAccess(config.address)
       await desk.recorders.connect(config, password)
     } catch (e) {
       setError(message(e))
@@ -54,7 +56,7 @@ export function RecorderDialog({
   return (
     <Modal
       title="Recorders"
-      subtitle="Monitor first. Enable transport control per recorder."
+      subtitle="Monitoring reconnects automatically. Control is remembered within this tab."
       close={close}
       wide
     >
@@ -130,6 +132,24 @@ export function RecorderDialog({
                   />
                   Enable control
                 </label>
+                {!config.simulated && (
+                  <label className="check-row">
+                    <input
+                      type="checkbox"
+                      aria-label={`${config.label} reconnect automatically`}
+                      checked={config.autoConnect ?? false}
+                      disabled={readOnly || !!busy || !!state?.pending}
+                      onChange={(e) =>
+                        save(
+                          configs.map((c) =>
+                            c.id === config.id ? { ...c, autoConnect: e.target.checked } : c,
+                          ),
+                        )
+                      }
+                    />
+                    Reconnect on load
+                  </label>
+                )}
                 <button
                   className="icon-button"
                   aria-label={`Move ${config.label} earlier`}

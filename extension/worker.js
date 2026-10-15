@@ -87,18 +87,11 @@ async function handle(m, sender) {
   const hostPattern = `${new URL(origin).protocol}//${new URL(origin).hostname}/*`
   if (m.type === 'permission') {
     const key = `approval:${sender.tab.id}`
-    const old = (await chrome.storage.session.get(key))[key]
-    if (old && Date.now() - old.created < 60000)
-      throw new Error('A device approval is already open')
     const token = crypto.randomUUID()
     await chrome.storage.session.set({ [key]: { origin, token, created: Date.now() } })
-    await chrome.windows.create({
-      url: `approve.html?tab=${sender.tab.id}&token=${token}`,
-      type: 'popup',
-      width: 440,
-      height: 360,
-    })
-    return { approvalOpened: true }
+    return {
+      approvalUrl: chrome.runtime.getURL(`approve.html?tab=${sender.tab.id}&token=${token}`),
+    }
   }
   const grants = (await chrome.storage.local.get('origins')).origins ?? []
   const allowed =
@@ -132,9 +125,19 @@ async function handle(m, sender) {
           throw new Error('Duplicate command suppressed; read device state before continuing')
         if (old && old.owner !== owner && Date.now() - old.at < 30000)
           throw new Error('Another SignalShade tab is controlling this device')
-        const list = discovered.get(`${owner}:${origin}`)
-        if (!list)
-          throw new Error('Connect restarted. Reconnect the device before changing controls.')
+        let list = discovered.get(`${owner}:${origin}`)
+        if (!list) {
+          // MV3 suspends idle workers. Recover metadata through reads, never replay a write.
+          let raw
+          try {
+            raw = await fetchJson(origin, 'desc.json', m)
+          } catch (e) {
+            if (!/HTTP (404|410)\b/.test(e.message)) throw e
+            raw = await fetchJson(origin, 'descriptors?paramid=*', m)
+          }
+          list = descriptors(raw)
+          discovered.set(`${owner}:${origin}`, list)
+        }
         validateWrite(op, list)
         // Expired IDs cannot be dispatched: the original deadline is validated above.
         const saved = await chrome.storage.session.get(null)
@@ -147,6 +150,8 @@ async function handle(m, sender) {
           [seenKey]: Date.now() + 30000,
         })
       }
+      if (m.deadline <= Date.now())
+        throw new Error('Request expired before dispatch; read device state')
       const result = await fetchJson(origin, m.path, m)
       if (op.kind === 'descriptors')
         discovered.set(`${sender.tab.id}:${sender.documentId}:${origin}`, descriptors(result))

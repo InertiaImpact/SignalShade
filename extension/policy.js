@@ -30,6 +30,7 @@ export function deviceOrigin(input) {
 }
 export function operation(path) {
   if (path === 'desc.json') return { kind: 'descriptors' }
+  if (path === 'descriptors?paramid=*') return { kind: 'descriptors' }
   if (path === 'authenticator/login') return { kind: 'login' }
   if (typeof path !== 'string' || !path.startsWith('config?'))
     throw new Error('Unsupported AJA endpoint')
@@ -37,12 +38,18 @@ export function operation(path) {
   const keys = [...q.keys()]
   if (
     keys.length !== new Set(keys).size ||
-    keys.some((k) => !['action', 'paramid', 'value', 'configid'].includes(k))
+    keys.some((k) => !['action', 'paramid', 'value', 'configid', 'alt'].includes(k))
   )
     throw new Error('Invalid query')
   const id = q.get('paramid')
   if (!/^eParamID_[A-Za-z0-9_]{1,120}$/.test(id ?? '')) throw new Error('Invalid parameter')
-  if (q.get('action') === 'get' && keys.length === 2) return { kind: 'read', id }
+  if (
+    q.get('action') === 'get' &&
+    !q.has('value') &&
+    (!q.has('alt') || q.get('alt') === 'json') &&
+    (!q.has('configid') || q.get('configid') === '0')
+  )
+    return { kind: 'read', id }
   if (
     q.get('action') === 'set' &&
     keys.length === 4 &&

@@ -46,6 +46,7 @@ const schema = z.object({
           model: z.enum(recorderModels),
           simulated: z.boolean(),
           warningMinutes: z.number().finite().min(0).max(1440),
+          autoConnect: z.boolean().optional(),
         })
         .refine((c) => {
           if (c.simulated) return c.address === ''

@@ -17,6 +17,7 @@ interface Connection {
   mediaAt: number
   reading?: Promise<void>
   observedStart?: number
+  controlRequested: boolean
 }
 export class RecorderStore {
   private state: Record<string, RecorderSnapshot> = {}
@@ -26,6 +27,7 @@ export class RecorderStore {
   constructor(
     private allowed: () => boolean,
     private log: (text: string, type?: 'success' | 'error' | 'info') => void,
+    private rememberConnection: (id: string) => void = () => {},
   ) {}
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
@@ -49,10 +51,17 @@ export class RecorderStore {
         this.connections.delete(id)
       }
     this.state = Object.fromEntries(configs.map((c) => [c.id, this.state[c.id] ?? disconnected()]))
-    // Simulations connect without making requests; real devices always require explicit reconnect.
+    // Previously connected recorders resume read-only monitoring; polls never request permissions.
     for (const config of configs)
-      if (config.simulated && !this.connections.has(config.id)) {
-        this.attach(config.id, new DemoRecorderAdapter(config.model))
+      if (
+        (config.simulated || config.autoConnect) &&
+        !this.connections.has(config.id) &&
+        this.allowed()
+      ) {
+        this.attach(
+          config.id,
+          config.simulated ? new DemoRecorderAdapter(config.model) : new AjaRecorderAdapter(config),
+        )
         void this.refresh(config.id)
       }
     this.listeners.forEach((l) => l())
@@ -67,7 +76,14 @@ export class RecorderStore {
       throw new Error('Wait for the recorder command')
     }
     this.connections.get(id)?.adapter.dispose()
-    this.connections.set(id, { adapter, busy: false, failures: 0, nextPoll: 0, mediaAt: 0 })
+    this.connections.set(id, {
+      adapter,
+      busy: false,
+      failures: 0,
+      nextPoll: 0,
+      mediaAt: 0,
+      controlRequested: this.controlPreference(id),
+    })
     this.patch(id, { ...disconnected(), state: 'unknown' })
   }
   async connect(config: RecorderConfig, password = '') {
@@ -78,6 +94,28 @@ export class RecorderStore {
         : new AjaRecorderAdapter(config, password),
     )
     await this.refresh(config.id)
+    if (this.state[config.id]?.updatedAt && this.state[config.id].state !== 'offline')
+      this.rememberConnection(config.id)
+  }
+  private preferenceKey(id: string) {
+    const config = this.configs.find((c) => c.id === id)
+    return `signalshade-recorder-control:${id}:${config?.address}:${config?.model}`
+  }
+  private controlPreference(id: string) {
+    try {
+      return sessionStorage.getItem(this.preferenceKey(id)) === 'true'
+    } catch {
+      return false
+    }
+  }
+  private rememberControl(id: string, enabled: boolean) {
+    const c = this.connections.get(id)
+    if (c) c.controlRequested = enabled
+    try {
+      sessionStorage.setItem(this.preferenceKey(id), String(enabled))
+    } catch {
+      /* Storage may be unavailable. */
+    }
   }
   enable(id: string, enabled: boolean) {
     if (!this.allowed()) return
@@ -91,6 +129,7 @@ export class RecorderStore {
           s.state === 'offline'))
     )
       return
+    this.rememberControl(id, enabled)
     this.patch(id, { enabled })
   }
   private current(id: string, connection: Connection) {
@@ -119,7 +158,10 @@ export class RecorderStore {
     this.patch(id, {
       ...next,
       recordingId,
-      enabled: before?.enabled ?? false,
+      enabled:
+        c.controlRequested &&
+        next.canControl &&
+        !['offline', 'unknown', 'error'].includes(next.state),
       pending: before?.pending,
       issue: undefined,
     })
@@ -229,6 +271,7 @@ export class RecorderStore {
         }
       }
       this.patch(id, { enabled: false, issue: message(e) })
+      this.rememberControl(id, false)
       this.log(`${config.label}: ${message(e)}`, 'error')
     } finally {
       c.busy = false

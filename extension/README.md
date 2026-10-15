@@ -9,9 +9,9 @@ Connects the hosted SignalShade dashboard to AJA devices whose REST endpoints ar
 3. Open `chrome://extensions` in Chrome. Enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
 5. Reload [SignalShade](https://inertiaimpact.github.io/SignalShade/). Open Devices or Recorders and connect your device.
-6. Expand SignalShade Connect if needed, click **Allow device**, and approve its address in the extension window and Chrome prompt. Return to SignalShade and click **Connect** again.
+6. For a new device, approve its address in the embedded SignalShade Connect panel and Chrome's permission prompt. Testing continues automatically; no separate popup or second Connect click is needed. Already approved devices skip this step.
 
-Recorder control still requires the existing Enable control checkbox. Approval does not start or stop recording. The extension can only reach devices on your computer's network/VPN. Some managed browsers prohibit unpacked extensions; contact your IT administrator rather than disabling browser security.
+Recorder control initially requires the Enable control checkbox. That choice survives temporary network loss and reloads in the same tab, but is effective only after fresh verified status. Uncertain command failures clear it. Configured recorders resume monitoring after reload; turn off **Reconnect on load** in their settings to opt out. Passwords are not saved; devices requiring a new login may need a password on reconnect. Approval does not start or stop recording. The extension can only reach devices on your computer's network/VPN. Some managed browsers prohibit unpacked extensions; contact your IT administrator rather than disabling browser security.
 
 The extension has no device settings. All addresses and controls remain in SignalShade. Its content relay is limited to the production SignalShade URL. Local development builds are deliberately not supported by the distributed manifest.
 
@@ -27,7 +27,8 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 - HELO / HELO Plus / Ki Pro descriptor and status reads, AJA login, and descriptor-verified Record/Stop writes.
 - FS descriptor/status reads and supported Proc amp/RGB shading writes. Legalizer and other configuration writes are excluded.
 - Read-only direct connection remains available when the extension is absent. An adapter selects one route at creation; reload/reconnect after installing or removing the extension.
-- Writes are not replayed after failure. Recent write ownership prevents simultaneous writes from another tab for 30 seconds. After a service-worker restart, descriptor discovery must run again before writes.
+- Writes are not replayed after failure. Recent write ownership prevents simultaneous writes from another tab for 30 seconds. After a service-worker restart, the extension automatically rediscovers descriptors through reads before validating a new write.
+- FS discovery tries `/desc.json`, then the documented legacy `/descriptors?paramid=*` only for HTTP 404/410. Legacy value reads explicitly request JSON. This is based on AJA's [REST Automation archive](https://www.aja.com/support/item/9619); exact FS1 firmware behavior still needs a new field test.
 - Known limitations: hardware/browser authentication qualification pending; background-tab timers may be throttled; no persistent multi-tab control lease UI yet. Never use the extension as evidence that a model is hardware-qualified.
 
 ## Build

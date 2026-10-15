@@ -68,6 +68,46 @@ async function fixture(model: RecorderConfig['model'] = 'HELO') {
   }
 }
 describe('recorder command lifecycle', () => {
+  it('automatically recovers monitoring and the chosen control state after a transient poll failure', async () => {
+    const { adapter } = await fixture()
+    vi.mocked(adapter.read).mockRejectedValueOnce(new Error('Temporary network loss'))
+    await store.refresh('test')
+    expect(store.getSnapshot().test).toMatchObject({ state: 'offline', enabled: false })
+    await vi.advanceTimersByTimeAsync(5000)
+    await store.tick()
+    expect(store.getSnapshot().test).toMatchObject({
+      state: 'idle',
+      enabled: true,
+      issue: undefined,
+    })
+    expect(adapter.command).not.toHaveBeenCalled()
+  })
+  it('restores control intent within the tab only after fresh verified state', async () => {
+    const data = new Map<string, string>()
+    vi.stubGlobal('sessionStorage', {
+      getItem: (key: string) => data.get(key),
+      setItem: (key: string, value: string) => data.set(key, value),
+    })
+    const { adapter } = await fixture()
+    store.attach('test', adapter)
+    expect(store.getSnapshot().test.enabled).toBe(false)
+    await store.refresh('test')
+    expect(store.getSnapshot().test.enabled).toBe(true)
+    store.enable('test', false)
+    store.attach('test', adapter)
+    await store.refresh('test')
+    expect(store.getSnapshot().test.enabled).toBe(false)
+    expect(adapter.command).not.toHaveBeenCalled()
+  })
+  it('remembers only successful connections for automatic monitoring', async () => {
+    const remembered = vi.fn()
+    const other = new RecorderStore(() => true, vi.fn(), remembered)
+    const demo = demoRecorder('HELO')
+    other.sync([demo])
+    await other.connect(demo)
+    expect(remembered).toHaveBeenCalledWith(demo.id)
+    other.dispose()
+  })
   it('starts monitor-only, never records on connect, and confirms explicit record/stop', async () => {
     const adapter = new DemoRecorderAdapter()
     store.attach(config.id, adapter)

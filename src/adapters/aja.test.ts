@@ -20,6 +20,36 @@ const gain = {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('AJA browser transport', () => {
+  it('falls back to the documented legacy descriptor endpoint after a 404 and requests JSON values', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      const u = new URL(url)
+      if (u.pathname === '/desc.json') return { ok: false, status: 404, json: async () => ({}) }
+      if (u.pathname === '/descriptors')
+        return {
+          ok: true,
+          json: async () => [{ param_id: 'eParamID_ProductID', param_name: 'Product ID' }],
+        }
+      return { ok: true, json: async () => ({ name: 'eParamID_ProductID', value: 'FS1' }) }
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const adapter = new AjaAdapter('10.0.0.2')
+    const result = await adapter.probe()
+    expect(result.model).toBe('FS1')
+    expect(result.rawDescriptorCount).toBe(1)
+    expect(fetcher).toHaveBeenCalledWith('http://10.0.0.2/descriptors?paramid=*', expect.anything())
+    expect(fetcher.mock.calls.some(([url]) => url.includes('alt=json'))).toBe(true)
+    expect(fetcher.mock.calls.every(([url]) => !url.includes('action=set'))).toBe(true)
+    adapter.dispose()
+  })
+  it('reports missing endpoints without suggesting repeated device approval', async () => {
+    const fetcher = vi.fn().mockResolvedValue({ ok: false, status: 404 })
+    vi.stubGlobal('fetch', fetcher)
+    const adapter = new AjaAdapter('10.0.0.2')
+    const result = await adapter.probe()
+    expect(fetcher).toHaveBeenCalledTimes(2)
+    expect(result.checks[0].detail).toContain('approval cannot fix a missing endpoint')
+    adapter.dispose()
+  })
   it('accepts private IPv4 with ports and rejects remote destinations or URL payloads', () => {
     expect(normalizeAddress('192.168.1.20')).toBe('http://192.168.1.20')
     expect(normalizeAddress('https://10.0.0.2:8443')).toBe('https://10.0.0.2:8443')

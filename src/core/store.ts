@@ -59,6 +59,11 @@ export class DeskStore {
   readonly recorders = new RecorderStore(
     () => this.state.ready && !this.state.lockedTab && !this.state.controlsLocked,
     (text, type) => this.log(text, type),
+    (id) => {
+      const configs = this.state.workspace.recorders ?? []
+      if (!configs.find((c) => c.id === id)?.autoConnect)
+        this.saveRecorders(configs.map((c) => (c.id === id ? { ...c, autoConnect: true } : c)))
+    },
   )
   setControlsLocked(controlsLocked: boolean) {
     this.emit({ controlsLocked })
@@ -141,6 +146,10 @@ export class DeskStore {
   private sanitize(workspace: Workspace): Workspace {
     return {
       ...workspace,
+      recorders: workspace.recorders?.map((c) => ({
+        ...c,
+        autoConnect: c.autoConnect ?? !c.simulated,
+      })),
       devices: workspace.devices.map((d) => ({
         ...d,
         status: d.simulated ? 'online' : 'offline',
