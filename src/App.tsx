@@ -34,7 +34,6 @@ import {
 } from 'lucide-react'
 import { desk } from './core/store'
 import { getWaitingUpdate, subscribeUpdates } from './core/updates'
-import { commonValue, isCompatible } from './core/color'
 import type { Channel, Gang, ParameterId, Section } from './core/types'
 import { downloadJson, validateWorkspace } from './core/persistence'
 import { message } from './adapters/aja'
@@ -740,7 +739,11 @@ export default function App() {
                     </div>
                   </>
                 )}
-                <div className="detail-tabs" role="tablist" aria-label="Color control sections">
+                <div
+                  className="detail-tabs card-control-tabs"
+                  role="tablist"
+                  aria-label="Color control sections"
+                >
                   {consoleSections.map((s) => (
                     <button
                       role="tab"
@@ -787,54 +790,15 @@ export default function App() {
                             ['procEnabled', 'rgbEnabled'].includes(d.id),
                         )
                         .map((d) => (
-                          <div className="enable-row" key={d.id}>
-                            <span>
-                              {d.label}
-                              <small>
-                                {commonValue(selectedChannels, d.id) === undefined
-                                  ? 'Mixed enable states'
-                                  : commonValue(selectedChannels, d.id)
-                                    ? 'Processing enabled'
-                                    : 'Processing bypassed'}
-                              </small>
-                            </span>
-                            {d.kind === 'toggle' ? (
-                              <button
-                                className={`toggle ${commonValue(selectedChannels, d.id) ? 'on' : ''}`}
-                                role="switch"
-                                aria-label={`Enable ${d.label}`}
-                                aria-checked={!!commonValue(selectedChannels, d.id)}
-                                disabled={controlsDisabled || !isCompatible(selectedChannels, d.id)}
-                                onClick={() =>
-                                  desk.adjust(
-                                    targetIds,
-                                    d.id,
-                                    commonValue(selectedChannels, d.id) ? 0 : 1,
-                                    'absolute',
-                                  )
-                                }
-                              >
-                                <span />
-                              </button>
-                            ) : (
-                              <select
-                                aria-label={d.label}
-                                disabled={controlsDisabled}
-                                value={commonValue(selectedChannels, d.id) ?? ''}
-                                onChange={(e) =>
-                                  desk.adjust(targetIds, d.id, Number(e.target.value), 'absolute')
-                                }
-                              >
-                                <option value="" disabled>
-                                  Mixed
-                                </option>
-                                {d.choices?.map((o) => (
-                                  <option value={o.value} key={o.value}>
-                                    {o.label}
-                                  </option>
-                                ))}
-                              </select>
-                            )}
+                          <div className="console-enable" key={d.id}>
+                            <ParameterControl
+                              descriptor={d}
+                              channels={selectedChannels}
+                              relative={false}
+                              disabled={controlsDisabled}
+                              multiplier={multiplier}
+                              compact
+                            />
                           </div>
                         ))}
                       {consoleFields.map((d) => (
