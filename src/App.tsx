@@ -797,7 +797,6 @@ export default function App() {
                               relative={false}
                               disabled={controlsDisabled}
                               multiplier={multiplier}
-                              compact
                             />
                           </div>
                         ))}
