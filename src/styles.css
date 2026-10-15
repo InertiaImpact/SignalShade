@@ -3817,3 +3817,111 @@ button {
   max-width: 320px;
   justify-self: start;
 }
+
+/* The expanded console uses its available width, independently of card tabs. */
+.app .gang-console {
+  container: gang-console / inline-size;
+  grid-template-columns: minmax(0, 1fr);
+}
+.app .gang-console .segmented {
+  grid-row: auto;
+}
+.gang-controls {
+  grid-column: 1/-1;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(0, 3fr);
+  gap: 24px;
+  padding: 0 16px 16px;
+  min-width: 0;
+}
+.gang-control-section {
+  min-width: 0;
+}
+.gang-controls > .gang-control-section:only-child {
+  grid-column: 1/-1;
+}
+.gang-rgb {
+  container: gang-rgb / inline-size;
+  border-left: 1px solid var(--border-subtle);
+  padding-left: 24px;
+}
+.gang-controls > .gang-rgb:only-child {
+  border-left: 0;
+  padding-left: 0;
+}
+.gang-section-heading {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  margin-bottom: 8px;
+}
+.gang-section-heading h3 {
+  margin: 0;
+  font-size: 13px;
+  font-weight: 600;
+}
+.gang-section-enable {
+  min-height: 42px;
+  margin-bottom: 10px;
+}
+.gang-section-enable > .parameter {
+  max-width: 320px;
+}
+.gang-procamp-fields,
+.gang-rgb-family {
+  display: grid;
+  gap: 16px;
+  align-content: start;
+}
+.gang-procamp-fields {
+  padding-top: 46px;
+}
+.gang-rgb-toggle {
+  margin-bottom: 12px;
+}
+.gang-rgb-family:not(.active),
+.gang-rgb-family > h4 {
+  display: none;
+}
+.gang-rgb-family > h4 {
+  margin: 0;
+  min-height: 34px;
+  align-items: center;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-muted);
+}
+.app .gang-console .console-summary {
+  padding-top: 0;
+}
+@container gang-rgb (min-width: 900px) {
+  .gang-rgb-toggle {
+    display: none;
+  }
+  .gang-rgb-families {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 24px;
+  }
+  .gang-rgb-family:not(.active) {
+    display: grid;
+  }
+  .gang-rgb-family > h4 {
+    display: flex;
+  }
+}
+@container gang-console (max-width: 639px) {
+  .gang-controls {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .gang-rgb {
+    border-left: 0;
+    border-top: 1px solid var(--border-subtle);
+    padding-left: 0;
+    padding-top: 16px;
+  }
+  .gang-procamp-fields {
+    padding-top: 0;
+  }
+}

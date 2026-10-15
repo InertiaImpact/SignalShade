@@ -38,6 +38,7 @@ import type { Channel, Gang, ParameterId, Section } from './core/types'
 import { downloadJson, validateWorkspace } from './core/persistence'
 import { message } from './adapters/aja'
 import { ParameterControl } from './components/ParameterControl'
+import { GangControls } from './components/GangControls'
 import { DeviceDialog } from './components/DeviceDialog'
 import {
   ConfirmWorkspace,
@@ -80,9 +81,7 @@ export default function App() {
       mask?: ParameterId[]
     }>({ ids: [] }),
     [relative, setRelative] = useState(true),
-    [multiplier, setMultiplier] = useState(1),
-    [section, setSection] = useState<Section>('Proc amp'),
-    [rgbFamily, setRgbFamily] = useState<RgbFamily>('Gain')
+    [multiplier, setMultiplier] = useState(1)
   const [activity, setActivity] = useState(false),
     [editLayout, setEditLayout] = useState(false),
     [menu, setMenu] = useState(false),
@@ -162,17 +161,6 @@ export default function App() {
   const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
     activeDescriptors.some((d) => d.section === s),
   )
-  const consoleSection = consoleSections.includes(section)
-    ? section
-    : (consoleSections[0] ?? section)
-  const consoleRgbFamilies = availableRgbFamilies(activeDescriptors)
-  const consoleRgbFamily = consoleRgbFamilies.includes(rgbFamily)
-    ? rgbFamily
-    : (consoleRgbFamilies[0] ?? 'Gain')
-  const consoleFields =
-    consoleSection === 'RGB correction'
-      ? rgbControls(activeDescriptors, consoleRgbFamily)
-      : activeDescriptors.filter((d) => d.section === consoleSection && d.id !== 'procEnabled')
   const lastActivity = snapshot.activities[0]
   useEffect(() => {
     if (!initialized) {
@@ -739,81 +727,18 @@ export default function App() {
                     </div>
                   </>
                 )}
-                <div
-                  className="detail-tabs card-control-tabs"
-                  role="tablist"
-                  aria-label="Color control sections"
-                >
-                  {consoleSections.map((s) => (
-                    <button
-                      role="tab"
-                      aria-selected={consoleSection === s}
-                      className={consoleSection === s ? 'active' : ''}
-                      key={s}
-                      onClick={() => setSection(s)}
-                    >
-                      {s === 'RGB correction' ? 'RGB' : s}
-                    </button>
-                  ))}
-                  <button
-                    className="icon-button tiny"
-                    disabled={controlsDisabled}
-                    aria-label={`Reset ${consoleSection} section`}
-                    title={`Reset ${consoleSection}`}
-                    onClick={() => reset(targetIds, consoleSection, group?.parameters)}
-                  >
-                    <RotateCcw size={12} />
-                  </button>
-                </div>
-                {consoleSection === 'RGB correction' && (
-                  <RgbTabs
-                    descriptors={activeDescriptors}
-                    value={consoleRgbFamily}
-                    onChange={setRgbFamily}
-                    label="Gang RGB controls"
-                  />
-                )}
-                <div
-                  className={`detail-scroll console-parameters ${consoleSection === 'RGB correction' ? 'rgb-parameters' : ''}`}
-                >
-                  {!activeDescriptors.some((d) => d.section === consoleSection) ? (
-                    <div className="empty-small">
-                      <SlidersHorizontal size={22} />
-                      <p>No controls available in this section for the selected target.</p>
-                    </div>
-                  ) : (
-                    <>
-                      {activeDescriptors
-                        .filter(
-                          (d) =>
-                            d.section === consoleSection &&
-                            ['procEnabled', 'rgbEnabled'].includes(d.id),
-                        )
-                        .map((d) => (
-                          <div className="console-enable" key={d.id}>
-                            <ParameterControl
-                              descriptor={d}
-                              channels={selectedChannels}
-                              relative={false}
-                              disabled={controlsDisabled}
-                              multiplier={multiplier}
-                            />
-                          </div>
-                        ))}
-                      {consoleFields.map((d) => (
-                        <ParameterControl
-                          key={`${targetIds.join('|')}-${d.id}-${relative}`}
-                          descriptor={d}
-                          channels={selectedChannels}
-                          relative={batch && relative && d.kind === 'number'}
-                          disabled={controlsDisabled}
-                          multiplier={multiplier}
-                          favorite={w.favorites.includes(d.id)}
-                          toggleFavorite={readOnly ? undefined : () => toggleFavorite(d.id)}
-                        />
-                      ))}
-                    </>
-                  )}
+                <GangControls
+                  descriptors={activeDescriptors}
+                  sections={consoleSections}
+                  channels={selectedChannels}
+                  relative={relative}
+                  disabled={controlsDisabled}
+                  multiplier={multiplier}
+                  favorites={w.favorites}
+                  toggleFavorite={readOnly ? undefined : toggleFavorite}
+                  onReset={(s) => reset(targetIds, s, group?.parameters)}
+                />
+                <div className="console-parameters console-summary">
                   {batch && (
                     <div className="member-summary">
                       <div className="section-heading">
