@@ -117,6 +117,20 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
     permitted = false
     assert.equal((await send()).ok, false)
     permitted = true
+    const largeDescriptor = [
+      {
+        param_id: 'eParamID_ProductID',
+        param_name: 'Product ID',
+        description: 'x'.repeat(5 * 1024 * 1024),
+      },
+    ]
+    globalThis.fetch = async () => new Response(JSON.stringify(largeDescriptor))
+    const large = await send({ deadline: Date.now() + 20000 })
+    assert.equal(large.ok, true)
+    assert.equal(large.data[0].description.length, 5 * 1024 * 1024)
+    const bounded = await send({ path: 'config?action=get&paramid=eParamID_ProductID' })
+    assert.equal(bounded.ok, false)
+    assert.match(bounded.error, /4 MiB/)
     globalThis.fetch = async () => {
       throw new TypeError('Failed to fetch')
     }

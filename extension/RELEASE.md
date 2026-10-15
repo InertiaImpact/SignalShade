@@ -1,5 +1,7 @@
 SignalShade Connect preview connects SignalShade to approved local AJA devices without a separate bridge server.
 
+Version 0.3.1 fixes descriptor downloads being rejected at 4 MiB. Descriptor endpoints now accept up to 32 MiB; web-page and ordinary parameter responses retain the 4 MiB limit. The dashboard also filters scan candidates to identified AJA interfaces. Original FS1 connection reports now probe seven known read-only parameters through its legacy `/json` endpoint; legacy shading writes remain unavailable. No new permissions are required for this patch.
+
 Version 0.3.0 fixes range discovery: approve the requested private /24 HTTP range once, scan it with read-only access, and add identified devices from persistent results. Older units can appear through web-page identification even if their descriptor API is absent. Scan permission cannot authorize writes; selecting Add verifies the API and grants the individual connection. Added devices, Add by IP, and Scan network are separate permanent sections, with DEMO badges and retained errors/reports. Approval automatically resumes Add/Scan. Descriptor downloads now allow slower responses.
 
 The reported legacy FS1 returned 404 for both descriptor endpoints. This release improves discovery and diagnostics; control for that exact firmware still needs qualification and may require a separate legacy adapter. Do not equate discovery with verified shading support.

@@ -23,6 +23,9 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 
 ## Current scope
 
+- v0.3.1 accepts descriptor tables up to 32 MiB; ordinary responses remain capped at 4 MiB. This fixes the observed FS descriptor download being rejected before identification. The scan results list contains identified AJA interfaces only; unrelated/unauthenticated web responses stay in diagnostics rather than appearing as Add candidates.
+- For an original FS1 identified by its AJA admin page, a failed descriptor connection now exports seven known `/json` diagnostic reads. Firmware 2.2.2.1 uses that legacy interface. Native response/range qualification is pending; legacy shading writes are deliberately not mapped yet.
+
 - v0.3.0 adds one approval for an explicit HTTP address range within one private /24 subnet. Chrome grants the listed hosts; the extension keeps scan access read-only and limited to the approved range for 30 minutes in that tab. Repeat scans in that window reuse approval. Network/broadcast addresses are excluded. Selecting Add identifies the device and saves its individual connection grant; it does not enable live writes.
 - Discovery reads the device web page, so older units missing the descriptor API remain visible. Full descriptor/source-context verification occurs when adding. A discovered FS1 is not a promise that its firmware's control API is supported. Failed adds retain details and reports, including the detected web identity when available.
 - The Devices dialog has persistent Added devices (including DEMO badges), Add by IP, and Scan network sections. Add/reconnect actions automatically continue after approval; scan results remain visible when a device is added.

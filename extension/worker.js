@@ -57,6 +57,8 @@ async function fetchJson(origin, path, m = {}) {
     })
     if (!response.ok) throw new Error(`Device returned HTTP ${response.status} at ${path}`)
     const reader = response.body.getReader()
+    // FS descriptor tables can exceed 4 MiB. Stay below Chrome's 64 MiB message ceiling.
+    const limit = /^(desc.json|descriptors\?)/.test(path) ? 32 * 1024 * 1024 : 4 * 1024 * 1024
     let size = 0,
       result = ''
     const decoder = new TextDecoder()
@@ -64,9 +66,9 @@ async function fetchJson(origin, path, m = {}) {
       const chunk = await reader.read()
       if (chunk.done) break
       size += chunk.value.byteLength
-      if (size > 4 * 1024 * 1024) {
+      if (size > limit) {
         await reader.cancel()
-        throw new Error('Device response exceeds 4 MB')
+        throw new Error(`Device response at ${path} exceeds ${limit / 1024 / 1024} MiB`)
       }
       result += decoder.decode(chunk.value, { stream: true })
     }

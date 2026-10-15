@@ -316,13 +316,53 @@ export class AjaAdapter implements DeviceAdapter {
         } catch {
           /* Preserve the descriptor failure. */
         }
+        if (
+          result.webIdentity?.model === 'FS1' &&
+          /\bAJA\b/i.test(result.webIdentity.title ?? '')
+        ) {
+          result.legacyReadbacks = []
+          // Endpoint and native IDs observed in AJA's original FS1 2.2.2.1 web interface.
+          // Diagnostic reads only: no fabricated descriptor ranges or write mapping.
+          for (const id of [
+            'eParamID_VideoInputSelect',
+            'eParamID_DetectInputFormat',
+            'eParamID_ProcAmpEnable',
+            'eParamID_ProcAmpBlackYCGain',
+            'eParamID_ProcAmpBlackYCOffset',
+            'eParamID_ProcAmpHue',
+            'eParamID_ProcAmpSat',
+          ]) {
+            if (signal?.aborted) break
+            try {
+              result.legacyReadbacks.push({
+                id,
+                response: await this.request(
+                  `json?${new URLSearchParams({ action: 'get', paramid: id, configid: '0', alt: 'json' })}`,
+                  signal,
+                ),
+              })
+            } catch (error) {
+              result.legacyReadbacks.push({ id, error: message(error) })
+            }
+          }
+          const readable = result.legacyReadbacks.filter(
+            (r) => r.response && typeof r.response === 'object' && 'value' in r.response,
+          ).length
+          result.checks.push({
+            name: 'Original FS1 interface',
+            status: 'info',
+            detail: `${readable} / 7 legacy parameters returned readable values. Diagnostic values are included in this report; shading remains unavailable until the legacy mapping is verified.`,
+          })
+        }
       }
       result.checks.push({
         name: 'Readable API',
         status: 'fail',
         detail: /HTTP (404|410)\b/.test(message(e))
           ? `${message(e)}. Neither AJA descriptor endpoint was found.${result.webIdentity?.model ? ` Web interface: ${result.webIdentity.model}.` : ''} Device access is allowed; approval cannot fix a missing endpoint. This firmware needs a separate API mapping; export this report.`
-          : `${message(e)}. Check network, device address, browser access, and authentication.`,
+          : /response.*exceeds.*(MB|MiB)/i.test(message(e))
+            ? `${message(e)}. The connection reached the device, but Connect stopped the download at its response-size limit. Update SignalShade Connect and retry.`
+            : `${message(e)}. Check network, device address, browser access, and authentication.`,
       })
       return result
     }

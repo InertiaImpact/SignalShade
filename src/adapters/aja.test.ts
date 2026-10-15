@@ -20,6 +20,24 @@ const gain = {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('AJA browser transport', () => {
+  it('probes original FS1 native reads without enabling controls or issuing a write', async () => {
+    const fetcher = vi.fn(async (url: string) => {
+      const u = new URL(url)
+      if (u.pathname === '/') return new Response('<title>AJA Video - FS1 Admin: Main</title>')
+      if (u.pathname === '/json')
+        return new Response(JSON.stringify({ name: u.searchParams.get('paramid'), value: '0' }))
+      return new Response('', { status: 404 })
+    })
+    vi.stubGlobal('fetch', fetcher)
+    const adapter = new AjaAdapter('10.0.0.2')
+    const report = await adapter.probe()
+    expect(report.webIdentity?.model).toBe('FS1')
+    expect(report.legacyReadbacks).toHaveLength(7)
+    expect(report.legacyReadbacks?.every((r) => !r.error)).toBe(true)
+    expect(report.channels).toEqual([])
+    expect(fetcher.mock.calls.some(([url]) => url.includes('action=set'))).toBe(false)
+    adapter.dispose()
+  })
   it('falls back to the documented legacy descriptor endpoint after a 404 and requests JSON values', async () => {
     const fetcher = vi.fn(async (url: string) => {
       const u = new URL(url)

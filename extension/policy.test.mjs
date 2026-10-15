@@ -42,6 +42,12 @@ test('restricts target origins to RFC1918 literals and preserves exact ports', (
     assert.throws(() => deviceOrigin(u))
 })
 test('rejects arbitrary paths, duplicated query keys, and invalid writes', () => {
+  assert.equal(
+    operation('json?action=get&paramid=eParamID_ProcAmpHue&configid=0&alt=json').kind,
+    'read',
+  )
+  assert.throws(() => operation('json?action=set&paramid=eParamID_ProcAmpHue&value=1&configid=0'))
+  assert.throws(() => operation('json?action=get&paramid=eParamID_SoftwareReset'))
   assert.deepEqual(operation('config?action=get&paramid=eParamID_ProductID'), {
     kind: 'read',
     id: 'eParamID_ProductID',

@@ -33,9 +33,10 @@ export function operation(path) {
   if (path === 'desc.json') return { kind: 'descriptors' }
   if (path === 'descriptors?paramid=*') return { kind: 'descriptors' }
   if (path === 'authenticator/login') return { kind: 'login' }
-  if (typeof path !== 'string' || !path.startsWith('config?'))
+  const legacy = typeof path === 'string' && path.startsWith('json?')
+  if (typeof path !== 'string' || (!path.startsWith('config?') && !legacy))
     throw new Error('Unsupported AJA endpoint')
-  const q = new URLSearchParams(path.slice(7))
+  const q = new URLSearchParams(path.slice(legacy ? 5 : 7))
   const keys = [...q.keys()]
   if (
     keys.length !== new Set(keys).size ||
@@ -44,6 +45,20 @@ export function operation(path) {
     throw new Error('Invalid query')
   const id = q.get('paramid')
   if (!/^eParamID_[A-Za-z0-9_]{1,120}$/.test(id ?? '')) throw new Error('Invalid parameter')
+  if (
+    legacy &&
+    (q.get('action') !== 'get' ||
+      ![
+        'eParamID_VideoInputSelect',
+        'eParamID_DetectInputFormat',
+        'eParamID_ProcAmpEnable',
+        'eParamID_ProcAmpBlackYCGain',
+        'eParamID_ProcAmpBlackYCOffset',
+        'eParamID_ProcAmpHue',
+        'eParamID_ProcAmpSat',
+      ].includes(id))
+  )
+    throw new Error('Only known FS1 diagnostic reads are supported on the legacy endpoint')
   if (
     q.get('action') === 'get' &&
     !q.has('value') &&
