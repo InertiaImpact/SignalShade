@@ -3926,40 +3926,7 @@ button {
   }
 }
 
-/* Neutral control groups; saved gangs retain their workspace colors. */
-.gang-control-section {
-  border-top: 2px solid var(--border-subtle);
-  border-radius: 6px;
-  background: var(--surface-panel);
-}
-.gang-section-heading {
-  padding: 6px 12px 0;
-}
-.gang-section-heading h3 {
-  color: var(--text-secondary);
-}
-.gang-section-enable {
-  padding-inline: 12px;
-}
-.gang-procamp-fields {
-  padding-inline: 12px;
-  padding-bottom: 12px;
-}
-.gang-rgb-toggle {
-  padding-inline: 12px;
-}
-.gang-rgb-family {
-  border: 1px solid var(--border-subtle);
-  border-top: 2px solid var(--border-subtle);
-  border-radius: 5px;
-  padding: 12px;
-  background: var(--surface-panel);
-}
-.gang-rgb-family > h4 {
-  color: var(--text-secondary);
-  min-height: 24px;
-  font-weight: 600;
-}
+/* Saved gangs retain their workspace colors. */
 .app .gang-console {
   border-color: color-mix(in srgb, var(--gang-color) 55%, var(--border-subtle));
 }
