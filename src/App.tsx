@@ -15,12 +15,10 @@ import {
   Grid2X2,
   Layers3,
   Lock,
-  Monitor,
   MoreHorizontal,
   Network,
   PanelLeftClose,
   Plus,
-  Radio,
   RefreshCw,
   RotateCcw,
   Save,
@@ -259,26 +257,47 @@ export default function App() {
           </span>
           <span>
             Signal<span className="brand-light">Shade</span>
-            <small>COLOR CONTROL DESK</small>
           </span>
         </div>
-        <button className="workspace-switch" onClick={() => !readOnly && setDialog('workspace')}>
+        <button
+          className="workspace-switch"
+          title="Workspace settings · saved locally"
+          onClick={() => !readOnly && setDialog('workspace')}
+        >
           <span className="workspace-dot" />
-          <span>
-            {w.name}
-            <small>Workspace saved locally</small>
-          </span>
+          <span>{w.name}</span>
           <ChevronDown size={15} />
         </button>
         <div className="topbar-right">
+          <button
+            className="connection-summary"
+            aria-label="Manage connections"
+            title={`${online} of ${w.devices.length} devices connected · ${simulated} simulated`}
+            onClick={() => setDialog('devices')}
+          >
+            <span className={`status-dot ${online < w.devices.length ? 'offline' : ''}`} />
+            <span>
+              {online}/{w.devices.length} <span className="connection-label">devices</span>
+            </span>
+            <ChevronDown size={13} />
+          </button>
+          <button
+            className="icon-button header-refresh"
+            aria-label="Refresh device values"
+            title="Refresh device values"
+            disabled={readOnly || snapshot.busy > 0}
+            onClick={() => void desk.refresh()}
+          >
+            <RefreshCw size={15} className={snapshot.busy ? 'spin' : ''} />
+          </button>
           <span className={`mode-pill ${simulated ? 'demo' : ''}`}>
             <span />
             {simulated === w.devices.length && simulated
-              ? 'DEMO MODE'
+              ? 'DEMO'
               : simulated
-                ? 'MIXED FLEET'
+                ? 'MIXED'
                 : w.devices.length
-                  ? 'LAN CONTROL'
+                  ? 'LIVE'
                   : 'NO DEVICES'}
           </span>
           <button
@@ -295,7 +314,7 @@ export default function App() {
             aria-label="Help and keyboard shortcuts"
             onClick={() => setDialog('help')}
           >
-            SS
+            <CircleHelp size={17} />
           </button>
         </div>
       </header>
@@ -402,7 +421,7 @@ export default function App() {
           <div className="sidebar-footer">
             <span className="mini-logo">
               <AudioLines size={15} />
-              SIGNALS, IN BALANCE.
+              SignalShade
             </span>
             <span>v0.1</span>
           </div>
@@ -410,39 +429,17 @@ export default function App() {
       </aside>
       <main className="main">
         <div className="main-heading">
-          <div className="page-title">
-            <button
-              className="icon-button mobile-menu"
-              aria-label="Open sidebar"
-              onClick={() => setSidebar(!sidebar)}
-            >
-              <PanelLeftClose size={20} />
-            </button>
-            <div className="breadcrumb">
-              WORKSPACE <ChevronRight size={11} /> {currentViewGang ? 'GANG GROUP' : 'OVERVIEW'}
-            </div>
-            <h1>
-              {title}
-              {currentViewGang && (
-                <span className="title-dot" style={{ background: currentViewGang.color }} />
-              )}
-            </h1>
-            <p>
-              {currentViewGang
-                ? 'Trim together. Keep the character of every source.'
-                : 'Individual precision. Collective control.'}
-            </p>
-          </div>
-          <div className="heading-actions">
-            <button className="button" onClick={() => setDialog('presets')}>
-              <Layers3 size={15} />
-              Presets
-            </button>
-            <button className="button primary" onClick={() => setDialog('devices')}>
-              <Plus size={16} />
-              Add device
-            </button>
-          </div>
+          <button
+            className="icon-button mobile-menu"
+            aria-label="Open sidebar"
+            onClick={() => setSidebar(!sidebar)}
+          >
+            <PanelLeftClose size={20} />
+          </button>
+          <h1>
+            {title}
+            <span className="view-count">{channels.length}</span>
+          </h1>
         </div>
         {update && (
           <div className="desk-alert" role="status">
@@ -474,66 +471,6 @@ export default function App() {
                 : snapshot.storageError}
           </div>
         )}
-        {simulated > 0 && (
-          <div className="demo-banner">
-            <span className="demo-symbol">
-              <Waves size={18} />
-            </span>
-            <span>
-              <strong>
-                {simulated === w.devices.length
-                  ? 'Explore your desk.'
-                  : 'Demo channels are present.'}
-              </strong>{' '}
-              {simulated === w.devices.length
-                ? 'These channels are simulated. Try a trim, build a gang, make it yours.'
-                : 'Simulated and hardware channels are clearly labeled.'}
-            </span>
-            <button onClick={() => setDialog('devices')}>
-              Connect real hardware <ArrowRight size={14} />
-            </button>
-          </div>
-        )}
-        <div className="fleet-stats">
-          <div>
-            <span className="stat-icon">
-              <Monitor size={17} />
-            </span>
-            <strong>{w.channels.length.toString().padStart(2, '0')}</strong>
-            <span>channels</span>
-          </div>
-          <span className="stat-divider" />
-          <div>
-            <span className="stat-icon">
-              <Server size={17} />
-            </span>
-            <strong>
-              {online.toString().padStart(2, '0')}
-              <small> / {w.devices.length.toString().padStart(2, '0')}</small>
-            </strong>
-            <span>devices connected</span>
-          </div>
-          <span className="stat-divider" />
-          <div>
-            <span className="stat-icon">
-              <Layers3 size={17} />
-            </span>
-            <strong>{w.gangs.length.toString().padStart(2, '0')}</strong>
-            <span>gang groups</span>
-          </div>
-          <div className="stats-right">
-            <span className={`status-dot ${snapshot.busy ? 'pending' : ''}`} />
-            {snapshot.busy ? `${snapshot.busy} pending` : 'Desk ready'}
-            <button
-              className="icon-button"
-              aria-label="Refresh device values"
-              disabled={readOnly || snapshot.busy > 0}
-              onClick={() => void desk.refresh()}
-            >
-              <RefreshCw size={14} />
-            </button>
-          </div>
-        </div>
         <div className="channel-toolbar">
           <div className="search">
             <Search size={15} />
@@ -542,17 +479,20 @@ export default function App() {
               aria-label="Search channels"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="Find a channel…"
+              placeholder="Search channels"
             />
             <kbd>/</kbd>
           </div>
-          <span className="channel-count">{channels.length} channels</span>
-          <span className="selection-help">Ctrl/⌘-click or drag headers to select</span>
-          <button className="button small" onClick={() => selectMany(channels.map((c) => c.id))}>
-            Select visible
+          <button
+            className="button small"
+            aria-label="Select visible"
+            title="Select visible channels · Ctrl/⌘-click or drag headers for a partial selection"
+            onClick={() => selectMany(channels.map((c) => c.id))}
+          >
+            Select all
           </button>
           <label className="arrow-step">
-            Arrow step
+            Step
             <select
               aria-label="Arrow adjustment step"
               value={multiplier}
@@ -564,15 +504,6 @@ export default function App() {
             </select>
           </label>
           <div className="toolbar-right">
-            <select
-              aria-label="Sort channels"
-              value={sort}
-              onChange={(e) => setSort(e.target.value)}
-            >
-              <option value="custom">Custom order</option>
-              <option value="name">Channel name</option>
-              <option value="device">Device / processor</option>
-            </select>
             <button
               className={`icon-button ${editLayout ? 'selected' : ''}`}
               disabled={readOnly}
@@ -598,6 +529,18 @@ export default function App() {
                     onClick={() => setMenu(false)}
                   />
                   <div className="dropdown-menu">
+                    <label className="menu-field">
+                      Channel order
+                      <select
+                        aria-label="Sort channels"
+                        value={sort}
+                        onChange={(e) => setSort(e.target.value)}
+                      >
+                        <option value="custom">Custom order</option>
+                        <option value="name">Channel name</option>
+                        <option value="device">Device / processor</option>
+                      </select>
+                    </label>
                     <button
                       onClick={() => {
                         downloadJson('signalshade-workspace.json', w)
@@ -710,8 +653,30 @@ export default function App() {
         {batch && (
           <section className="inspector gang-console" aria-label="Gang and selection controls">
             <div className="inspector-heading">
-              <span className="eyebrow">{group ? 'SAVED GANG' : 'TEMPORARY SELECTION'}</span>
+              <div className="console-title">
+                <Layers3 size={17} />
+                <h2>{group?.name ?? `${selectedChannels.length} selected`}</h2>
+                {group && <span>{selectedChannels.length}</span>}
+                <span
+                  className={`status-dot ${controlsDisabled ? 'offline' : ''}`}
+                  title={controlsDisabled ? 'Controls locked' : 'Ready to adjust'}
+                />
+              </div>
               <div>
+                {group && (
+                  <button
+                    className="icon-button tiny"
+                    disabled={readOnly}
+                    aria-label="Edit gang"
+                    title="Edit gang"
+                    onClick={() => {
+                      setEditGang(group)
+                      setDialog('gang')
+                    }}
+                  >
+                    <Edit3 size={15} />
+                  </button>
+                )}
                 {!group && (
                   <button
                     className="button small"
@@ -751,77 +716,28 @@ export default function App() {
                 </button>
               </div>
             </div>
-            <div className="inspector-identity">
-              <div
-                className={`inspector-icon ${group ? 'gang' : ''}`}
-                style={group ? { color: group.color } : {}}
-              >
-                <Layers3 size={23} />
-              </div>
-              <div>
-                <h2>{group?.name ?? `${selectedChannels.length} channels selected`}</h2>
-                <p>
-                  {group
-                    ? `${selectedChannels.length} channels · explicit group controls`
-                    : selectedChannel
-                      ? `${w.devices.find((d) => d.id === selectedChannel.deviceId)?.label} · VID ${selectedChannel.processor}`
-                      : 'Adjust this selection together · card controls remain individual'}
-                </p>
-              </div>
-              {group && (
-                <button
-                  className="icon-button tiny"
-                  disabled={readOnly}
-                  aria-label="Edit gang"
-                  onClick={() => {
-                    setEditGang(group)
-                    setDialog('gang')
-                  }}
-                >
-                  <Edit3 size={14} />
-                </button>
-              )}
-            </div>
             {!!targetIds.length && (
               <>
-                <div className="inspector-state">
-                  <span>
-                    <span className={`status-dot ${controlsDisabled ? 'offline' : ''}`} />
-                    {controlsDisabled
-                      ? 'Controls locked'
-                      : snapshot.busy && selectedChannels.some((c) => c.pending)
-                        ? 'Confirming changes'
-                        : 'Ready to adjust'}
-                  </span>
-                  <span>
-                    {selectedChannels.every(
-                      (c) => w.devices.find((d) => d.id === c.deviceId)?.simulated,
-                    )
-                      ? 'DEMO'
-                      : 'HARDWARE'}
-                  </span>
-                </div>
                 {batch && (
                   <>
                     <div className="segmented">
                       <button
                         className={relative ? 'active' : ''}
+                        aria-pressed={relative}
+                        title="Add to each member’s current value; clamp independently at device limits"
                         onClick={() => setRelative(true)}
                       >
                         Relative trim
                       </button>
                       <button
                         className={!relative ? 'active' : ''}
+                        aria-pressed={!relative}
+                        title="Set every compatible member to the same value"
                         onClick={() => setRelative(false)}
                       >
                         Absolute set
                       </button>
                     </div>
-                    <p className="mode-explanation">
-                      {relative
-                        ? 'Add to each member’s current value. Members clamp independently at their limits.'
-                        : 'Set all compatible members to the same value. Each device enforces its own range.'}
-                    </p>
                   </>
                 )}
                 <div className="detail-tabs" role="tablist" aria-label="Color control sections">
@@ -836,6 +752,15 @@ export default function App() {
                       {s === 'RGB correction' ? 'RGB' : s}
                     </button>
                   ))}
+                  <button
+                    className="icon-button tiny"
+                    disabled={controlsDisabled}
+                    aria-label={`Reset ${consoleSection} section`}
+                    title={`Reset ${consoleSection}`}
+                    onClick={() => reset(targetIds, consoleSection, group?.parameters)}
+                  >
+                    <RotateCcw size={12} />
+                  </button>
                 </div>
                 {consoleSection === 'RGB correction' && (
                   <RgbTabs
@@ -848,22 +773,6 @@ export default function App() {
                 <div
                   className={`detail-scroll console-parameters ${consoleSection === 'RGB correction' ? 'rgb-parameters' : ''}`}
                 >
-                  <div className="detail-section-title">
-                    <span>
-                      {consoleSection === 'RGB correction'
-                        ? 'RGB COLOR CORRECTION'
-                        : consoleSection.toUpperCase()}
-                    </span>
-                    <button
-                      className="icon-button tiny"
-                      disabled={controlsDisabled}
-                      aria-label={`Reset ${consoleSection} section`}
-                      title={`Reset ${consoleSection}`}
-                      onClick={() => reset(targetIds, consoleSection, group?.parameters)}
-                    >
-                      <RotateCcw size={12} />
-                    </button>
-                  </div>
                   {!activeDescriptors.some((d) => d.section === consoleSection) ? (
                     <div className="empty-small">
                       <SlidersHorizontal size={22} />
@@ -984,27 +893,6 @@ export default function App() {
                     </div>
                   )}
                 </div>
-                <div className="inspector-footer">
-                  <span>ADJUSTMENT STEP</span>
-                  <div className="step-buttons">
-                    {[
-                      { n: 1, label: 'Fine' },
-                      { n: 5, label: 'Normal' },
-                      { n: 10, label: 'Coarse' },
-                    ].map((x) => (
-                      <button
-                        key={x.n}
-                        className={multiplier === x.n ? 'active' : ''}
-                        onClick={() => setMultiplier(x.n)}
-                      >
-                        {x.label}
-                      </button>
-                    ))}
-                  </div>
-                  <p>
-                    <Radio size={11} /> Changes apply live · readback verified
-                  </p>
-                </div>
               </>
             )}
           </section>
@@ -1028,13 +916,6 @@ export default function App() {
               onReset={(section) => reset([c.id], section)}
             />
           ))}
-          <button className="add-channel-card" onClick={() => setDialog('devices')}>
-            <span>
-              <Plus size={23} />
-            </span>
-            <strong>Add a device</strong>
-            <small>Bring another source into balance</small>
-          </button>
         </div>
         {!channels.length && query && (
           <div className="empty-small">
@@ -1042,17 +923,6 @@ export default function App() {
             <p>No channels match “{query}”.</p>
           </div>
         )}
-        <div className="main-bottom-note">
-          <span>
-            <span className="status-dot" />
-            {simulated
-              ? 'Simulated values · safe to explore'
-              : 'Values confirmed by device readback'}
-          </span>
-          <span>
-            Labels stay with processor channels <CircleHelp size={12} />
-          </span>
-        </div>
       </main>
 
       {rectangle && (

@@ -71,6 +71,7 @@ No device configuration belongs in source control. The Pages host serves applica
 
 - [TODO](TODO.md)
 - [Architecture](docs/architecture.md)
+- [Interface references](docs/interface-references.md)
 - [Hardware qualification matrix and checklist](docs/hardware-qualification.md)
 - [Adding an adapter](docs/adapters.md)
 
