@@ -180,7 +180,8 @@ export function DeviceDialog({
       Number(new URL(a.address).hostname.split('.').at(-1)) -
       Number(new URL(b.address).hostname.split('.').at(-1)),
   )
-  const visible = sorted.filter((r) => r.status !== 'unreachable')
+  const visible = sorted.filter((r) => r.status === 'found')
+  const unidentified = sorted.filter((r) => r.status !== 'found' && r.status !== 'unreachable')
   const unreachable = sorted.filter((r) => r.status === 'unreachable')
   const currentOrigin = (() => {
     try {
@@ -405,7 +406,8 @@ export function DeviceDialog({
           Read-only scan · one range approval · network and broadcast addresses are skipped.
         </p>
         <p role="status">
-          {scanState} · {visible.length} responded · {unreachable.length} unreachable
+          {scanState} · {visible.length} AJA devices · {unidentified.length} not identified as AJA ·{' '}
+          {unreachable.length} unreachable
         </p>
         {scanError && (
           <p className="text-error" role="alert">

@@ -27,7 +27,9 @@ export async function discoverDevice(
     }
     result.title = info.title
     result.model = info.model
-    if (info.aja || info.model)
+    // A model-like token (for example a server named FS1) is not vendor identification.
+    // Require AJA branding together with a model, or explicit AJA branding in the title.
+    if (info.aja === true && (info.model || /\bAJA\b/i.test(info.title ?? '')))
       return finish({
         ...result,
         status: 'found',

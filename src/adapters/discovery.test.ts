@@ -2,6 +2,27 @@ import { afterEach, expect, it, vi } from 'vitest'
 import { discoverDevice, scanDevices, type DiscoveryResult } from './discovery'
 import { ipv4Range } from './aja'
 afterEach(() => vi.unstubAllGlobals())
+it.each([
+  '<html><title>Network switch</title><body>Management interface</body></html>',
+  '<html><title>FS1 file server</title><body>Storage administration</body></html>',
+  '<html><title>Equipment inventory</title><body>AJA is one of our suppliers</body></html>',
+])('does not classify unrelated web pages as AJA devices: %s', async (html) => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response(html)),
+  )
+  const result = await discoverDevice('10.0.0.2', new AbortController().signal)
+  expect(result.status).toBe('unrecognized')
+})
+it('recognizes an explicitly branded AJA web interface without inventing its model', async () => {
+  vi.stubGlobal(
+    'fetch',
+    vi.fn(async () => new Response('<title>AJA Video Systems · Device interface</title>')),
+  )
+  const result = await discoverDevice('10.0.0.2', new AbortController().signal)
+  expect(result).toMatchObject({ status: 'found' })
+  expect(result.model).toBeUndefined()
+})
 it('keeps a legacy FS1 visible even when no descriptor endpoint is available', async () => {
   const fetcher = vi.fn(
     async (_url: string) =>
