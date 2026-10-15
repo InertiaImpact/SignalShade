@@ -6,6 +6,7 @@ import { recorderModels, type RecorderConfig, type RecorderModel } from '../reco
 import { demoRecorder } from '../recorders/demo'
 import { downloadJson } from '../core/persistence'
 import { Modal } from './Modal'
+import { ConnectHelp } from './ConnectHelp'
 
 export function RecorderDialog({
   configs,
@@ -57,6 +58,7 @@ export function RecorderDialog({
       close={close}
       wide
     >
+      <ConnectHelp />
       <div className="recorder-settings-list">
         {configs.map((config, index) => {
           const state = states[config.id]

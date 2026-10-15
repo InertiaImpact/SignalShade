@@ -1,4 +1,5 @@
 import { extractDescriptors, normalizeAddress } from '../adapters/aja'
+import { AjaTransport } from '../adapters/transport'
 import type {
   RecorderAdapter,
   RecorderConfig,
@@ -111,6 +112,7 @@ export function groupMedia(fields: RecorderMedia[]): RecorderMedia[] {
   return [...groups.values()]
 }
 export class AjaRecorderAdapter implements RecorderAdapter {
+  private transport = new AjaTransport()
   private address: string
   private controllers = new Set<AbortController>()
   private closed = false
@@ -150,7 +152,7 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       }
       let response: Response
       try {
-        response = await fetch(`${this.address}/${path}`, options)
+        response = await this.transport.fetch(this.address, path, options)
       } catch (error) {
         if (controller.signal.aborted)
           throw new Error(this.closed ? 'Connection closed' : `Recorder request timed out: ${path}`)

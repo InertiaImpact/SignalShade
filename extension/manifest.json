@@ -1,0 +1,19 @@
+{
+  "manifest_version": 3,
+  "name": "SignalShade Connect",
+  "version": "0.1.0",
+  "description": "Connect SignalShade to approved AJA devices on your local network.",
+  "minimum_chrome_version": "120",
+  "permissions": ["storage"],
+  "optional_host_permissions": ["http://*/*", "https://*/*"],
+  "background": { "service_worker": "worker.js", "type": "module" },
+  "content_scripts": [
+    {
+      "matches": ["https://inertiaimpact.github.io/SignalShade/*"],
+      "js": ["content.js"],
+      "run_at": "document_start",
+      "all_frames": false
+    }
+  ],
+  "action": { "default_popup": "status.html", "default_title": "SignalShade Connect" }
+}

@@ -4245,3 +4245,21 @@ button {
     display: none;
   }
 }
+/* Connection assistance stays inside device settings, outside the live desk. */
+.connect-help {
+  margin: 0 0 18px;
+  padding: 12px;
+  border: 1px solid #454545;
+  border-radius: 6px;
+}
+.connect-help summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.connect-help p,
+.connect-help li {
+  line-height: 1.5;
+}
+.connect-help a {
+  color: #ffce00;
+}

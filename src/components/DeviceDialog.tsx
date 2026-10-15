@@ -18,6 +18,7 @@ import { desk } from '../core/store'
 import { downloadJson } from '../core/persistence'
 import type { ProbeResult, Workspace } from '../core/types'
 import { Modal } from './Modal'
+import { ConnectHelp } from './ConnectHelp'
 
 export function DeviceDialog({
   workspace,
@@ -116,6 +117,7 @@ export function DeviceDialog({
       close={close}
       wide
     >
+      <ConnectHelp />
       <div className="modal-footer">
         <button className="button" onClick={recorders}>
           Manage recorders

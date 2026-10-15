@@ -1,3 +1,4 @@
+import { AjaTransport } from './transport'
 import type {
   Channel,
   DeviceAdapter,
@@ -165,6 +166,7 @@ function stringValue(input: unknown): string {
   return v && typeof v === 'object' && 'value' in v ? String(v.value) : ''
 }
 export class AjaAdapter implements DeviceAdapter {
+  private transport = new AjaTransport()
   readonly address: string
   private controllers = new Set<AbortController>()
   private disposed = false
@@ -192,7 +194,7 @@ export class AjaAdapter implements DeviceAdapter {
         targetAddressSpace: 'local',
       }
       if (this.authorization) options.headers = { Authorization: this.authorization }
-      const response = await fetch(`${this.address}/${path}`, options)
+      const response = await this.transport.fetch(this.address, path, options)
       if (!response.ok) throw new Error(`Device returned HTTP ${response.status}`)
       return await response.json()
     } finally {

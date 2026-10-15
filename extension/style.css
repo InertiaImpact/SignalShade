@@ -1,0 +1,38 @@
+:root {
+  color-scheme: dark;
+  font: 14px system-ui;
+  background: #171819;
+  color: #eee;
+}
+body {
+  min-width: 300px;
+  padding: 20px;
+  margin: 0;
+}
+h1 {
+  font-size: 20px;
+  color: #ffce00;
+}
+p {
+  line-height: 1.5;
+  color: #bfc1c6;
+}
+strong {
+  display: block;
+  font-size: 18px;
+}
+button {
+  background: #ffce00;
+  color: #111;
+  border: 0;
+  border-radius: 5px;
+  padding: 10px 16px;
+  font-weight: 600;
+  cursor: pointer;
+}
+button:disabled {
+  opacity: 0.5;
+}
+a {
+  color: #ffce00;
+}

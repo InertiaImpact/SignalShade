@@ -8,6 +8,8 @@ A browser-based color control desk for AJA FS processors. Open the dashboard, al
 
 Open the dashboard: **https://inertiaimpact.github.io/SignalShade/**
 
+For devices blocked by browser CORS, use the optional **[SignalShade Connect extension](extension/README.md)**. Download its ZIP from [GitHub Releases](https://github.com/InertiaImpact/SignalShade/releases/latest), unzip, and load it through Chrome's Developer mode. Device settings stay in SignalShade. This preview requires manual installation and updates; Chrome Web Store publication and hardware qualification are pending.
+
 ## What works
 
 - 32-channel workspace with processor-bound labels, search, custom ordering, compact cards, and favorite controls.
