@@ -144,14 +144,16 @@ export function mapDescriptor(raw: Raw): ParameterDescriptor | undefined {
 }
 export function readValue(input: unknown, paramId: string): number {
   const object = Array.isArray(input)
-    ? (input.find((x) => x && typeof x === 'object' && [x.paramid, x.param_id].includes(paramId)) ??
-      (input.length === 1 ? input[0] : undefined))
+    ? (input.find(
+        (x) => x && typeof x === 'object' && [x.name, x.paramid, x.param_id].includes(paramId),
+      ) ?? (input.length === 1 ? input[0] : undefined))
     : input
   if (!object || typeof object !== 'object') throw new Error(`Unrecognized response for ${paramId}`)
   const o = object as Raw
   if (
-    (typeof o.paramid === 'string' && o.paramid !== paramId) ||
-    (typeof o.param_id === 'string' && o.param_id !== paramId)
+    o.name !== paramId &&
+    ((typeof o.paramid === 'string' && o.paramid !== paramId) ||
+      (typeof o.param_id === 'string' && o.param_id !== paramId))
   )
     throw new Error('Device returned a different parameter')
   const value = toNumber(o.value)

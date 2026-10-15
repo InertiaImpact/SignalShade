@@ -2,6 +2,9 @@ import { AjaAdapter, message } from '../adapters/aja'
 import { commonValue, isCompatible, quantize } from './color'
 import { demoWorkspace, emptyWorkspace } from './demo'
 import { loadWorkspace, saveWorkspace, validateWorkspace } from './persistence'
+import { RecorderStore } from '../recorders/store'
+import type { RecorderConfig } from '../recorders/types'
+import { isVisibleControl } from './layout'
 import type {
   Activity,
   Change,
@@ -22,6 +25,7 @@ interface Snapshot {
   busy: number
   lockedTab: boolean
   ready: boolean
+  controlsLocked: boolean
   storageError?: string
 }
 interface Job {
@@ -42,6 +46,7 @@ export class DeskStore {
     busy: 0,
     lockedTab: false,
     ready: false,
+    controlsLocked: false,
   }
   private listeners = new Set<() => void>()
   private adapters = new Map<string, DeviceAdapter>()
@@ -51,6 +56,20 @@ export class DeskStore {
   private saveTimer?: ReturnType<typeof setTimeout>
   private releaseLock?: () => void
   private generation = 0
+  readonly recorders = new RecorderStore(
+    () => this.state.ready && !this.state.lockedTab && !this.state.controlsLocked,
+    (text, type) => this.log(text, type),
+  )
+  setControlsLocked(controlsLocked: boolean) {
+    this.emit({ controlsLocked })
+  }
+  saveRecorders(recorders: RecorderConfig[]) {
+    if (!this.canEdit()) return
+    if (this.recorders.pending) throw new Error('Wait for the recorder command')
+    const next = validateWorkspace({ ...this.state.workspace, recorders })
+    this.workspace(next)
+    this.recorders.sync(next.recorders ?? [])
+  }
   getSnapshot = () => this.state
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
@@ -109,9 +128,12 @@ export class DeskStore {
       })
     }
     this.emit({ ready: true })
+    if (!this.state.lockedTab) this.recorders.sync(this.state.workspace.recorders ?? [])
     this.log('Desk ready. Demo devices never send network commands.')
   }
   dispose() {
+    this.generation++
+    this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
     this.releaseLock?.()
     clearTimeout(this.saveTimer)
@@ -134,9 +156,11 @@ export class DeskStore {
     }
   }
   private canEdit() {
-    if (!this.state.ready || this.state.lockedTab) {
+    if (!this.state.ready || this.state.lockedTab || this.state.controlsLocked) {
       this.log(
-        'This tab is read-only. Close the other SignalShade control tab and reload.',
+        this.state.controlsLocked
+          ? 'Desk controls are locked.'
+          : 'This tab is read-only. Close the other SignalShade control tab and reload.',
         'error',
       )
       return false
@@ -144,6 +168,8 @@ export class DeskStore {
     return true
   }
   private available(channel: Channel) {
+    if (this.state.controlsLocked || this.state.lockedTab || !this.state.ready)
+      throw new Error('Desk controls are locked')
     const device = this.state.workspace.devices.find((d) => d.id === channel.deviceId)
     if (!device || device.status !== 'online' || !device.armed || channel.locked)
       throw new Error(
@@ -183,10 +209,13 @@ export class DeskStore {
     if (!this.canEdit()) return
     if (!gang.name.trim() || !gang.members.length)
       throw new Error('Give the gang a name and at least one channel')
-    const groups = this.state.workspace.gangs.filter((g) => g.id !== gang.id)
+    const saved = { ...gang, name: gang.name.trim(), members: [...new Set(gang.members)] }
+    const groups = this.state.workspace.gangs
     this.workspace({
       ...this.state.workspace,
-      gangs: [...groups, { ...gang, name: gang.name.trim(), members: [...new Set(gang.members)] }],
+      gangs: groups.some((g) => g.id === gang.id)
+        ? groups.map((g) => (g.id === gang.id ? saved : g))
+        : [...groups, saved],
     })
     this.log(`Saved gang “${gang.name}”`)
   }
@@ -206,18 +235,21 @@ export class DeskStore {
   }
   async replaceWorkspace(input: unknown, kind: 'import' | 'demo' | 'empty') {
     if (!this.canEdit()) return
-    if (this.state.busy) throw new Error('Wait for pending commands before changing workspaces')
+    if (this.state.busy || this.recorders.pending)
+      throw new Error('Wait for pending commands before changing workspaces')
     const next = this.sanitize(
       validateWorkspace(
         kind === 'demo' ? demoWorkspace() : kind === 'empty' ? emptyWorkspace() : input,
       ),
     )
     this.generation++
+    this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
     this.adapters.clear()
     this.historyIds.clear()
     this.emit({ history: [] })
     this.workspace(next)
+    this.recorders.sync(next.recorders ?? [])
     this.log('Workspace loaded. Hardware writes are locked until reconnected.')
   }
   connect(adapter: AjaAdapter, result: ProbeResult, label: string) {
@@ -331,6 +363,7 @@ export class DeskStore {
       if (!channel) continue
       for (const d of channel.descriptors)
         if (
+          isVisibleControl(d) &&
           (!section || d.section === section) &&
           (!mask?.length || mask.includes(d.id)) &&
           (includeEnables || !['procEnabled', 'rgbEnabled'].includes(d.id))
@@ -579,7 +612,7 @@ export class DeskStore {
       for (const [parameter, value] of Object.entries(source.values)) {
         const original = source.descriptors.find((d) => d.id === parameter)
         if (!original) throw new Error(`Preset metadata missing for ${parameter}`)
-        if (!enabledSections.includes(original.section)) continue
+        if (!isVisibleControl(original) || !enabledSections.includes(original.section)) continue
         const d = target.descriptors.find((d) => d.id === parameter)
         if (!d) throw new Error(`Unsupported parameter ${parameter} on ${target.label}`)
         if (
@@ -608,7 +641,9 @@ export class DeskStore {
   }
   async refresh() {
     if (this.state.lockedTab) return
+    const generation = this.generation
     for (const device of this.state.workspace.devices) {
+      if (generation !== this.generation) return
       if (
         device.simulated ||
         !this.adapters.has(device.id) ||
@@ -617,16 +652,19 @@ export class DeskStore {
       )
         continue
       this.running.add(device.id)
+      const adapter = this.adapters.get(device.id)!
       try {
         for (const channel of this.state.workspace.channels.filter(
           (c) => c.deviceId === device.id,
         )) {
-          const state = await this.adapters.get(device.id)!.read(channel)
+          const state = await adapter.read(channel)
+          if (generation !== this.generation || this.adapters.get(device.id) !== adapter) return
           if (state.context !== channel.context)
             this.log(`${channel.label}: source context changed; values refreshed`)
           this.patchChannel(channel.id, { ...state, updatedAt: Date.now(), issue: undefined })
         }
       } catch (e) {
+        if (generation !== this.generation || this.adapters.get(device.id) !== adapter) return
         this.workspace({
           ...this.state.workspace,
           devices: this.state.workspace.devices.map((d) =>

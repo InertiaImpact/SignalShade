@@ -23,10 +23,12 @@ export function DeviceDialog({
   workspace,
   close,
   readOnly,
+  recorders,
 }: {
   workspace: Workspace
   close: () => void
   readOnly: boolean
+  recorders: () => void
 }) {
   const [address, setAddress] = useState(''),
     [label, setLabel] = useState(''),
@@ -114,6 +116,11 @@ export function DeviceDialog({
       close={close}
       wide
     >
+      <div className="modal-footer">
+        <button className="button" onClick={recorders}>
+          Manage recorders
+        </button>
+      </div>
       <div className="device-dialog-grid">
         <div>
           <div className="section-heading">

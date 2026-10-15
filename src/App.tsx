@@ -41,6 +41,8 @@ import { ParameterControl } from './components/ParameterControl'
 import { GangControls } from './components/GangControls'
 import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
+import { RecorderDialog } from './components/RecorderDialog'
+import { RecorderStrip } from './components/RecorderStrip'
 import {
   ConfirmWorkspace,
   GangDialog,
@@ -64,7 +66,8 @@ import { RgbTabs } from './components/RgbTabs'
 import { toggleSelection } from './core/selection'
 import type { CSSProperties, MouseEvent } from 'react'
 
-type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
+type Dialog =
+  'devices' | 'recorders' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
 let initialized = false
 export default function App() {
   const snapshot = useSyncExternalStore(desk.subscribe, desk.getSnapshot),
@@ -86,14 +89,15 @@ export default function App() {
   const [activity, setActivity] = useState(false),
     [editLayout, setEditLayout] = useState(false),
     [menu, setMenu] = useState(false),
-    [globalLock, setGlobalLock] = useState(false),
     [pendingWorkspace, setPendingWorkspace] = useState<{
       kind: 'demo' | 'empty' | 'import'
       data?: unknown
     }>(),
     [sidebar, setSidebar] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
+  const globalLock = snapshot.controlsLocked
   const update = useSyncExternalStore(subscribeUpdates, getWaitingUpdate)
+  const recorderBusy = useSyncExternalStore(desk.recorders.subscribe, () => desk.recorders.pending)
   const close = () => setDialog(null)
   const group = w.gangs.find((g) => g.id === selected)
   const selectedChannel = w.channels.find((c) => c.id === selected)
@@ -237,75 +241,87 @@ export default function App() {
     w.devices.find((d) => d.id === view)?.label ??
     (view === 'favorites' ? 'Pinned controls' : 'All channels')
   return (
-    <div className={`app ${w.density === 'compact' ? 'compact' : ''}`}>
-      <header className="topbar">
-        <div className="brand">
-          <span className="brand-mark">
-            <AudioLines size={25} strokeWidth={1.8} />
-          </span>
-          <span>
-            Signal<span className="brand-light">Shade</span>
-          </span>
-        </div>
-        <button
-          className="workspace-switch"
-          title="Workspace settings · saved locally"
-          onClick={() => !readOnly && setDialog('workspace')}
-        >
-          <span className="workspace-dot" />
-          <span>{w.name}</span>
-          <ChevronDown size={15} />
-        </button>
-        <div className="topbar-right">
-          <button
-            className="connection-summary"
-            aria-label="Manage connections"
-            title={`${online} of ${w.devices.length} devices connected · ${simulated} simulated`}
-            onClick={() => setDialog('devices')}
-          >
-            <span className={`status-dot ${online < w.devices.length ? 'offline' : ''}`} />
-            <span>
-              {online}/{w.devices.length} <span className="connection-label">devices</span>
+    <div
+      className={`app ${w.density === 'compact' ? 'compact' : ''} ${w.recorders?.length ? 'has-recorders' : ''}`}
+    >
+      <div className="header-area">
+        <header className="topbar">
+          <div className="brand">
+            <span className="brand-mark">
+              <AudioLines size={25} strokeWidth={1.8} />
             </span>
-            <ChevronDown size={13} />
-          </button>
+            <span>
+              Signal<span className="brand-light">Shade</span>
+            </span>
+          </div>
           <button
-            className="icon-button header-refresh"
-            aria-label="Refresh device values"
-            title="Refresh device values"
-            disabled={readOnly || snapshot.busy > 0}
-            onClick={() => void desk.refresh()}
+            className="workspace-switch"
+            title="Workspace settings · saved locally"
+            onClick={() => !readOnly && setDialog('workspace')}
           >
-            <RefreshCw size={15} className={snapshot.busy ? 'spin' : ''} />
+            <span className="workspace-dot" />
+            <span>{w.name}</span>
+            <ChevronDown size={15} />
           </button>
-          <span className={`mode-pill ${simulated ? 'demo' : ''}`}>
-            <span />
-            {simulated === w.devices.length && simulated
-              ? 'DEMO'
-              : simulated
-                ? 'MIXED'
-                : w.devices.length
-                  ? 'LIVE'
-                  : 'NO DEVICES'}
-          </span>
-          <button
-            className={`icon-button ${globalLock ? 'text-warning' : ''}`}
-            aria-label={globalLock ? 'Unlock desk' : 'Lock desk'}
-            title={globalLock ? 'Unlock desk controls' : 'Lock desk controls'}
-            onClick={() => setGlobalLock(!globalLock)}
-          >
-            {globalLock ? <Lock size={17} /> : <Unlock size={17} />}
-          </button>
-          <span className="topbar-divider" />
-          <button
-            className="avatar"
-            aria-label="Help and keyboard shortcuts"
-            onClick={() => setDialog('help')}
-          >
-            <CircleHelp size={17} />
-          </button>
-        </div>
-      </header>
+          <div className="topbar-right">
+            <button className="button header-recorders" onClick={() => setDialog('recorders')}>
+              Recorders{w.recorders?.length ? ` · ${w.recorders.length}` : ''}
+            </button>
+            <button
+              className="connection-summary"
+              aria-label="Manage connections"
+              title={`${online} of ${w.devices.length} devices connected · ${simulated} simulated`}
+              onClick={() => setDialog('devices')}
+            >
+              <span className={`status-dot ${online < w.devices.length ? 'offline' : ''}`} />
+              <span>
+                {online}/{w.devices.length} <span className="connection-label">devices</span>
+              </span>
+              <ChevronDown size={13} />
+            </button>
+            <button
+              className="icon-button header-refresh"
+              aria-label="Refresh device values"
+              title="Refresh device values"
+              disabled={readOnly || snapshot.busy > 0}
+              onClick={() => void desk.refresh()}
+            >
+              <RefreshCw size={15} className={snapshot.busy ? 'spin' : ''} />
+            </button>
+            <span className={`mode-pill ${simulated ? 'demo' : ''}`}>
+              <span />
+              {simulated === w.devices.length && simulated
+                ? 'DEMO'
+                : simulated
+                  ? 'MIXED'
+                  : w.devices.length
+                    ? 'LIVE'
+                    : 'NO DEVICES'}
+            </span>
+            <button
+              className={`icon-button ${globalLock ? 'text-warning' : ''}`}
+              aria-label={globalLock ? 'Unlock desk' : 'Lock desk'}
+              title={globalLock ? 'Unlock desk controls' : 'Lock desk controls'}
+              onClick={() => desk.setControlsLocked(!globalLock)}
+            >
+              {globalLock ? <Lock size={17} /> : <Unlock size={17} />}
+            </button>
+            <span className="topbar-divider" />
+            <button
+              className="avatar"
+              aria-label="Help and keyboard shortcuts"
+              onClick={() => setDialog('help')}
+            >
+              <CircleHelp size={17} />
+            </button>
+          </div>
+        </header>
+        <RecorderStrip
+          configs={w.recorders ?? []}
+          readOnly={readOnly}
+          manage={() => setDialog('recorders')}
+        />
+      </div>
       <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top">
           <span className="eyebrow">WORKSPACE</span>
@@ -448,7 +464,7 @@ export default function App() {
             <span className="grow">A new SignalShade version is ready.</span>
             <button
               className="button small"
-              disabled={snapshot.busy > 0}
+              disabled={snapshot.busy > 0 || recorderBusy}
               onClick={() => {
                 navigator.serviceWorker.addEventListener(
                   'controllerchange',
@@ -907,7 +923,17 @@ export default function App() {
           </div>
         </section>
       )}
-      {dialog === 'devices' && <DeviceDialog workspace={w} close={close} readOnly={readOnly} />}
+      {dialog === 'devices' && (
+        <DeviceDialog
+          workspace={w}
+          close={close}
+          readOnly={readOnly}
+          recorders={() => setDialog('recorders')}
+        />
+      )}
+      {dialog === 'recorders' && (
+        <RecorderDialog configs={w.recorders ?? []} close={close} readOnly={readOnly} />
+      )}
       {dialog === 'gang' && (
         <GangDialog workspace={w} gang={editGang} initialMembers={targetIds} close={close} />
       )}

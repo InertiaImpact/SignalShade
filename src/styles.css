@@ -4038,3 +4038,210 @@ button {
   gap: 4px;
   color: var(--text-muted);
 }
+
+/* Recorder monitoring uses one compact row; details stay out of the shading pane. */
+.header-area {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  min-width: 0;
+  background: var(--surface-base);
+}
+.header-area .topbar {
+  height: 64px;
+}
+.app.has-recorders {
+  grid-template-rows: 154px minmax(0, 1fr) 35px;
+}
+.recorder-strip {
+  height: 90px;
+  display: flex;
+  border-bottom: 1px solid var(--border-subtle);
+  min-width: 0;
+  background: var(--surface-base);
+}
+.recorder-overview {
+  flex: 0 0 112px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 6px;
+  text-align: left;
+  padding: 12px;
+  border-right: 1px solid var(--border-subtle);
+}
+.recorder-overview strong {
+  font: 12px var(--mono);
+}
+.recorder-overview small {
+  color: var(--text-muted);
+}
+.recorder-scroll {
+  display: flex;
+  overflow-x: auto;
+  min-width: 0;
+  flex: 1;
+}
+.recorder-capsule {
+  flex: 0 0 430px;
+  min-width: 0;
+  padding: 12px 14px;
+  border-right: 1px solid var(--border-subtle);
+}
+.recorder-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.recorder-line > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 40px;
+}
+.recorder-state {
+  font-size: 11px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+.recorder-state.recording {
+  color: var(--danger, #f08080);
+  font-weight: 700;
+}
+.recorder-state.recording::before {
+  content: '● ';
+}
+.recorder-duration {
+  font: 12px var(--mono);
+  white-space: nowrap;
+}
+.recorder-demo {
+  color: var(--accent);
+  font-size: 9px;
+}
+.button.recorder-transport {
+  font-size: 12px;
+  padding: 6px 8px;
+  min-height: 32px;
+  white-space: nowrap;
+}
+.recorder-transport.danger {
+  border-color: var(--danger, #f08080);
+  color: var(--danger, #f08080);
+}
+.recorder-media-line {
+  display: flex;
+  width: 100%;
+  gap: 10px;
+  justify-content: space-between;
+  text-align: left;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 7px;
+  padding: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.recorder-media-line > span {
+  flex-shrink: 0;
+  color: var(--text-secondary);
+}
+.recorder-media-details {
+  display: grid;
+  gap: 14px;
+  margin-top: 20px;
+}
+.recorder-media-details section {
+  border-top: 1px solid var(--border-subtle);
+  padding-top: 10px;
+}
+.recorder-media-details section > span {
+  float: right;
+  color: var(--text-muted);
+}
+.recorder-settings-list {
+  display: grid;
+  gap: 16px;
+}
+.recorder-settings-item {
+  border-bottom: 1px solid var(--border-subtle);
+  padding-bottom: 16px;
+}
+.recorder-settings-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.recorder-settings-actions > span {
+  flex: 1;
+  color: var(--text-muted);
+  overflow-wrap: anywhere;
+}
+.recorder-settings-actions .check-row {
+  padding: 0;
+}
+.recorder-add {
+  border: 0;
+  padding: 0;
+  margin: 20px 0 0;
+  min-width: 0;
+}
+.recorder-add legend {
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+.recorder-settings-item input[type='number'] {
+  width: 115px;
+}
+@media (max-width: 1100px) {
+  .app .workspace-switch {
+    max-width: 150px;
+  }
+  .header-recorders {
+    font-size: 11px;
+    padding: 6px;
+  }
+}
+@media (max-width: 800px) {
+  .app.has-recorders .sidebar {
+    top: 154px;
+  }
+}
+@media (max-width: 560px) {
+  .app .header-area {
+    position: fixed;
+    inset: 0 0 auto;
+    z-index: 10;
+  }
+  .app .header-area .topbar {
+    position: static;
+  }
+  .app.has-recorders {
+    padding-top: 154px;
+  }
+  .app.has-recorders .channel-toolbar {
+    top: 154px;
+  }
+  .app .topbar .mode-pill {
+    display: none;
+  }
+  .recorder-overview {
+    flex-basis: 78px;
+    padding: 8px;
+  }
+  .recorder-overview strong {
+    font-size: 10px;
+  }
+  .recorder-overview small {
+    font-size: 10px;
+  }
+  .recorder-capsule {
+    flex-basis: 350px;
+    padding-inline: 10px;
+  }
+  .recorder-demo {
+    display: none;
+  }
+}

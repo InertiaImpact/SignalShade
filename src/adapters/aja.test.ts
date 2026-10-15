@@ -56,6 +56,9 @@ describe('AJA browser transport', () => {
   it('extracts nested descriptors and accepts only explicit readable numeric responses', () => {
     expect(extractDescriptors({ parameters: { colors: [gain] } })).toEqual([gain])
     expect(readValue([{ paramid: gain.param_id, value: '1000' }], gain.param_id)).toBe(1000)
+    expect(
+      readValue({ paramid: '2097225226', name: gain.param_id, value: '1000' }, gain.param_id),
+    ).toBe(1000)
     expect(() => readValue({ paramid: 'another', value: 1 }, gain.param_id)).toThrow()
     expect(() => readValue({ value: '' }, gain.param_id)).toThrow()
     expect(() => readValue({ value: 'NaN' }, gain.param_id)).toThrow()

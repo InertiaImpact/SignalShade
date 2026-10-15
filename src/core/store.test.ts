@@ -57,6 +57,54 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('enforces the desk lock in the store and preserves saved gang order', async () => {
+    store.setControlsLocked(true)
+    store.adjust(['demo-ch-1'], 'gain', 1.4, 'absolute')
+    await settle()
+    expect(value('demo-ch-1')).toBe(1.02)
+    store.setControlsLocked(false)
+    const before = store.getSnapshot().workspace.gangs.map((g) => g.id)
+    store.saveGang({ ...store.getSnapshot().workspace.gangs[0], name: 'Renamed' })
+    expect(store.getSnapshot().workspace.gangs.map((g) => g.id)).toEqual(before)
+  })
+  it('checks a lock engaged during hardware preflight before sending a write', async () => {
+    const { channel, adapter } = hardwareFixture()
+    vi.mocked(adapter.read).mockImplementationOnce(async () => {
+      store.setControlsLocked(true)
+      return { values: channel.values, context: channel.context }
+    })
+    store.adjust([channel.id], 'gain', 1.2, 'absolute')
+    await settle()
+    expect(adapter.write).not.toHaveBeenCalled()
+  })
+  it('never resets hidden legalizer settings through the command engine', async () => {
+    const before = store.getSnapshot().workspace.channels[0].values['legalizer.white']
+    store.reset(['demo-ch-1'], undefined, true)
+    await settle()
+    expect(
+      store
+        .getSnapshot()
+        .history.flatMap((h) => h.changes)
+        .some((c) => c.parameter.startsWith('legalizer.')),
+    ).toBe(false)
+    expect(store.getSnapshot().workspace.channels[0].values['legalizer.white']).toBe(before)
+  })
+  it('discards stale refresh results when the workspace is replaced', async () => {
+    const { adapter } = hardwareFixture()
+    let resolve!: (s: { values: {}; context: string }) => void
+    vi.mocked(adapter.read).mockImplementationOnce(
+      () =>
+        new Promise((r) => {
+          resolve = r
+        }),
+    )
+    const refreshing = store.refresh()
+    await store.replaceWorkspace(undefined, 'empty')
+    resolve({ values: {}, context: 'obsolete' })
+    await refreshing
+    expect(store.getSnapshot().workspace.channels).toEqual([])
+    expect(store.getSnapshot().workspace.devices).toEqual([])
+  })
   it('toggles gang card visibility without reordering groups or changing signal values', () => {
     const before = store.getSnapshot().workspace
     const gang = before.gangs[1]

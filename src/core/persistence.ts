@@ -1,6 +1,8 @@
 import { z } from 'zod'
 import type { Workspace } from './types'
 import { visibleSections } from './layout'
+import { recorderModels } from '../recorders/types'
+import { normalizeAddress } from '../adapters/aja'
 
 const finite = z.number().finite()
 const paramId = z
@@ -34,6 +36,29 @@ const descriptor = z
     'Invalid parameter range',
   )
 const schema = z.object({
+  recorders: z
+    .array(
+      z
+        .object({
+          id: z.string().min(1).max(200),
+          label: z.string().trim().min(1).max(100),
+          address: z.string().max(250),
+          model: z.enum(recorderModels),
+          simulated: z.boolean(),
+          warningMinutes: z.number().finite().min(0).max(1440),
+        })
+        .refine((c) => {
+          if (c.simulated) return c.address === ''
+          try {
+            normalizeAddress(c.address)
+            return true
+          } catch {
+            return false
+          }
+        }, 'Invalid recorder address'),
+    )
+    .max(16)
+    .optional(),
   version: z.literal(1),
   name: z.string().min(1).max(100),
   devices: z
@@ -114,6 +139,13 @@ export function validateWorkspace(input: unknown): Workspace {
   )
   const deviceIds = new Set(parsed.devices.map((d) => d.id))
   const channelIds = new Set(parsed.channels.map((c) => c.id))
+  const recorders = parsed.recorders ?? []
+  if (
+    new Set(recorders.map((r) => r.id)).size !== recorders.length ||
+    new Set(recorders.filter((r) => !r.simulated).map((r) => normalizeAddress(r.address))).size !==
+      recorders.filter((r) => !r.simulated).length
+  )
+    throw new Error('Duplicate recorder IDs or addresses')
   if (
     deviceIds.size !== parsed.devices.length ||
     channelIds.size !== parsed.channels.length ||

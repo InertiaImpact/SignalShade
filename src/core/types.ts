@@ -1,3 +1,4 @@
+import type { RecorderConfig } from '../recorders/types'
 export type Section = 'Proc amp' | 'RGB correction' | 'Legalizer'
 export type ParameterId =
   | 'gain'
@@ -81,6 +82,7 @@ export interface ColorPreset {
   }[]
 }
 export interface Workspace {
+  recorders?: RecorderConfig[]
   version: 1
   name: string
   devices: Device[]
