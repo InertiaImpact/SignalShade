@@ -93,21 +93,36 @@ function notify(origin: string) {
 
 let pendingApproval: { origin: string; promise: Promise<void> } | undefined
 /** Called only by explicit Connect actions. Polls never open approval UI. */
-export async function ensureDeviceAccess(origin: string): Promise<void> {
+export async function ensureDeviceAccess(
+  origin: string,
+  scan?: { start: string; end: string },
+): Promise<void> {
   const version = await detectConnect()
-  if (!version) return
-  if (version === '0.1.0')
+  if (!version) {
+    if (scan)
+      throw new Error('Install SignalShade Connect to scan the network with one range approval.')
+    return
+  }
+  if (scan && Number(version.split('.')[1]) < 3)
     throw new Error(
-      'Update SignalShade Connect to v0.2.0 or newer, reload the extension, then reload SignalShade.',
+      'Update SignalShade Connect to v0.3.0 or newer to scan a range, then reload the extension and SignalShade.',
     )
-  const status = (await bridgeMessage('status', { origin })) as { allowed: boolean }
+  if (Number(version.split('.')[0]) === 0 && Number(version.split('.')[1]) < 3)
+    throw new Error(
+      'Update SignalShade Connect to v0.3.0 or newer, reload the extension, then reload SignalShade.',
+    )
+  const payload = scan ?? { origin }
+  const statusType = scan ? 'scan-status' : 'status'
+  const status = (await bridgeMessage(statusType, payload)) as { allowed: boolean }
   if (status.allowed) return
   if (pendingApproval) {
     if (pendingApproval.origin === origin) return pendingApproval.promise
     throw new Error('Finish the current device approval first')
   }
   const promise = (async () => {
-    const reply = (await bridgeMessage('permission', { origin })) as { approvalUrl?: string }
+    const reply = (await bridgeMessage(scan ? 'scan-permission' : 'permission', payload)) as {
+      approvalUrl?: string
+    }
     if (!reply.approvalUrl)
       throw new Error(
         'Update SignalShade Connect to v0.2.0 or newer, reload it, and reload SignalShade.',
@@ -147,7 +162,7 @@ export async function ensureDeviceAccess(origin: string): Promise<void> {
         }),
       )
     })
-    const verified = (await bridgeMessage('status', { origin })) as { allowed: boolean }
+    const verified = (await bridgeMessage(statusType, payload)) as { allowed: boolean }
     if (!verified.allowed) throw new Error('Device permission was not saved')
   })()
   pendingApproval = { origin, promise }
@@ -179,7 +194,7 @@ export class AjaTransport {
                 : undefined,
           },
           options.signal ?? undefined,
-          3000,
+          /^(desc.json|descriptors\?)/.test(path) ? 20000 : 3000,
         )
         return new Response(JSON.stringify(data), {
           status: 200,
@@ -191,7 +206,26 @@ export class AjaTransport {
       }
     }
     try {
-      return await fetch(`${origin}/${path}`, { ...options, redirect: 'error' })
+      const response = await fetch(`${origin}/${path === 'device-info' ? '' : path}`, {
+        ...options,
+        redirect: 'error',
+      })
+      if (path !== 'device-info' || !response.ok) return response
+      const text = (await response.text()).slice(0, 4 * 1024 * 1024)
+      return new Response(
+        JSON.stringify({
+          title: (text.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '')
+            .replace(/<[^>]+>/g, '')
+            .replace(/\s+/g, ' ')
+            .trim()
+            .slice(0, 180),
+          model: text.match(
+            /\bFS[- ]?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
+          )?.[0],
+          aja: /\bAJA\b/i.test(text),
+          status: response.status,
+        }),
+      )
     } catch (error) {
       if (error instanceof TypeError) notify(origin)
       throw error

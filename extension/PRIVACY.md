@@ -6,4 +6,6 @@ The extension processes device addresses, descriptors, recording/media status, s
 
 Approved origins are stored locally in Chrome extension storage, not synchronized. Temporary approval and command bookkeeping are held in extension session storage. No analytics, telemetry, advertising, or browsing-history collection is included. The extension's content relay runs only on the production SignalShade path.
 
+When you approve a scan, Chrome is asked for the individual HTTP hosts in the exact requested private /24 range (up to 254). The extension limits those scan reads to 30 minutes in the requesting tab and blocks writes unless you separately add/approve that device. Chrome's underlying host permissions can remain until you revoke them in extension settings. Scan reads process web-page identity; the page HTML is not sent to the dashboard, only a bounded title/model summary. Reports and scan results stay in the dashboard unless you choose to export them.
+
 Revoke access in Chrome's extension permissions or uninstall the extension to remove its stored data. Dashboard workspaces are stored separately by SignalShade. Questions and issues: https://github.com/InertiaImpact/SignalShade/issues (do not post passwords or unsanitized network captures).

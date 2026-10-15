@@ -1,6 +1,8 @@
 SignalShade Connect preview connects SignalShade to approved local AJA devices without a separate bridge server.
 
-Version 0.2.0 moves approval into the dashboard and continues connection testing after approval. It also recovers descriptor metadata after a background-worker restart and permits the legacy AJA descriptor endpoint for older FS hardware. The dashboard resumes recorder monitoring on load and restores same-tab control intent only after fresh state verification. Ordinary HTTP/device errors no longer trigger connection-approval help.
+Version 0.3.0 fixes range discovery: approve the requested private /24 HTTP range once, scan it with read-only access, and add identified devices from persistent results. Older units can appear through web-page identification even if their descriptor API is absent. Scan permission cannot authorize writes; selecting Add verifies the API and grants the individual connection. Added devices, Add by IP, and Scan network are separate permanent sections, with DEMO badges and retained errors/reports. Approval automatically resumes Add/Scan. Descriptor downloads now allow slower responses.
+
+The reported legacy FS1 returned 404 for both descriptor endpoints. This release improves discovery and diagnostics; control for that exact firmware still needs qualification and may require a separate legacy adapter. Do not equate discovery with verified shading support.
 
 Download **signalshade-connect.zip**, extract it to a permanent folder, open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select the folder containing `manifest.json`. Reload SignalShade and connect the device, then approve access through its embedded SignalShade Connect panel. See the bundled README for details.
 

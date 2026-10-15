@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "SignalShade Connect",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Connect SignalShade to approved AJA devices on your local network.",
   "minimum_chrome_version": "120",
   "permissions": ["storage"],

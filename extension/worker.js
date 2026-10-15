@@ -1,4 +1,11 @@
-import { trustedPage, deviceOrigin, operation, descriptors, validateWrite } from './policy.js'
+import {
+  trustedPage,
+  deviceOrigin,
+  operation,
+  descriptors,
+  validateWrite,
+  scanOrigins,
+} from './policy.js'
 
 const queues = new Map()
 const discovered = new Map()
@@ -18,7 +25,13 @@ async function fetchJson(origin, path, m = {}) {
   const controller = new AbortController()
   const timer = setTimeout(
     () => controller.abort(),
-    Math.max(1, Math.min(6000, (m.deadline ?? Date.now() + 6000) - Date.now())),
+    Math.max(
+      1,
+      Math.min(
+        /^(desc.json|descriptors\?)/.test(path) ? 20000 : 6000,
+        (m.deadline ?? Date.now() + 6000) - Date.now(),
+      ),
+    ),
   )
   try {
     const login = path === 'authenticator/login'
@@ -33,7 +46,7 @@ async function fetchJson(origin, path, m = {}) {
     }
     if (login && (typeof m.password !== 'string' || m.password.length > 4096))
       throw new Error('Invalid password')
-    const response = await fetch(`${origin}/${path}`, {
+    const response = await fetch(`${origin}/${path === 'device-info' ? '' : path}`, {
       method: login ? 'POST' : 'GET',
       headers,
       body: login ? new URLSearchParams({ password_provided: m.password }) : undefined,
@@ -42,7 +55,7 @@ async function fetchJson(origin, path, m = {}) {
       cache: 'no-store',
       signal: controller.signal,
     })
-    if (!response.ok) throw new Error(`Device returned HTTP ${response.status}`)
+    if (!response.ok) throw new Error(`Device returned HTTP ${response.status} at ${path}`)
     const reader = response.body.getReader()
     let size = 0,
       result = ''
@@ -58,6 +71,17 @@ async function fetchJson(origin, path, m = {}) {
       result += decoder.decode(chunk.value, { stream: true })
     }
     result += decoder.decode()
+    if (path === 'device-info') {
+      const title = (result.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1] ?? '')
+        .replace(/<[^>]+>/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 180)
+      const model = result.match(
+        /\bFS[- ]?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
+      )?.[0]
+      return { title, model, aja: /\bAJA\b/i.test(result), status: response.status }
+    }
     return JSON.parse(result)
   } catch (e) {
     if (e.name === 'AbortError')
@@ -83,6 +107,26 @@ async function handle(m, sender) {
   )
     throw new Error('Untrusted bridge request')
   if (m.type === 'hello') return { version: chrome.runtime.getManifest().version, protocol: 1 }
+  if (m.type === 'scan-status' || m.type === 'scan-permission') {
+    const origins = scanOrigins(m.start, m.end)
+    const key = `scan:${sender.tab.id}`
+    const scan = (await chrome.storage.session.get(key))[key]
+    if (m.type === 'scan-status')
+      return {
+        allowed:
+          !!scan &&
+          scan.expires > Date.now() &&
+          origins.every((o) => scan.origins.includes(o)) &&
+          (await chrome.permissions.contains({ origins: origins.map((o) => `${o}/*`) })),
+      }
+    const token = crypto.randomUUID()
+    await chrome.storage.session.set({
+      [`approval:${sender.tab.id}`]: { origins, token, created: Date.now(), scan: true },
+    })
+    return {
+      approvalUrl: chrome.runtime.getURL(`approve.html?tab=${sender.tab.id}&token=${token}`),
+    }
+  }
   const origin = deviceOrigin(m.origin)
   const hostPattern = `${new URL(origin).protocol}//${new URL(origin).hostname}/*`
   if (m.type === 'permission') {
@@ -97,18 +141,34 @@ async function handle(m, sender) {
   const allowed =
     grants.includes(origin) && (await chrome.permissions.contains({ origins: [hostPattern] }))
   if (m.type === 'status') return { allowed }
-  if (!allowed)
+  const scan = (await chrome.storage.session.get(`scan:${sender.tab.id}`))[`scan:${sender.tab.id}`]
+  const scanAllowed =
+    !!scan &&
+    scan.expires > Date.now() &&
+    scan.origins.includes(origin) &&
+    (await chrome.permissions.contains({ origins: [hostPattern] }))
+  if (m.type === 'adopt') {
+    if (allowed) return { allowed: true }
+    const list = discovered.get(`${sender.tab.id}:${sender.documentId}:${origin}`)
+    if (!scanAllowed || !list?.length)
+      throw new Error('Device requires approval or descriptor identification before adding')
+    await chrome.storage.local.set({ origins: [...new Set([...grants, origin])] })
+    return { allowed: true }
+  }
+  if (!allowed && !scanAllowed)
     throw new Error('Device access required. Click Allow device in the SignalShade Connect panel.')
   if (m.type !== 'request') throw new Error('Unknown bridge operation')
   const op = operation(m.path)
-  if (inflight >= 16) throw new Error('Connect is busy; retry the read later')
+  if (!allowed && (op.kind === 'write' || op.kind === 'login'))
+    throw new Error('Scan access is read-only; approve or add the device first')
+  if (inflight >= 32) throw new Error('Connect is busy; retry the read later')
   inflight++
   try {
     return await serialized(origin, async () => {
       if (
         !Number.isFinite(m.deadline) ||
         m.deadline < Date.now() ||
-        m.deadline > Date.now() + 10000
+        m.deadline > Date.now() + (op.kind === 'descriptors' ? 22000 : 10000)
       )
         throw new Error('Request expired; reconnect and read device state')
       if (!(await chrome.permissions.contains({ origins: [hostPattern] })))
@@ -173,5 +233,6 @@ chrome.runtime.onMessage.addListener((m, sender, respond) => {
 })
 chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`approval:${tabId}`)
+  chrome.storage.session.remove(`scan:${tabId}`)
   for (const key of discovered.keys()) if (key.startsWith(`${tabId}:`)) discovered.delete(key)
 })

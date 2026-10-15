@@ -29,6 +29,7 @@ export function deviceOrigin(input) {
   return u.origin
 }
 export function operation(path) {
+  if (path === 'device-info') return { kind: 'identity' }
   if (path === 'desc.json') return { kind: 'descriptors' }
   if (path === 'descriptors?paramid=*') return { kind: 'descriptors' }
   if (path === 'authenticator/login') return { kind: 'login' }
@@ -60,6 +61,27 @@ export function operation(path) {
     if (Number.isFinite(value)) return { kind: 'write', id, value }
   }
   throw new Error('Unsupported AJA operation')
+}
+export function scanOrigins(start, end) {
+  const a = new URL(deviceOrigin(start)),
+    b = new URL(deviceOrigin(end))
+  const x = a.hostname.split('.'),
+    y = b.hostname.split('.')
+  if (
+    a.protocol !== 'http:' ||
+    b.protocol !== 'http:' ||
+    a.port ||
+    b.port ||
+    x.slice(0, 3).join('.') !== y.slice(0, 3).join('.')
+  )
+    throw new Error('Scan one private IPv4 /24 subnet over HTTP')
+  const first = Math.max(1, Number(x[3])),
+    last = Math.min(254, Number(y[3]))
+  if (first > last) throw new Error('Enter an ascending address range')
+  return Array.from(
+    { length: last - first + 1 },
+    (_, i) => `http://${x.slice(0, 3).join('.')}.${first + i}`,
+  )
 }
 export function descriptors(input, depth = 0) {
   if (depth > 12 || !input || typeof input !== 'object') return []

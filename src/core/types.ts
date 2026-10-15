@@ -118,6 +118,7 @@ export interface DeviceAdapter {
   dispose(): void
 }
 export interface ProbeResult {
+  webIdentity?: { title?: string; model?: string; status?: number }
   address: string
   model?: Model
   firmware?: string

@@ -23,12 +23,17 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 
 ## Current scope
 
+- v0.3.0 adds one approval for an explicit HTTP address range within one private /24 subnet. Chrome grants the listed hosts; the extension keeps scan access read-only and limited to the approved range for 30 minutes in that tab. Repeat scans in that window reuse approval. Network/broadcast addresses are excluded. Selecting Add identifies the device and saves its individual connection grant; it does not enable live writes.
+- Discovery reads the device web page, so older units missing the descriptor API remain visible. Full descriptor/source-context verification occurs when adding. A discovered FS1 is not a promise that its firmware's control API is supported. Failed adds retain details and reports, including the detected web identity when available.
+- The Devices dialog has persistent Added devices (including DEMO badges), Add by IP, and Scan network sections. Add/reconnect actions automatically continue after approval; scan results remain visible when a device is added.
+
 - Per-host Chrome grants plus exact scheme/host/port approval; RFC1918 IPv4 devices only.
 - HELO / HELO Plus / Ki Pro descriptor and status reads, AJA login, and descriptor-verified Record/Stop writes.
 - FS descriptor/status reads and supported Proc amp/RGB shading writes. Legalizer and other configuration writes are excluded.
 - Read-only direct connection remains available when the extension is absent. An adapter selects one route at creation; reload/reconnect after installing or removing the extension.
 - Writes are not replayed after failure. Recent write ownership prevents simultaneous writes from another tab for 30 seconds. After a service-worker restart, the extension automatically rediscovers descriptors through reads before validating a new write.
 - FS discovery tries `/desc.json`, then the documented legacy `/descriptors?paramid=*` only for HTTP 404/410. Legacy value reads explicitly request JSON. This is based on AJA's [REST Automation archive](https://www.aja.com/support/item/9619); exact FS1 firmware behavior still needs a new field test.
+- Descriptor reads have a 20-second transport deadline; normal status/control reads keep their shorter deadline. This accommodates slower legacy descriptor responses without delaying scans, which use lightweight web-page identification.
 - Known limitations: hardware/browser authentication qualification pending; background-tab timers may be throttled; no persistent multi-tab control lease UI yet. Never use the extension as evidence that a model is hardware-qualified.
 
 ## Build

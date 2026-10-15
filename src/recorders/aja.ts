@@ -139,7 +139,7 @@ export class AjaRecorderAdapter implements RecorderAdapter {
     if (this.closed) throw new Error('Connection closed')
     const controller = new AbortController()
     this.controllers.add(controller)
-    const timeout = setTimeout(() => controller.abort(), 3500)
+    const timeout = setTimeout(() => controller.abort(), path === 'desc.json' ? 22000 : 3500)
     try {
       const options: RequestInit & { targetAddressSpace?: string } = {
         ...init,

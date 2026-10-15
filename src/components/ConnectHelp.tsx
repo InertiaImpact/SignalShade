@@ -1,31 +1,27 @@
-import { useEffect, useState } from 'react'
-import {
-  ensureDeviceAccess,
-  connectInstructions,
-  connectRelease,
-  detectConnect,
-} from '../adapters/transport'
+import { useEffect, useRef, useState } from 'react'
+import { connectInstructions, connectRelease, detectConnect } from '../adapters/transport'
 
 export function ConnectHelp() {
   const [version, setVersion] = useState<string>()
-  const [origin, setOrigin] = useState('')
-  const [note, setNote] = useState('')
   const [expanded, setExpanded] = useState(false)
   const [approval, setApproval] = useState<{ origin: string; url: string }>()
+  const panel = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
     let alive = true
     const detect = () =>
       void detectConnect().then((v) => {
         if (alive) setVersion(v)
       })
-    const help = (event: Event) => {
-      setOrigin((event as CustomEvent<string>).detail)
+    const help = () => {
       setExpanded(true)
     }
     detect()
     const open = (e: Event) => {
       setApproval((e as CustomEvent<{ origin: string; url: string }>).detail)
       setExpanded(true)
+      requestAnimationFrame(() =>
+        panel.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
+      )
     }
     const close = () => setApproval(undefined)
     window.addEventListener('signalshade-approval-open', open)
@@ -43,6 +39,7 @@ export function ConnectHelp() {
   }, [])
   return (
     <details
+      ref={panel}
       className="connect-help"
       open={expanded}
       onToggle={(e) => setExpanded(e.currentTarget.open)}
@@ -52,9 +49,9 @@ export function ConnectHelp() {
       </summary>
       {version ? (
         <>
-          {version === '0.1.0' && (
+          {Number(version.split('.')[0]) === 0 && Number(version.split('.')[1]) < 3 && (
             <p>
-              Update Connect to use approval inside this window.{' '}
+              Update Connect for range scanning and current device connections.{' '}
               <a href={connectRelease}>Download latest ZIP</a> ·{' '}
               <a href={connectInstructions} target="_blank" rel="noreferrer">
                 Update instructions
@@ -65,22 +62,6 @@ export function ConnectHelp() {
             Connections use the extension. Approve a new device here; connection testing resumes
             automatically. Reload after an extension update.
           </p>
-          {origin && (
-            <button
-              type="button"
-              className="button"
-              onClick={async () => {
-                try {
-                  await ensureDeviceAccess(origin)
-                  setNote('Device allowed. Click Connect to test it.')
-                } catch (e) {
-                  setNote(e instanceof Error ? e.message : String(e))
-                }
-              }}
-            >
-              Allow device · {origin}
-            </button>
-          )}
         </>
       ) : (
         <>
@@ -126,7 +107,6 @@ export function ConnectHelp() {
           </button>
         </div>
       )}
-      {note && <p role="status">{note}</p>}
     </details>
   )
 }

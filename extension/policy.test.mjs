@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { trustedPage, deviceOrigin, operation, validateWrite } from './policy.js'
+import { trustedPage, deviceOrigin, operation, validateWrite, scanOrigins } from './policy.js'
 
 test('only the production SignalShade path is trusted', () => {
   assert.equal(trustedPage('https://inertiaimpact.github.io/SignalShade/'), true)
@@ -11,6 +11,19 @@ test('only the production SignalShade path is trusted', () => {
     'https://inertiaimpact.github.io/SignalShade-evil/',
   ])
     assert.equal(trustedPage(u), false)
+})
+test('range permission is bounded to the requested private /24 and excludes network/broadcast', () => {
+  const origins = scanOrigins('http://10.215.20.1', 'http://10.215.20.255')
+  assert.equal(origins.length, 254)
+  assert.equal(origins.at(-1), 'http://10.215.20.254')
+  for (const [start, end] of [
+    ['http://10.1.1.1', 'http://10.1.2.1'],
+    ['http://10.1.1.10', 'http://10.1.1.1'],
+    ['http://8.8.8.1', 'http://8.8.8.9'],
+    ['http://10.1.1.1:80', 'https://10.1.1.9'],
+  ])
+    assert.throws(() => scanOrigins(start, end))
+  assert.equal(operation('device-info').kind, 'identity')
 })
 test('restricts target origins to RFC1918 literals and preserves exact ports', () => {
   assert.equal(deviceOrigin('http://10.215.20.220:8080'), 'http://10.215.20.220:8080')

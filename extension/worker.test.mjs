@@ -91,6 +91,25 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
       /^chrome-extension:\/\/test\/approve.html\?tab=1&token=/,
     )
     // No windows API is provided by this fixture: approval is returned for embedding, never opened as a popup.
+    const scanOrigin = 'http://10.1.1.2'
+    await chrome.storage.session.set({
+      'scan:1': { origins: [scanOrigin], expires: Date.now() + 60000 },
+    })
+    assert.equal(
+      (await send({ type: 'scan-status', start: scanOrigin, end: scanOrigin })).data.allowed,
+      true,
+    )
+    assert.equal((await send({ origin: scanOrigin })).ok, true)
+    const writesBefore = calls.filter((c) => c.url.includes('action=set')).length
+    assert.match((await send({ ...write, origin: scanOrigin })).error, /read-only/)
+    assert.equal(calls.filter((c) => c.url.includes('action=set')).length, writesBefore)
+    assert.equal((await send({ origin: 'http://10.1.1.3' })).ok, false)
+    assert.equal((await send({ type: 'adopt', origin: scanOrigin })).ok, true)
+    assert.equal((await send({ ...write, origin: scanOrigin })).ok, true)
+    await chrome.storage.session.set({
+      'scan:1': { origins: ['http://10.1.1.4'], expires: Date.now() - 1 },
+    })
+    assert.equal((await send({ origin: 'http://10.1.1.4' })).ok, false)
     assert.equal(
       calls.every((c) => c.options.redirect === 'error'),
       true,

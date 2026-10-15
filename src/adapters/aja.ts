@@ -185,7 +185,7 @@ export class AjaAdapter implements DeviceAdapter {
     const abort = () => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) controller.abort()
-    const timeout = setTimeout(abort, 3500)
+    const timeout = setTimeout(abort, /^(desc.json|descriptors\?)/.test(path) ? 22000 : 3500)
     try {
       const options: RequestInit & { targetAddressSpace?: string } = {
         mode: 'cors',
@@ -208,6 +208,16 @@ export class AjaAdapter implements DeviceAdapter {
     return this.request(
       `config?${new URLSearchParams({ action: 'get', paramid: id, ...(this.legacyDescriptors ? { configid: '0', alt: 'json' } : {}) })}`,
     )
+  }
+  async readDescriptors(signal?: AbortSignal): Promise<unknown> {
+    try {
+      return await this.request('desc.json', signal)
+    } catch (e) {
+      if (!/HTTP (404|410)\b/.test(message(e))) throw e
+      const raw = await this.request('descriptors?paramid=*', signal)
+      this.legacyDescriptors = true
+      return raw
+    }
   }
   async read(channel: Channel): ReturnType<DeviceAdapter['read']> {
     const values: Values = {}
@@ -286,14 +296,7 @@ export class AjaAdapter implements DeviceAdapter {
     }
     let raw: Raw[]
     try {
-      let response
-      try {
-        response = await this.request('desc.json', signal)
-      } catch (e) {
-        if (!/HTTP (404|410)\b/.test(message(e))) throw e
-        response = await this.request('descriptors?paramid=*', signal)
-        this.legacyDescriptors = true
-      }
+      const response = await this.readDescriptors(signal)
       raw = extractDescriptors(response)
       result.rawDescriptorCount = raw.length
       result.rawDescriptors = raw
@@ -304,11 +307,21 @@ export class AjaAdapter implements DeviceAdapter {
         detail: `${raw.length} parameter descriptors readable from this browser origin.`,
       })
     } catch (e) {
+      if (/HTTP (404|410)\b/.test(message(e))) {
+        try {
+          result.webIdentity = (await this.request(
+            'device-info',
+            signal,
+          )) as ProbeResult['webIdentity']
+        } catch {
+          /* Preserve the descriptor failure. */
+        }
+      }
       result.checks.push({
         name: 'Readable API',
         status: 'fail',
         detail: /HTTP (404|410)\b/.test(message(e))
-          ? `${message(e)}. Neither modern nor legacy AJA descriptor endpoint was found. Device access is allowed; approval cannot fix a missing endpoint. Check the model/firmware and export this report.`
+          ? `${message(e)}. Neither AJA descriptor endpoint was found.${result.webIdentity?.model ? ` Web interface: ${result.webIdentity.model}.` : ''} Device access is allowed; approval cannot fix a missing endpoint. This firmware needs a separate API mapping; export this report.`
           : `${message(e)}. Check network, device address, browser access, and authentication.`,
       })
       return result
@@ -445,8 +458,8 @@ export function ipv4Range(start: string, end: string): string[] {
     b = new URL(normalizeAddress(end))
   if (a.hostname.split('.').slice(0, 3).join('.') !== b.hostname.split('.').slice(0, 3).join('.'))
     throw new Error('Scan one /24 subnet at a time')
-  const first = Number(a.hostname.split('.')[3]),
-    last = Number(b.hostname.split('.')[3])
+  const first = Math.max(1, Number(a.hostname.split('.')[3])),
+    last = Math.min(254, Number(b.hostname.split('.')[3]))
   if (last < first || last - first > 255 || a.port || b.port)
     throw new Error('Enter an ascending IPv4 range without ports')
   return Array.from(

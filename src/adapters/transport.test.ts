@@ -69,7 +69,7 @@ it('never retries a failed extension write through direct fetch', async () => {
 it('does not open approval for a normal device HTTP error', async () => {
   const w = extension((type) =>
     type === 'hello'
-      ? { ok: true, data: { version: '0.2.0', protocol: 1 } }
+      ? { ok: true, data: { version: '0.3.0', protocol: 1 } }
       : { ok: false, error: 'Device returned HTTP 404' },
   )
   const help = vi.fn()
@@ -83,7 +83,7 @@ it('does not open approval for a normal device HTTP error', async () => {
 it('skips all approval UI for previously allowed devices', async () => {
   const w = extension((type) => ({
     ok: true,
-    data: type === 'hello' ? { version: '0.2.0', protocol: 1 } : { allowed: true },
+    data: type === 'hello' ? { version: '0.3.0', protocol: 1 } : { allowed: true },
   }))
   await ensureDeviceAccess('http://10.1.1.1')
   expect(w.postMessage.mock.calls.map(([m]) => m.type)).toEqual(['hello', 'status'])
@@ -94,7 +94,7 @@ it('returns the embedded approval and resumes automatically after a verified gra
     ok: true,
     data:
       type === 'hello'
-        ? { version: '0.2.0', protocol: 1 }
+        ? { version: '0.3.0', protocol: 1 }
         : type === 'status'
           ? { allowed: granted }
           : { approvalUrl: 'chrome-extension://test/approve.html?token=test-token' },

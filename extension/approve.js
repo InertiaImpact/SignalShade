@@ -12,22 +12,38 @@ const report = (approved) =>
 if (!request || request.token !== params.get('token') || Date.now() - request.created > 120000) {
   result.textContent = 'This request expired. Close this window and try again in SignalShade.'
 } else {
-  const origin = deviceOrigin(request.origin)
-  document.querySelector('#address').textContent = origin
+  const origins = request.scan ? request.origins.map(deviceOrigin) : [deviceOrigin(request.origin)]
+  document.querySelector('#address').textContent = request.scan
+    ? `${origins[0]} – ${new URL(origins.at(-1)).hostname}`
+    : origins[0]
+  if (request.scan) {
+    document.querySelector('#purpose').textContent = 'Allow a read-only scan of this address range?'
+    document.querySelector('#explanation').textContent =
+      'Chrome will list the device addresses. Scan approval cannot change settings. Choose Add in SignalShade for a device you want to control.'
+    button.textContent = 'Allow scan'
+  }
   button.disabled = false
   button.addEventListener('click', async () => {
     try {
-      const u = new URL(origin)
       const allowed = await chrome.permissions.request({
-        origins: [`${u.protocol}//${u.hostname}/*`],
+        origins: origins.map((origin) => {
+          const u = new URL(origin)
+          return `${u.protocol}//${u.hostname}/*`
+        }),
       })
       if (!allowed) {
         result.textContent = 'Access was not granted.'
         report(false)
         return
       }
-      const origins = (await chrome.storage.local.get('origins')).origins ?? []
-      await chrome.storage.local.set({ origins: [...new Set([...origins, origin])] })
+      if (request.scan)
+        await chrome.storage.session.set({
+          [`scan:${params.get('tab')}`]: { origins, expires: Date.now() + 30 * 60 * 1000 },
+        })
+      else {
+        const previous = (await chrome.storage.local.get('origins')).origins ?? []
+        await chrome.storage.local.set({ origins: [...new Set([...previous, ...origins])] })
+      }
       await chrome.storage.session.remove(key)
       button.disabled = true
       result.textContent = 'Allowed. Connecting…'

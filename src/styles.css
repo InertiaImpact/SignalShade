@@ -4263,6 +4263,79 @@ button {
   border-radius: 6px;
   margin: 8px 0;
 }
+.devices-toolbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  gap: 12px;
+}
+.device-section {
+  border-top: 1px solid var(--border, #353638);
+  padding: 16px 0;
+}
+.device-section h3 {
+  margin: 0 0 12px;
+  font-size: 15px;
+}
+.device-section .form-inline {
+  align-items: end;
+}
+.device-section .form-inline > .button {
+  margin-bottom: 2px;
+  flex-shrink: 0;
+}
+.device-demo-badge {
+  display: inline-block;
+  color: #ffce00;
+  background: #ffce0015;
+  border: 1px solid #ffce0040;
+  border-radius: 4px;
+  padding: 2px 5px;
+  margin-left: 8px;
+  font-size: 10px;
+  letter-spacing: 0.05em;
+  vertical-align: middle;
+}
+.scan-result {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 12px 0;
+  border-top: 1px solid #343537;
+}
+.scan-result p {
+  margin: 4px 0;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.scan-result .button {
+  flex-shrink: 0;
+}
+.connection-report {
+  margin-top: 8px;
+}
+.connection-report summary {
+  cursor: pointer;
+  font-size: 12px;
+}
+.connection-report p {
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 650px) {
+  .device-section .form-inline {
+    flex-direction: column;
+    align-items: stretch;
+  }
+  .device-section .device-row {
+    flex-wrap: wrap;
+  }
+  .device-section .device-row-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
 .connect-help p,
 .connect-help li {
   line-height: 1.5;

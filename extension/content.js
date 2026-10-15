@@ -10,7 +10,7 @@
       m.protocol !== 1 ||
       typeof m.id !== 'string' ||
       m.id.length > 100 ||
-      active >= 16
+      active >= 64
     )
       return
     active++
