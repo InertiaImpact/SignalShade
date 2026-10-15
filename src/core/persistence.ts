@@ -78,6 +78,7 @@ const schema = z.object({
         color: z.string().regex(/^#[0-9a-fA-F]{6}$/),
         members: z.array(z.string()).max(32),
         parameters: z.array(paramId).max(100),
+        showAsCard: z.boolean().optional(),
       }),
     )
     .max(100),

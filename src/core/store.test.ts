@@ -57,6 +57,23 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('toggles gang card visibility without reordering groups or changing signal values', () => {
+    const before = store.getSnapshot().workspace
+    const gang = before.gangs[1]
+    store.showGangCard(gang.id, true)
+    const shown = store.getSnapshot()
+    expect(shown.workspace.gangs.map((g) => g.id)).toEqual(before.gangs.map((g) => g.id))
+    expect(shown.workspace.gangs[1]).toEqual({ ...gang, showAsCard: true })
+    expect(shown.workspace.channels).toBe(before.channels)
+    expect(shown.history).toHaveLength(0)
+    expect(shown.busy).toBe(0)
+    store.saveGang({ ...shown.workspace.gangs[1], name: 'Renamed gang' })
+    expect(store.getSnapshot().workspace.gangs.find((g) => g.id === gang.id)?.showAsCard).toBe(true)
+    store.showGangCard(gang.id, false)
+    expect(store.getSnapshot().workspace.gangs.find((g) => g.id === gang.id)?.showAsCard).toBe(
+      false,
+    )
+  })
   it('applies one relative adjustment per unique member and preserves offsets', async () => {
     store.adjust(['demo-ch-1', 'demo-ch-2', 'demo-ch-1'], 'gain', 0.02, 'relative')
     await settle()

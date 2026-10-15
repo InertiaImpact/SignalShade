@@ -4027,3 +4027,86 @@ button {
 .channel-card .selected-marker {
   background: var(--selection-color);
 }
+
+.gang-nav-row {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  min-width: 0;
+}
+.gang-nav-row .gang-nav {
+  flex: 1;
+  min-width: 0;
+  padding-right: 5px;
+}
+.gang-nav-row .gang-nav > span:nth-child(2) {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gang-card-toggle {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  position: relative;
+  padding: 0;
+  margin-right: 2px;
+}
+.gang-card-toggle::before {
+  content: '';
+  position: absolute;
+  inset: 6px 0;
+  border-radius: 10px;
+  background: var(--surface-hover);
+  border: 1px solid var(--border-strong);
+}
+.gang-card-toggle > span {
+  position: absolute;
+  top: 10px;
+  left: 4px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--text-muted);
+}
+.gang-card-toggle[aria-checked='true']::before {
+  background: color-mix(in srgb, var(--gang-color) 24%, var(--surface-base));
+  border-color: var(--gang-color);
+}
+.gang-card-toggle[aria-checked='true'] > span {
+  left: 16px;
+  background: var(--gang-color);
+}
+.app .gang-card {
+  border-color: color-mix(in srgb, var(--gang-color) 55%, var(--border-subtle));
+  border-top: 3px solid var(--gang-color);
+  align-self: start;
+}
+.gang-card > .card-heading {
+  background: color-mix(in srgb, var(--gang-color) 9%, var(--surface-panel));
+}
+.gang-card-icon {
+  color: var(--gang-color);
+  display: grid;
+  place-items: center;
+  width: 28px;
+  flex-shrink: 0;
+}
+.app .gang-card-mode {
+  margin: 10px 14px;
+  width: min(270px, calc(100% - 28px));
+}
+.gang-card-mode > button {
+  font-size: 11px;
+  padding: 6px 8px;
+}
+.app .gang-card-mode > button.active {
+  color: var(--gang-color);
+  background: color-mix(in srgb, var(--gang-color) 14%, var(--surface-field));
+}
+.gang-members-link {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-muted);
+}

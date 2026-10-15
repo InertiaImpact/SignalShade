@@ -13,6 +13,7 @@ export function ParameterControl({
   toggleFavorite,
   multiplier,
   compact = false,
+  idPrefix,
 }: {
   descriptor: ParameterDescriptor
   channels: Channel[]
@@ -22,6 +23,7 @@ export function ParameterControl({
   toggleFavorite?: () => void
   multiplier: number
   compact?: boolean
+  idPrefix?: string
 }) {
   const ids = channels.map((c) => c.id),
     current = commonValue(channels, d.id)
@@ -84,7 +86,7 @@ export function ParameterControl({
                   : d.id === 'black'
                     ? 'black'
                     : 'gain'
-  const inputId = (compact ? 'card' : 'detail') + '-' + channels[0]?.id + '-' + d.id
+  const inputId = (idPrefix ?? (compact ? 'card' : 'detail')) + '-' + channels[0]?.id + '-' + d.id
   const sliderValue = sliding ?? (relative ? 0 : (current ?? d.neutral))
   const min = relative ? -rangeSpan : d.min,
     max = relative ? rangeSpan : d.max

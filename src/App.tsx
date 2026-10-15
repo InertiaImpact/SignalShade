@@ -39,6 +39,7 @@ import { downloadJson, validateWorkspace } from './core/persistence'
 import { message } from './adapters/aja'
 import { ParameterControl } from './components/ParameterControl'
 import { GangControls } from './components/GangControls'
+import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
 import {
   ConfirmWorkspace,
@@ -54,7 +55,7 @@ import { useChannelSelection } from './components/useChannelSelection'
 import {
   quickControls,
   visibleControlSections as visibleSections,
-  isVisibleControl,
+  gangDescriptors,
   rgbControls,
   availableRgbFamilies,
   type RgbFamily,
@@ -153,11 +154,11 @@ export default function App() {
         w.devices.find((d) => d.id === c.deviceId)?.status !== 'online' ||
         !w.devices.find((d) => d.id === c.deviceId)?.armed,
     )
-  const activeDescriptors = [
-    ...new Map(selectedChannels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values(),
-  ].filter(
-    (d) => isVisibleControl(d) && (!group?.parameters.length || group.parameters.includes(d.id)),
-  )
+  const activeDescriptors = gangDescriptors(selectedChannels, group?.parameters)
+  const shownGangCards =
+    view === 'all'
+      ? w.gangs.filter((g) => g.showAsCard && g.name.toLowerCase().includes(query.toLowerCase()))
+      : []
   const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
     activeDescriptors.some((d) => d.section === s),
   )
@@ -349,15 +350,28 @@ export default function App() {
         </div>
         <nav aria-label="Gang groups">
           {w.gangs.map((g) => (
-            <button
-              className={`nav-item gang-nav ${view === g.id ? 'active' : ''}`}
-              key={g.id}
-              onClick={() => selectView(g.id)}
-            >
-              <span className="group-dot" style={{ background: g.color }} />
-              <span>{g.name}</span>
-              <span className="nav-count">{g.members.length.toString().padStart(2, '0')}</span>
-            </button>
+            <div className="gang-nav-row" key={g.id}>
+              <button
+                className={`nav-item gang-nav ${view === g.id ? 'active' : ''}`}
+                onClick={() => selectView(g.id)}
+              >
+                <span className="group-dot" style={{ background: g.color }} />
+                <span>{g.name}</span>
+                <span className="nav-count">{g.members.length.toString().padStart(2, '0')}</span>
+              </button>
+              <button
+                className="gang-card-toggle"
+                role="switch"
+                aria-checked={!!g.showAsCard}
+                aria-label={`Show ${g.name} as a card in All channels`}
+                title={`Show ${g.name} as a card in All channels`}
+                disabled={readOnly}
+                style={{ '--gang-color': g.color } as CSSProperties}
+                onClick={() => desk.showGangCard(g.id, !g.showAsCard)}
+              >
+                <span />
+              </button>
+            </div>
           ))}
           {!w.gangs.length && (
             <p className="sidebar-empty">Group channels for shared adjustments.</p>
@@ -790,6 +804,22 @@ export default function App() {
           </section>
         )}
         <div className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}>
+          {shownGangCards.map((g) => (
+            <GangCard
+              key={`gang-${g.id}`}
+              gang={g}
+              workspace={w}
+              disabled={readOnly}
+              multiplier={multiplier}
+              onOpen={() => {
+                setSelected(g.id)
+                setSelection([])
+                setRelative(true)
+              }}
+              onHide={() => desk.showGangCard(g.id, false)}
+              onReset={(section) => reset(g.members, section, g.parameters)}
+            />
+          ))}
           {channels.map((c, index) => (
             <ChannelCard
               key={c.id}
@@ -807,7 +837,7 @@ export default function App() {
             />
           ))}
         </div>
-        {!channels.length && query && (
+        {!channels.length && !shownGangCards.length && query && (
           <div className="empty-small">
             <Search size={24} />
             <p>No channels match “{query}”.</p>

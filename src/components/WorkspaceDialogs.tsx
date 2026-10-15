@@ -54,6 +54,7 @@ export function GangDialog({
               color,
               members,
               parameters: mask,
+              showAsCard: gang?.showAsCard,
             })
             close()
           } catch (e) {

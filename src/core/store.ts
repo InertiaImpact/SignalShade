@@ -197,6 +197,13 @@ export class DeskStore {
         gangs: this.state.workspace.gangs.filter((g) => g.id !== id),
       })
   }
+  showGangCard(id: string, showAsCard: boolean) {
+    if (this.canEdit())
+      this.workspace({
+        ...this.state.workspace,
+        gangs: this.state.workspace.gangs.map((g) => (g.id === id ? { ...g, showAsCard } : g)),
+      })
+  }
   async replaceWorkspace(input: unknown, kind: 'import' | 'demo' | 'empty') {
     if (!this.canEdit()) return
     if (this.state.busy) throw new Error('Wait for pending commands before changing workspaces')

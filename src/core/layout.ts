@@ -35,7 +35,16 @@ export function defaultLayout(): Pick<Workspace, 'favorites' | 'density' | 'hidd
   return { favorites: [...defaultFavorites], density: 'comfortable', hiddenSections: [] }
 }
 
-export function quickControls(channel: Channel, favorites: ParameterId[]): ParameterDescriptor[] {
+export function gangDescriptors(channels: Channel[], mask: ParameterId[] = []) {
+  return [...new Map(channels.flatMap((c) => c.descriptors).map((d) => [d.id, d])).values()].filter(
+    (d) => isVisibleControl(d) && (!mask.length || mask.includes(d.id)),
+  )
+}
+
+export function quickControls(
+  channel: Pick<Channel, 'descriptors'>,
+  favorites: ParameterId[],
+): ParameterDescriptor[] {
   const available = channel.descriptors.filter(isVisibleControl)
   const selected = [...new Set(favorites)]
     .map((id) => available.find((descriptor) => descriptor.id === id))

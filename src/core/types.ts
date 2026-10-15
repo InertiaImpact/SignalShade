@@ -66,6 +66,7 @@ export interface Gang {
   color: string
   members: string[]
   parameters: ParameterId[]
+  showAsCard?: boolean
 }
 export interface ColorPreset {
   id: string

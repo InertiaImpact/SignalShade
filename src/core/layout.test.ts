@@ -8,6 +8,7 @@ import {
   visibleControlSections,
   availableRgbFamilies,
   rgbControls,
+  gangDescriptors,
 } from './layout'
 import { validateWorkspace } from './persistence'
 
@@ -56,6 +57,19 @@ describe('recoverable control layout', () => {
     const partial = descriptors.filter((d) => d.id === 'blueBlack')
     expect(availableRgbFamilies(partial)).toEqual(['Black'])
     expect(rgbControls(partial, 'Gain')).toEqual([])
+  })
+  it('keeps gang cards inside their mask even when Quick pins or section availability differ', () => {
+    const channels = demoWorkspace().channels.slice(0, 2)
+    const masked = gangDescriptors(channels, ['redGain', 'legalizer.white'])
+    expect(masked.map((d) => d.id)).toEqual(['redGain'])
+    expect(quickControls({ descriptors: masked }, ['gain', 'black']).map((d) => d.id)).toEqual([
+      'redGain',
+    ])
+    channels[0].descriptors = channels[0].descriptors.filter((d) => d.section === 'Proc amp')
+    const all = gangDescriptors(channels)
+    expect(all.filter((d) => d.id === 'gain')).toHaveLength(1)
+    expect(all.some((d) => d.id === 'redGain')).toBe(true)
+    expect(all.some((d) => d.section === 'Legalizer')).toBe(false)
   })
   it('hides Legalizer even for old pins and layouts that exposed only that section', () => {
     const channel = demoWorkspace().channels[0]

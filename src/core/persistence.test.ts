@@ -7,6 +7,16 @@ describe('workspace import validation', () => {
     const w = demoWorkspace()
     expect(validateWorkspace(JSON.parse(JSON.stringify(w)))).toEqual(w)
   })
+  it('preserves gang card visibility and accepts older workspaces without the setting', () => {
+    const w = demoWorkspace()
+    expect(validateWorkspace(w).gangs.every((g) => !g.showAsCard)).toBe(true)
+    w.gangs[0].showAsCard = true
+    w.gangs[1].showAsCard = false
+    expect(validateWorkspace(JSON.parse(JSON.stringify(w))).gangs).toEqual(w.gangs)
+    expect(() =>
+      validateWorkspace({ ...w, gangs: [{ ...w.gangs[0], showAsCard: 'yes' }] }),
+    ).toThrow()
+  })
   it('rejects duplicate channel IDs and missing group references', () => {
     const w = demoWorkspace()
     w.channels[1].id = w.channels[0].id

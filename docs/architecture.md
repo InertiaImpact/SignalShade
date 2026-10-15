@@ -42,6 +42,8 @@ Mouse drags begin on card headers or any non-interactive channel-pane background
 
 ## Visual palette
 
+Saved gangs can optionally appear as cards in All channels through the sidebar switch. `Gang.showAsCard` is an optional workspace field so legacy exports remain valid. Toggling it preserves gang order, membership, and masks and enqueues no commands. Gang cards use the existing `ParameterControl` and command engine, have independent relative/absolute modes, and use unique DOM ID prefixes to coexist with channel cards and the expanded console. Masked descriptors are shared between card and console layouts; unsupported controls remain disabled. Gang cards are excluded from channel selection gestures and marquee hit-testing.
+
 `src/theme.ts` contains the single active dark broadcast palette. Component CSS uses semantic custom properties for surfaces, text, borders, the gold accent, statuses, RGB control tracks, section accents, and RGB family accents. Proc amp and RGB have distinct section tints; Gain, Black, and Gamma have labeled family accents across group columns and card subtabs. Saved gang colors mark the console header, selected member borders, and membership tags. The palette is applied before React renders; there is no theme picker, saved theme preference, or alternate theme yet. To reskin later, change the palette rather than individual component styles. Keep the static favicon, browser theme-color, and initial dark background fallback aligned with the palette. Custom gang colors remain part of each workspace.
 
 ## Offline and updates
