@@ -7,7 +7,7 @@
 - Separate recorder adapter/store/UI modules. Recorder monitoring and command failure do not occupy the FS color queue or Undo history. The existing browser ownership lock and desk lock guard both subsystems.
 - HELO-family record-only command values 1/2 and Ki Pro transport values 3/4, permitted only after matching model identity, state and command descriptors. No streaming, formatting, eject, routing or encoder writes are implemented.
 - Preflight refresh, per-recorder serialization, duplicate-click suppression, status confirmation, uncertain-result reconciliation without replay, and inline Stop confirmation. Ki Pro gets a second Stop only following fresh Paused readback. Unconfirmed transitions disable control.
-- Poll targets: one second recording, two seconds idle, five seconds media; failed appliances back off to 30 seconds. Four optional metric reads per appliance batch; two appliances admitted per scheduler tick. Browser timers and device response speed affect actual cadence.
+- Poll targets: one second recording, two seconds idle, five seconds media; failed appliances back off to 30 seconds. Four optional metric reads per appliance batch; at most two appliances poll concurrently, with the most overdue first. Browser timers and device response speed affect actual cadence.
 - Per-metric failures preserve the last value with a warning and timestamp. Missing values remain unknown. Explicit SD/USB/slot/PAK/network labels group related metrics, with unresolved metrics retained under their original labels. Unknown roles are not called backup or rollover. Missing capacity/time is not synthesized from percentage.
 - Device `RecordingDuration` is displayed as clip duration; an observed start can provide a clearly marked estimate when that field is absent. Reconnecting mid-record does not invent a start time. Offline/stale timers freeze.
 - Simulation supports recording and stopping with three media destinations. Fault cases use injected adapter tests rather than extra controls in the production UI.
@@ -32,7 +32,7 @@ Automated coverage includes the existing color/gang/selection/layout/persistence
 
 This is an implemented browser feature, not certification of every AJA recorder or firmware. No physical hardware was available. The model selector includes the requested families and legacy Ki Pro variants so configuration is extensible; its presence is not a tested-support claim. A model/firmware with unmatched identity/enums cannot be armed.
 
-The adapter discovers exposed media descriptors. It cannot promise every physical disk, backup role, remaining-time field or multichannel mapping until captured responses establish those meanings. Missing metrics stay unavailable. Device-wide Ki Pro control is labeled as affecting all enabled recording channels. Exact installed Ki Pro models are still needed for hardware qualification.
+The adapter discovers exposed media descriptors. It cannot promise every physical disk, backup role, remaining-time field or multichannel mapping until captured responses establish those meanings. Missing metrics stay unavailable. Device-wide Ki Pro control is labeled as affecting all enabled recording channels. The requested scope is all Ki Pro models; qualification must cover their firmware differences rather than narrowing the model selector to one appliance.
 
 Direct HTTPS-page-to-LAN requests depend on browser local-network permission, device CORS, and (when authenticated) cookies. A successful Companion integration does not establish browser compatibility. A local bridge may be needed for firmware that cannot expose readable responses to this origin; none is bundled in this release.
 
@@ -48,3 +48,10 @@ Remaining off-air checks: linked HELO stream behavior, media reserves and rollov
 - [Companion Ki Pro source](https://github.com/bitfocus/companion-module-aja-kipro): numeric transport states and current-media percentage reference.
 
 No Companion source code was copied into the implementation.
+
+## Verification results
+
+- Production build and 71 automated tests pass, including command-mapping fixtures for all ten model selections. These fixtures verify software behavior, not real-device compatibility.
+- Browser checks passed for simulated Record, inline Stop confirmation, three simultaneous recorder configurations, all-media details, low-time warnings and their aggregate count, and desk-lock enforcement for both recorder and color controls.
+- A channel adjustment and Undo worked independently while a simulated recorder ran. Reload retained all three recorder configurations and returned their controls to disabled.
+- A 390 px viewport kept page content within the viewport; the recorder row scrolls horizontally. The normal viewport was restored after testing.

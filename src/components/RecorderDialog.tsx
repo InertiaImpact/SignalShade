@@ -114,6 +114,7 @@ export function RecorderDialog({
                 <label className="check-row">
                   <input
                     type="checkbox"
+                    aria-label={`${config.label} control`}
                     checked={state?.enabled ?? false}
                     disabled={
                       readOnly ||

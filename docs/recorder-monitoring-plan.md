@@ -8,7 +8,7 @@ Add an optional recorder strip to SignalShade's fixed top bar for AJA HELO, HELO
 
 Keep recording separate from FS channel selection and shading gangs. The first release excludes streaming controls, recorder gangs, Record All / Stop All, playback, media formatting/ejection, destination changes, clip downloads, and encoder configuration.
 
-Exact Ki Pro models and firmware need to be identified before committing to support. Rack, Ultra-family, GO/GO2, Mini, and original Ki Pro must not be treated as interchangeable. Multi-channel models need explicit transport scope: a device-wide Record command must say which enabled channels it will affect.
+Target all Ki Pro models: Rack, Ultra-family, GO/GO2, Mini, and original Ki Pro. Reuse shared transport behavior, with identity/descriptor checks and per-firmware qualification. Multi-channel models need explicit transport scope: a device-wide Record command must say which enabled channels it will affect.
 
 ## Display and interaction
 

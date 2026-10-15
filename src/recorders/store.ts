@@ -52,7 +52,7 @@ export class RecorderStore {
     // Simulations connect without making requests; real devices always require explicit reconnect.
     for (const config of configs)
       if (config.simulated && !this.connections.has(config.id)) {
-        this.attach(config.id, new DemoRecorderAdapter())
+        this.attach(config.id, new DemoRecorderAdapter(config.model))
         void this.refresh(config.id)
       }
     this.listeners.forEach((l) => l())
@@ -73,7 +73,9 @@ export class RecorderStore {
   async connect(config: RecorderConfig, password = '') {
     this.attach(
       config.id,
-      config.simulated ? new DemoRecorderAdapter() : new AjaRecorderAdapter(config, password),
+      config.simulated
+        ? new DemoRecorderAdapter(config.model)
+        : new AjaRecorderAdapter(config, password),
     )
     await this.refresh(config.id)
   }
@@ -153,6 +155,7 @@ export class RecorderStore {
     const slots = Math.max(0, 2 - [...this.connections.values()].filter((c) => c.busy).length)
     const due = [...this.connections]
       .filter(([, c]) => !c.busy && c.nextPoll <= Date.now())
+      .sort((a, b) => a[1].nextPoll - b[1].nextPoll)
       .slice(0, slots)
     await Promise.all(due.map(([id]) => this.refresh(id)))
   }

@@ -16,11 +16,15 @@ export function demoRecorder(model: RecorderConfig['model'] = 'HELO'): RecorderC
   }
 }
 export class DemoRecorderAdapter implements RecorderAdapter {
+  constructor(private model: RecorderConfig['model'] = 'HELO') {}
   private started?: number
   private closed = false
   async read(): Promise<RecorderSnapshot> {
     if (this.closed) throw new Error('Connection closed')
     const elapsed = this.started === undefined ? 0 : (Date.now() - this.started) / 1000
+    const helo = this.model.startsWith('HELO')
+    const go = this.model.startsWith('Ki Pro GO')
+    const primary = helo ? 'SD · Primary' : go ? 'USB 1 · Primary' : 'Slot 1 · Primary'
     return {
       state: this.started === undefined ? 'idle' : 'recording',
       updatedAt: Date.now(),
@@ -35,7 +39,7 @@ export class DemoRecorderAdapter implements RecorderAdapter {
       media: [
         {
           id: 'primary',
-          label: 'SD · Primary',
+          label: primary,
           status: this.started === undefined ? 'Ready' : 'Recording',
           active: true,
           freeBytes: Math.max(0, 128e9 - elapsed * 2e6),
@@ -47,7 +51,7 @@ export class DemoRecorderAdapter implements RecorderAdapter {
         },
         {
           id: 'usb',
-          label: 'USB',
+          label: helo ? 'USB' : go ? 'USB 2' : 'Slot 2',
           status: 'Ready',
           active: false,
           freeBytes: 256e9,
@@ -56,15 +60,29 @@ export class DemoRecorderAdapter implements RecorderAdapter {
           metrics: [],
           warnings: [],
         },
-        {
-          id: 'network',
-          label: 'Network',
-          status: 'Not configured',
-          active: false,
-          updatedAt: Date.now(),
-          metrics: [],
-          warnings: [],
-        },
+        ...(helo
+          ? [
+              {
+                id: 'network',
+                label: 'Network',
+                status: 'Not configured',
+                active: false,
+                updatedAt: Date.now(),
+                metrics: [],
+                warnings: [],
+              },
+            ]
+          : go
+            ? [3, 4, 5].map((n) => ({
+                id: `usb-${n}`,
+                label: `USB ${n}`,
+                status: 'Not present',
+                active: false,
+                updatedAt: Date.now(),
+                metrics: [],
+                warnings: [],
+              }))
+            : []),
       ],
     }
   }

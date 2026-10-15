@@ -196,7 +196,7 @@ export function RecorderStrip({
             {problems ? `${problems} need attention` : 'Recorders'}
           </small>
         </button>
-        <div className="recorder-scroll">
+        <div className="recorder-scroll" tabIndex={0} role="region" aria-label="Recorder list">
           {configs.map((c) => (
             <RecorderCapsule
               key={c.id}

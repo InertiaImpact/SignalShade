@@ -10,6 +10,7 @@ import { RecorderStore } from './store'
 import { demoRecorder, DemoRecorderAdapter } from './demo'
 import {
   disconnected,
+  recorderModels,
   recorderWarnings,
   type RecorderAdapter,
   type RecorderConfig,
@@ -238,7 +239,7 @@ describe('recorder protocol and persistence', () => {
       validateWorkspace({ ...emptyWorkspace(), recorders: [demoRecorder()] }).recorders,
     ).toHaveLength(1)
   })
-  it.each(['HELO', 'HELO Plus', 'Ki Pro Ultra'] as const)(
+  it.each(recorderModels)(
     'uses verified %s commands, cookie auth, and optional media failure isolation',
     async (model) => {
       const helo = model.startsWith('HELO')
