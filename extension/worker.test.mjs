@@ -18,6 +18,7 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
   }
   const origin = 'http://10.1.1.1'
   const calls = []
+  const tabs = []
   globalThis.chrome = {
     runtime: {
       id: 'test',
@@ -27,7 +28,7 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
     },
     storage: { local: storage({ origins: [origin] }), session: storage({}) },
     permissions: { contains: async () => permitted },
-    tabs: { onRemoved: { addListener: () => {} } },
+    tabs: { create: async (options) => tabs.push(options), onRemoved: { addListener: () => {} } },
   }
   const list = [
     {
@@ -71,6 +72,17 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
     assert.equal((await send({}, { ...sender, frameId: 2 })).ok, false)
     assert.equal((await send({ origin: 'http://127.0.0.1' })).ok, false)
     assert.equal(calls.length, 0)
+    assert.equal(
+      (await send({ type: 'openExtensions' }, { ...sender, url: 'https://evil.example/' })).ok,
+      false,
+    )
+    assert.equal(tabs.length, 0)
+    assert.equal(
+      (await send({ type: 'openExtensions', origin: undefined, url: 'https://evil.example/' })).data
+        .opened,
+      true,
+    )
+    assert.deepEqual(tabs, [{ url: 'chrome://extensions/?id=test' }])
     const write = {
       path: 'config?action=set&paramid=eParamID_ReplicatorCommand&value=1&configid=0',
     }

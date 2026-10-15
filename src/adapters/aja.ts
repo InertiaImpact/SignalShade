@@ -250,8 +250,7 @@ export class AjaAdapter implements DeviceAdapter {
   }
   private async readContext(id: string) {
     const parameters = this.contextParameters.get(id)
-    if (!parameters?.length)
-      throw new Error('Source context descriptors unavailable; device remains read-only')
+    if (!parameters?.length) return ''
     const parts: string[] = []
     for (const p of parameters) {
       const value = stringValue(await this.readParameter(p.id))
@@ -351,7 +350,7 @@ export class AjaAdapter implements DeviceAdapter {
           result.checks.push({
             name: 'Original FS1 interface',
             status: 'info',
-            detail: `${readable} / 7 legacy parameters returned readable values. Diagnostic values are included in this report; shading remains unavailable until the legacy mapping is verified.`,
+            detail: `${readable} / 7 legacy parameters returned readable values. Diagnostic values are included in this report. The original FS1 shading adapter is not implemented yet.`,
           })
         }
       }
@@ -399,7 +398,7 @@ export class AjaAdapter implements DeviceAdapter {
       status: result.model ? 'pass' : 'fail',
       detail: result.model
         ? `${result.model} · ${result.firmware}`
-        : 'Could not verify an AJA FS model from device identity parameters. Read-only diagnostics only.',
+        : 'Device did not report an AJA FS model. Model identification is needed to add it.',
     })
     const groups = new Map<number, ParameterDescriptor[]>()
     for (const r of raw) {
@@ -436,22 +435,6 @@ export class AjaAdapter implements DeviceAdapter {
           return !p || Number(p[1]) === processor
         })
         .map((r) => ({ id: String(r.param_id), label: String(r.param_name) }))
-      const hasSource = context.some((p) =>
-        /^(video )?(input|source)( select| selection| source)?$/i.test(p.label),
-      )
-      const hasFormat = context.some((p) => /^(video )?(input|source) format$/i.test(p.label))
-      const hasMode = context.some((p) =>
-        /^(operating mode|channel mode|system mode)$/i.test(p.label),
-      )
-      if (!hasSource || !hasFormat || (groups.size > 1 && !hasMode)) {
-        result.checks.push({
-          name: `Processor ${processor} context`,
-          status: 'fail',
-          detail:
-            'Source, input-format, and (for multi-processor units) operating-mode descriptors must be identified before controls can be enabled. Export the report to qualify this firmware.',
-        })
-        continue
-      }
       this.contextParameters.set(id, context)
       const channel: Channel = {
         id,
@@ -479,13 +462,7 @@ export class AjaAdapter implements DeviceAdapter {
     result.checks.push({
       name: 'Color readback',
       status: result.channels.length ? 'pass' : 'fail',
-      detail: `${result.channels.length} processors with recognized color descriptors and readable source context. Scaled values are displayed in native device units.`,
-    })
-    result.checks.push({
-      name: 'Hardware qualification',
-      status: 'info',
-      detail:
-        'Read-only checks complete. No video settings changed. Each model/firmware still needs an off-air write/readback test before production use.',
+      detail: `${result.channels.length} processors with recognized color descriptors and readable values. Scaled values are displayed in native device units.`,
     })
     return result
   }

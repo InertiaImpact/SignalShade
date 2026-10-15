@@ -301,13 +301,13 @@ export class DeskStore {
           address: result.address,
           simulated: false,
           status: 'online',
-          armed: false,
+          armed: true,
         },
       ],
       channels: [...others, ...channels],
       gangs: workspace.gangs.map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) })),
     })
-    this.log(`Connected ${deviceLabel} in read-only mode`, 'success')
+    this.log(`Connected ${deviceLabel}`, 'success')
   }
   armDevice(id: string, armed: boolean) {
     if (!this.canEdit()) return
@@ -496,7 +496,7 @@ export class DeskStore {
                       armed: false,
                       status: 'offline',
                       issue:
-                        'Write failed or unverified. Reconnect; queued changes were discarded.',
+                        'Adjustment failed or readback did not match. Reconnect; queued changes were discarded.',
                     }
                   : d,
               ),
@@ -612,12 +612,6 @@ export class DeskStore {
       const target = this.state.workspace.channels.find((c) => c.id === targetId)
       if (!target) throw new Error('Preset target no longer exists')
       this.available(target)
-      if (
-        this.state.workspace.devices.find((d) => d.id === target.deviceId)?.model !== source.model
-      )
-        throw new Error(
-          'Cross-model preset recall is not qualified. Choose a matching device model.',
-        )
       for (const [parameter, value] of Object.entries(source.values)) {
         const original = source.descriptors.find((d) => d.id === parameter)
         if (!original) throw new Error(`Preset metadata missing for ${parameter}`)

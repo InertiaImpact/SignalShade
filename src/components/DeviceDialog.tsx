@@ -32,8 +32,7 @@ export function DeviceDialog({
   const [reports, setReports] = useState<Record<string, ProbeResult>>({})
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState(''),
-    [scanError, setScanError] = useState(''),
-    [arm, setArm] = useState<string>()
+    [scanError, setScanError] = useState('')
   const abort = useRef<AbortController | undefined>(undefined),
     activeAdapters = useRef(new Set<AjaAdapter>())
   const scanRange = useRef<{ start: string; end: string } | undefined>(undefined)
@@ -237,7 +236,13 @@ export function DeviceDialog({
                   <button
                     className="button small"
                     disabled={!!busy || readOnly || d.status !== 'online'}
-                    onClick={() => (d.armed ? desk.armDevice(d.id, false) : setArm(d.id))}
+                    onClick={() => {
+                      try {
+                        desk.armDevice(d.id, !d.armed)
+                      } catch (e) {
+                        setNotice(message(e))
+                      }
+                    }}
                   >
                     {d.armed ? 'Lock control' : 'Enable control'}
                   </button>
@@ -260,32 +265,6 @@ export function DeviceDialog({
             </div>
           </div>
         ))}
-        {arm && (
-          <div className="notice warning">
-            <p>
-              Enable live adjustments for {workspace.devices.find((d) => d.id === arm)?.label}?
-              Verify mappings off-air before production use.
-            </p>
-            <div className="button-row">
-              <button
-                className="button primary"
-                onClick={() => {
-                  try {
-                    desk.armDevice(arm, true)
-                    setArm(undefined)
-                  } catch (e) {
-                    setNotice(message(e))
-                  }
-                }}
-              >
-                Enable control
-              </button>
-              <button className="button" onClick={() => setArm(undefined)}>
-                Cancel
-              </button>
-            </div>
-          </div>
-        )}
       </section>
       <ConnectHelp />
       <section className="device-section" aria-label="Add by IP">

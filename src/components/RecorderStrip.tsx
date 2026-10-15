@@ -217,7 +217,7 @@ export function RecorderStrip({
         >
           <p>{snapshot.scope}</p>
           <p className="muted">
-            {snapshot.controlReason ?? 'Simulated recorder'} ·{' '}
+            {snapshot.controlReason ? `${snapshot.controlReason} · ` : ''}
             {snapshot.updatedAt
               ? `Last status ${new Date(snapshot.updatedAt).toLocaleTimeString()}`
               : 'Not connected'}

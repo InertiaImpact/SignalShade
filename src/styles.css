@@ -4246,11 +4246,26 @@ button {
   }
 }
 /* Connection assistance stays inside device settings, outside the live desk. */
-.connect-help {
+.connect-help-panel {
   margin: 0 0 18px;
   padding: 12px;
   border: 1px solid #454545;
   border-radius: 6px;
+}
+.connect-links {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+}
+.connect-links strong {
+  margin-right: auto;
+}
+.connect-links a {
+  color: var(--accent);
+}
+.connect-help {
+  margin-top: 12px;
 }
 .connect-help summary {
   cursor: pointer;

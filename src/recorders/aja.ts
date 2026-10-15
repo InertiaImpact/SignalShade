@@ -119,7 +119,6 @@ export class AjaRecorderAdapter implements RecorderAdapter {
   private descriptors?: Raw[]
   private media: RecorderMedia[] = []
   private mediaFields: RecorderMedia[] = []
-  private identity = ''
   private firmware = ''
   private control = false
   private authenticated = false
@@ -127,7 +126,7 @@ export class AjaRecorderAdapter implements RecorderAdapter {
   private stateId: string
   private commandId: string
   constructor(
-    private config: RecorderConfig,
+    config: RecorderConfig,
     private password = '',
   ) {
     this.address = normalizeAddress(config.address)
@@ -190,45 +189,22 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       throw new Error('Selected recorder model does not expose the expected transport API')
     for (const d of descriptors.filter(
       (d) =>
-        d.param_id === 'eParamID_ProductID' ||
         d.param_id === 'eParamID_CurrentlyRunningImageVersion' ||
-        /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
-          String(d.param_name),
-        ),
+        /^(firmware( version)?|software version)$/i.test(String(d.param_name)),
     )) {
-      const value = String((await this.get(String(d.param_id))).value)
-      if (
-        d.param_id === 'eParamID_CurrentlyRunningImageVersion' ||
-        /version|firmware/i.test(String(d.param_name))
-      )
-        this.firmware += ` ${value}`
-      else if (!this.identity) this.identity = value
+      try {
+        this.firmware += ` ${String((await this.get(String(d.param_id))).value)}`
+      } catch {
+        /* Optional firmware metadata must not block transport controls. */
+      }
     }
-    const compact = (s: string) =>
-      s
-        .toLowerCase()
-        .replace(/[^a-z0-9]/g, '')
-        .replace(/^aja/, '')
-    const identityMatches = compact(this.identity) === compact(this.config.model)
     const command = descriptors.find((d) => d.param_id === this.commandId)
     const enums = Array.isArray(command?.enum_values) ? (command.enum_values as Raw[]) : []
-    const isCommand = (value: number, label: RegExp) =>
-      enums.some((e) => Number(e.value) === value && label.test(String(e.text)))
-    const stateDescriptor = descriptors.find((d) => d.param_id === this.stateId)
-    const states = Array.isArray(stateDescriptor?.enum_values)
-      ? (stateDescriptor.enum_values as Raw[])
-      : []
-    const stateMatches =
-      states.some((e) => Number(e.value) === 1 && /idle/i.test(String(e.text))) &&
-      states.some((e) => Number(e.value) === 2 && /recording/i.test(String(e.text)))
-    this.control =
-      identityMatches &&
-      stateMatches &&
-      isCommand(this.helo ? 1 : 3, /^(start )?record(ing)?( command)?$/i) &&
-      isCommand(
-        this.helo ? 2 : 4,
-        this.helo ? /^stop recording( command)?$/i : /^stop( command)?$/i,
-      )
+    const accepts = (value: number) =>
+      (!enums.length || enums.some((e) => Number(e.value) === value)) &&
+      (command?.min_value === undefined || value >= Number(command.min_value)) &&
+      (command?.max_value === undefined || value <= Number(command.max_value))
+    this.control = !!command && accepts(this.helo ? 1 : 3) && accepts(this.helo ? 2 : 4)
     this.descriptors = descriptors
   }
   async read(includeMedia: boolean): Promise<RecorderSnapshot> {
@@ -305,12 +281,12 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       canControl: this.control && !transfer,
       enabled: false,
       controlReason: this.control
-        ? 'API mapped; hardware qualification pending'
-        : 'Model identity or transport command descriptors could not be verified; monitor only',
+        ? undefined
+        : 'Record/Stop commands are not available in the device API',
     }
   }
   async command(action: 'record' | 'stop') {
-    if (!this.control) throw new Error('Recorder command mapping is not verified')
+    if (!this.control) throw new Error('Record/Stop commands are not available in the device API')
     // Only these two values can be written. No combined stream, media or configuration commands.
     const value = action === 'record' ? (this.helo ? 1 : 3) : this.helo ? 2 : 4
     await this.request(

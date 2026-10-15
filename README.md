@@ -38,21 +38,21 @@ Open the URL Vite prints. `npm test` runs the tests; `npm run build` checks Type
 ## Connect hardware
 
 1. Start an empty workspace from the **⋯** menu, or remove demo devices as needed.
-2. Open **Add device**, enter a private IPv4 address and optional device label, then **Test connection**.
+2. Open **Manage connections**, enter a private IPv4 address and optional device label under **Add by IP**, then connect. You can also scan and add an identified AJA device.
 3. Allow local network access in the browser if prompted. Device CORS must separately permit readable API responses. Opening an AJA interface in another tab does not establish this permission.
-4. Review identity, source context, color descriptors, native ranges, and current values. Add the device read-only only when all required checks pass.
-5. On an off-air processor, enable writes from the device’s lock button, test a small change against the AJA interface, verify readback, and restore the starting value.
+4. SignalShade reads the device identity, available color descriptors, native ranges, and current values, then adds its mapped controls. Hardware test-history labels do not gate controls.
+5. Use the device’s **Lock control** button or channel/desk locks to pause adjustments. For an initial check, make a small change against the AJA interface, verify readback, and restore the starting value.
 
 FS4, FS2, FS1-X, FS1, and FS-HDR are target models. Only recognized conventional SDR controls are mapped. FS-HDR Colorfront, LUTs, HDR transforms, routing, timing, audio, networking, factory reset, and whole-device presets are outside this release.
 
-The initial hardware adapter deliberately displays descriptor-native numeric values. Nontrivial device scaling is labeled **native** rather than guessed. Some firmware descriptor names or response formats will need additional fixtures and an adapter update. Failure to identify model, context, or unambiguous controls leaves hardware read-only.
+The initial hardware adapter displays descriptor-native numeric values. Nontrivial device scaling is labeled **native** rather than guessed. Some firmware descriptor names or response formats will need additional fixtures and an adapter update. A missing model or ambiguous control mapping prevents connection; absent optional source metadata does not disable mapped controls. The original FS1 2.2.2.1 legacy shading adapter is not implemented yet; its connection report captures diagnostic reads.
 
 Authentication supports an optional session-only Basic Authorization header, subject to device preflight/CORS support. It does not promise support for digest, proprietary login sessions, or third-party cookies. HTTP does not encrypt credentials on the LAN. Exported reports/workspaces may contain your device addresses; keep them local.
 
 ## Operator notes
 
 - **Recorders:** open Recorders in the header or Manage connections. Add a model/address to connect in monitor-only mode, or add a simulated recorder. Enable control per recorder for this session. The strip shows recording status, duration and media; click its details arrow for all exposed destinations/metrics. Stop requires a second click within four seconds. Reconnect and reload never resume recording commands. Removing a real recorder from the dashboard does not stop it.
-- **Recorder compatibility:** the browser adapter validates the selected model against device identity and command/state descriptors. Unrecognized firmware stays monitor-only. Media fields are discovered from device descriptors and only explicitly known units are normalized; unsupported time/space values show as unavailable. Current media percentage is not converted into invented GB or recording time. Clip duration may reset when files segment; `~` duration is an estimate from an observed start. No physical recorder or browser-to-recorder authentication path has yet been qualified. See the [implementation review](docs/implementation-review.md).
+- **Recorder compatibility:** the browser adapter uses the selected recorder family’s state and Record/Stop command descriptors. Missing optional identity/firmware data or differing English enum labels do not disable control. Actual missing commands or incompatible numeric limits are reported. Media fields come from device descriptors; only known units are normalized, and missing metrics show as unavailable. Clip duration may reset when files segment; `~` duration estimates an observed start. See the [implementation review](docs/implementation-review.md).
 - **Recorder authentication:** an optional password uses AJA session-cookie login, retained only for the connection. AJA CORS and the browser's cross-origin cookie policy must allow this. Authentication expiry requires reconnecting; transport commands are never automatically retried.
 
 - **Customize cards:** choose up to eight Quick controls in Customize desk (four by default). Other controls are available through the card tabs. Restore default layout resets only the presentation preferences; labels, gangs, presets, and signal values stay intact. Layouts that previously hid all sections recover their tabs on load, and unsupported pins fall back to controls available on that channel.

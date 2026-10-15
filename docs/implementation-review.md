@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Operator controls and extension updates — 0.3.2
+
+Device dialogs now keep extension download and install/update links visible outside collapsed help, including when Connect is installed. Connect 0.3.2 opens its own `chrome://extensions/?id=…` entry through a fixed worker action restricted to the trusted dashboard; older builds offer a copyable address. No additional extension permission is requested. Worker coverage checks trusted and rejected senders and ensures a supplied arbitrary URL cannot replace the fixed destination.
+
+Hardware-test history no longer appears as an operator warning or capability gate. Connected FS controls are enabled when mappings and reads succeed; optional source metadata is not a prerequisite. Existing source-context checks still apply when that metadata is exposed. Recorder capabilities use known family command values and exposed numeric limits rather than exact identity/English labels. Optional firmware reads cannot block transport. Cross-model presets use parameter semantics/ranges instead of a blanket model restriction. Locks, failed reads, missing mappings, write/readback checks and uncertain-command handling remain. Original FS1 legacy control still needs an implementation, rather than a qualification override. Validation: 94 dashboard tests, 6 extension tests, production build and extension packaging.
+
 ## Delivered
 
 - One optional 90 px recorder row beneath the existing header. A fixed overview retains recording and attention counts even while capsules scroll horizontally. Channel and gang controls retain their open layout and established palette.

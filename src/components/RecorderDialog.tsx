@@ -179,7 +179,7 @@ export function RecorderDialog({
               {state?.issue && <p className="text-warning">{state.issue}</p>}
               {!config.simulated && (
                 <small className="muted">
-                  {state?.controlReason ?? 'Connect to check model and API'} ·{' '}
+                  {state?.controlReason ? `${state.controlReason} · ` : ''}
                   {state?.scope ?? 'Device-wide control'}
                 </small>
               )}

@@ -75,6 +75,20 @@ test('only allows descriptor-verified record/stop and shading values', () => {
     { param_id: 'eParamID_Format', param_name: 'Format Media', min_value: 0, max_value: 1 },
   ]
   validateWrite({ id: 'eParamID_ReplicatorCommand', value: 1 }, list)
+  validateWrite({ id: 'eParamID_ReplicatorCommand', value: 2 }, [
+    {
+      param_id: 'eParamID_ReplicatorCommand',
+      enum_values: [
+        { value: 1, text: 'Start' },
+        { value: 2, text: 'End' },
+      ],
+    },
+  ])
+  assert.throws(() =>
+    validateWrite({ id: 'eParamID_ReplicatorCommand', value: 2 }, [
+      { param_id: 'eParamID_ReplicatorCommand', min_value: 0, max_value: 1 },
+    ]),
+  )
   validateWrite({ id: 'eParamID_Gain', value: 1.2 }, list)
   for (const op of [
     { id: 'eParamID_ReplicatorCommand', value: 3 },

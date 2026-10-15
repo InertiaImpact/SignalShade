@@ -140,14 +140,17 @@ describe('AJA browser transport', () => {
     expect(fetcher.mock.calls[0][0]).toBe('http://10.0.0.2/desc.json')
     adapter.dispose()
   })
-  it('rejects writes without context metadata before making a network request', async () => {
-    const fetcher = vi.fn()
+  it('writes mapped controls when optional context metadata is absent', async () => {
+    const fetcher = vi
+      .fn()
+      .mockResolvedValue({ ok: true, json: async () => ({ name: gain.param_id, value: '1010' }) })
     vi.stubGlobal('fetch', fetcher)
     const adapter = new AjaAdapter('10.0.0.2')
     const d = mapDescriptor(gain)!
     await expect(
       adapter.write({ id: 'a', descriptors: [d], context: '' } as never, d, 1010),
-    ).rejects.toThrow('Source context')
-    expect(fetcher).not.toHaveBeenCalled()
+    ).resolves.toBe(1010)
+    expect(fetcher.mock.calls.some(([url]) => String(url).includes('action=set'))).toBe(true)
+    adapter.dispose()
   })
 })

@@ -974,9 +974,9 @@ export default function App() {
             </p>
             <h3>Connect your fleet</h3>
             <p>
-              Add device → Test connection → review mappings → add read-only. Enable writes
-              explicitly for an off-air test. Hardware support is experimental until your model and
-              firmware pass qualification.
+              Add a device by IP or choose one from a network scan. Its mapped controls become
+              available after connecting. Use device, channel, or desk locks when you want to pause
+              adjustments.
             </p>
             <h3>Protect your setup</h3>
             <p>
@@ -1104,7 +1104,7 @@ function ChannelCard({
           {device.simulated
             ? 'DEMO'
             : c.issue
-              ? 'UNVERIFIED'
+              ? 'ERROR'
               : device.status !== 'online'
                 ? 'OFFLINE'
                 : c.pending

@@ -151,6 +151,16 @@ describe('command engine', () => {
     await settle()
     expect(value('demo-ch-1')).toBe(1.02)
   })
+  it('rejects incompatible preset units before sending any commands', () => {
+    store.savePreset('Camera look', ['demo-ch-1'])
+    const preset = structuredClone(store.getSnapshot().workspace.presets[0])
+    const gain = preset.channels[0].descriptors.find((d) => d.id === 'gain')!
+    gain.unit = 'different unit'
+    expect(() => store.recallPreset(preset, { 'demo-ch-1': 'demo-ch-9' }, ['Proc amp'])).toThrow(
+      'Incompatible parameter semantics',
+    )
+    expect(store.getSnapshot().busy).toBe(0)
+  })
   it('resets one channel while preserving enable states', async () => {
     store.reset(['demo-ch-1'])
     await settle()
@@ -195,9 +205,9 @@ describe('command engine', () => {
   it('preflights preset recalls before any command is sent', async () => {
     store.savePreset('Camera look', ['demo-ch-1'])
     const preset = store.getSnapshot().workspace.presets[0]
-    expect(() => store.recallPreset(preset, { 'demo-ch-1': 'demo-ch-9' }, ['Proc amp'])).toThrow(
-      'Cross-model',
-    )
+    store.recallPreset(preset, { 'demo-ch-1': 'demo-ch-9' }, ['Proc amp'])
+    await settle()
+    expect(value('demo-ch-9')).toBe(1.02)
     expect(store.getSnapshot().busy).toBe(0)
     store.adjust(['demo-ch-1'], 'gain', 1.3, 'absolute')
     await settle()

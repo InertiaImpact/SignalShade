@@ -109,6 +109,10 @@ async function handle(m, sender) {
   )
     throw new Error('Untrusted bridge request')
   if (m.type === 'hello') return { version: chrome.runtime.getManifest().version, protocol: 1 }
+  if (m.type === 'openExtensions') {
+    await chrome.tabs.create({ url: `chrome://extensions/?id=${chrome.runtime.id}` })
+    return { opened: true }
+  }
   if (m.type === 'scan-status' || m.type === 'scan-permission') {
     const origins = scanOrigins(m.start, m.end)
     const key = `scan:${sender.tab.id}`

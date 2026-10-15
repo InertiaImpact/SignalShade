@@ -23,6 +23,7 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 
 ## Current scope
 
+- v0.3.2 adds **Open Chrome extensions** in Devices to open Connect’s entry for reloading. Download and install/update links remain visible with or without an installed extension. Older versions offer **Copy Chrome extensions address**. After replacing the unpacked files, reload Connect and then reload SignalShade.
 - v0.3.1 accepts descriptor tables up to 32 MiB; ordinary responses remain capped at 4 MiB. This fixes the observed FS descriptor download being rejected before identification. The scan results list contains identified AJA interfaces only; unrelated/unauthenticated web responses stay in diagnostics rather than appearing as Add candidates.
 - For an original FS1 identified by its AJA admin page, a failed descriptor connection now exports seven known `/json` diagnostic reads. Firmware 2.2.2.1 uses that legacy interface. Native response/range qualification is pending; legacy shading writes are deliberately not mapped yet.
 

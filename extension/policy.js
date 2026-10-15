@@ -108,20 +108,20 @@ export function validateWrite(op, list) {
   if (!d) throw new Error('Parameter was not discovered on this device')
   if (['eParamID_ReplicatorCommand', 'eParamID_TransportCommand'].includes(op.id)) {
     const helo = op.id === 'eParamID_ReplicatorCommand'
-    const expected =
-      op.value === (helo ? 1 : 3)
-        ? /^(start )?record(ing)?( command)?$/i
-        : op.value === (helo ? 2 : 4)
-          ? helo
-            ? /^stop recording( command)?$/i
-            : /^stop( command)?$/i
-          : null
+    if (!(helo ? [1, 2] : [3, 4]).includes(op.value))
+      throw new Error('Only Record and Stop commands are supported')
     if (
-      expected &&
-      d.enum_values?.some((e) => Number(e.value) === op.value && expected.test(e.text))
+      Array.isArray(d.enum_values) &&
+      d.enum_values.length &&
+      !d.enum_values.some((e) => Number(e.value) === op.value)
     )
-      return
-    throw new Error('Only verified Record and Stop commands are permitted')
+      throw new Error('Command value is not available on this device')
+    if (
+      (d.min_value !== undefined && op.value < Number(d.min_value)) ||
+      (d.max_value !== undefined && op.value > Number(d.max_value))
+    )
+      throw new Error('Command value is outside the device range')
+    return
   }
   const name = String(d.param_name ?? '')
     .toLowerCase()
