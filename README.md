@@ -19,7 +19,7 @@ For devices blocked by browser CORS, use the optional **[SignalShade Connect ext
 - Neutral resets at parameter, section, channel, group, or all-channel scope; enables are preserved unless requested.
 - Color preset capture and recall with explicit target/section selection and preflight compatibility checks.
 - Gesture-level undo, external-change conflict detection, JSON workspace backup/import, and automatic IndexedDB storage.
-- Direct-IP connection diagnostics, opt-in bounded IPv4 scan, native descriptor review, and report export.
+- Unified device manager, direct-IP connections, bounded IPv4 scanning, model-specific demos, and combined debug ZIP export.
 - Simulated FS4/FS2 fleet. Demo devices never issue network requests.
 - Offline application shell after a successful first production load; operator-controlled updates.
 - Optional recorder strip for HELO, HELO Plus and Ki Pro: transport status, clip/observed duration, reported media metrics, explicit Record/Stop, and simulation. Hardware qualification is pending.
@@ -45,13 +45,13 @@ Open the URL Vite prints. `npm test` runs the tests; `npm run build` checks Type
 
 FS4, FS2, FS1-X, FS1, and FS-HDR are target models. Only recognized conventional SDR controls are mapped. FS-HDR Colorfront, LUTs, HDR transforms, routing, timing, audio, networking, factory reset, and whole-device presets are outside this release.
 
-The initial hardware adapter displays descriptor-native numeric values. Nontrivial device scaling is labeled **native** rather than guessed. Some firmware descriptor names or response formats will need additional fixtures and an adapter update. A missing model or ambiguous control mapping prevents connection; absent optional source metadata does not disable mapped controls. The original FS1 2.2.2.1 legacy shading adapter is not implemented yet; its connection report captures diagnostic reads.
+The initial hardware adapter displays descriptor-native numeric values. Nontrivial device scaling is labeled **native** rather than guessed. Some firmware descriptor names or response formats will need additional fixtures and an adapter update. A missing model or ambiguous control mapping prevents connection; absent optional source metadata does not disable mapped controls. Original FS1 firmware 2.2.2.1 uses its legacy `/json` interface for five Proc amp controls; RGB is not exposed on that model. These mappings replay captured responses and use native firmware ranges.
 
 Authentication supports an optional session-only Basic Authorization header, subject to device preflight/CORS support. It does not promise support for digest, proprietary login sessions, or third-party cookies. HTTP does not encrypt credentials on the LAN. Exported reports/workspaces may contain your device addresses; keep them local.
 
 ## Operator notes
 
-- **Recorders:** open Recorders in the header or Manage connections. Add a model/address to connect in monitor-only mode, or add a simulated recorder. Enable control per recorder for this session. The strip shows recording status, duration and media; click its details arrow for all exposed destinations/metrics. Stop requires a second click within four seconds. Reconnect and reload never resume recording commands. Removing a real recorder from the dashboard does not stop it.
+- **Recorders:** open **Manage connections** for processors and recorders. Choose a model/address or use Auto detect; **Demo device** lets you choose a simulated model. Enable control per recorder after connecting. The strip shows recording status, duration and storage; its details arrow opens the same manager with compact destination/slot rows. Stop requires a second click within four seconds. Reconnect and reload never resume recording commands. Removing a real recorder from the dashboard does not stop it.
 - **Recorder compatibility:** the browser adapter uses the selected recorder family’s state and Record/Stop command descriptors. Missing optional identity/firmware data or differing English enum labels do not disable control. Actual missing commands or incompatible numeric limits are reported. Media fields come from device descriptors; only known units are normalized, and missing metrics show as unavailable. Clip duration may reset when files segment; `~` duration estimates an observed start. See the [implementation review](docs/implementation-review.md).
 - **Recorder authentication:** an optional password uses AJA session-cookie login, retained only for the connection. AJA CORS and the browser's cross-origin cookie policy must allow this. Authentication expiry requires reconnecting; transport commands are never automatically retried.
 
@@ -65,7 +65,8 @@ Authentication supports an optional session-only Basic Authorization header, sub
 - **Enabled/bypassed:** corrections do not automatically turn a bypassed stage on.
 - **Resets:** numerical Proc Amp/RGB parameters return to neutral; Legalizer values are left unchanged while its controls are hidden. This affects the active source-memory context only, not all stored input-format memories.
 - **Undo:** restores this session’s previous values after checking targets, source context, and current values. External changes can block undo. Hardware group operations cannot be atomic; failures are reported, and successful members are not automatically rolled back.
-- **Source identity:** labels follow processors, not physical inputs. Hardware source context is shown in native form until that firmware’s human-readable routing/status map is qualified.
+- **Source identity:** labels, groups, locks and layout follow processors, not physical connectors. Routing changes refresh native color values without resetting or reapplying them. A queued adjustment is cancelled if its source context changes.
+- **Debug:** use **Download debug ZIP** in Devices for the current workspace, recorder status, scan/probe results and recent requests in one package. Credentials are redacted; addresses and labels remain included. Session diagnostics stay available when the manager is closed and reopened.
 - **Workspace:** export before clearing browser storage or moving computers. Import never reconnects, arms, or writes hardware automatically. Device credentials are never saved or exported.
 - **One operator:** other tabs in the same browser profile are read-only. This cannot enforce ownership across computers, profiles, vendor UIs, or hardware panels.
 - **Shortcuts:** `/` searches; `Ctrl/Cmd+Z` undoes an adjustment. Input edits commit on Enter or blur; slider adjustments are live. Fine/Normal/Coarse correspond to 1/5/10 native steps.

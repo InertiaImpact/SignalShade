@@ -1,5 +1,11 @@
 import { AjaTransport } from './transport'
 import { activeFsDescriptors, activeFsId } from '../../extension/fs-parameters.js'
+import {
+  fs1Descriptors,
+  fs1ReadIds,
+  isFs1Identity,
+  fs1ReadValue,
+} from '../../extension/legacy-fs1.js'
 import type {
   Channel,
   DeviceAdapter,
@@ -201,6 +207,8 @@ function stringValue(input: unknown): string {
 }
 export class AjaAdapter implements DeviceAdapter {
   private legacyDescriptors = false
+  private legacyJson = false
+  private contextNames = new Map<string, string>()
   private transport = new AjaTransport()
   readonly address: string
   private controllers = new Set<AbortController>()
@@ -240,7 +248,7 @@ export class AjaAdapter implements DeviceAdapter {
   }
   async readParameter(id: string) {
     return this.request(
-      `config?${new URLSearchParams({ action: 'get', paramid: id, ...(this.legacyDescriptors ? { configid: '0', alt: 'json' } : {}) })}`,
+      `${this.legacyJson ? 'json' : 'config'}?${new URLSearchParams({ action: 'get', paramid: id, ...(this.legacyDescriptors || this.legacyJson ? { configid: '0', alt: 'json' } : {}) })}`,
     )
   }
   async readDescriptors(signal?: AbortSignal): Promise<unknown> {
@@ -278,8 +286,12 @@ export class AjaAdapter implements DeviceAdapter {
     return {
       values,
       context,
-      source: input ? `Input ${contextValues.get(input.id)}` : 'Unknown input',
-      format: format ? `Format ${contextValues.get(format.id)} (native)` : 'Unknown format',
+      source: input
+        ? (this.contextNames.get(input.id) ?? `Input ${contextValues.get(input.id)}`)
+        : 'Input not reported',
+      format: format
+        ? (this.contextNames.get(format.id) ?? `Format ${contextValues.get(format.id)}`)
+        : 'Format not reported',
     }
   }
   private async readContext(id: string) {
@@ -287,7 +299,10 @@ export class AjaAdapter implements DeviceAdapter {
     if (!parameters?.length) return ''
     const parts: string[] = []
     for (const p of parameters) {
-      const value = stringValue(await this.readParameter(p.id))
+      const response = await this.readParameter(p.id)
+      const value = stringValue(response)
+      const selected = selectedResponse(response) as Raw | undefined
+      if (typeof selected?.value_name === 'string') this.contextNames.set(p.id, selected.value_name)
       if (!value) throw new Error(`Unable to read source context: ${p.label}`)
       parts.push(`${p.id}=${value}`)
     }
@@ -305,7 +320,7 @@ export class AjaAdapter implements DeviceAdapter {
     if (channel.context !== (await this.readContext(channel.id)))
       throw new Error('Source changed; refresh before adjusting')
     await this.request(
-      `config?${new URLSearchParams({ action: 'set', paramid: descriptor.nativeId, value: String(value), configid: '0' })}`,
+      `${this.legacyJson ? 'json' : 'config'}?${new URLSearchParams({ action: 'set', paramid: descriptor.nativeId, value: String(value), configid: '0' })}`,
     )
     const readback = readValue(await this.readParameter(descriptor.nativeId), descriptor.nativeId)
     if ((await this.readContext(channel.id)) !== channel.context)
@@ -327,7 +342,7 @@ export class AjaAdapter implements DeviceAdapter {
       checks: [],
       rawDescriptorCount: 0,
     }
-    let raw: Raw[]
+    let raw: Raw[] = []
     try {
       const response = await this.readDescriptors(signal)
       const extracted = extractDescriptors(response)
@@ -350,22 +365,10 @@ export class AjaAdapter implements DeviceAdapter {
         } catch {
           /* Preserve the descriptor failure. */
         }
-        if (
-          result.webIdentity?.model === 'FS1' &&
-          /\bAJA\b/i.test(result.webIdentity.title ?? '')
-        ) {
+        if (isFs1Identity(result.webIdentity)) {
           result.legacyReadbacks = []
           // Endpoint and native IDs observed in AJA's original FS1 2.2.2.1 web interface.
-          // Diagnostic reads only: no fabricated descriptor ranges or write mapping.
-          for (const id of [
-            'eParamID_VideoInputSelect',
-            'eParamID_DetectInputFormat',
-            'eParamID_ProcAmpEnable',
-            'eParamID_ProcAmpBlackYCGain',
-            'eParamID_ProcAmpBlackYCOffset',
-            'eParamID_ProcAmpHue',
-            'eParamID_ProcAmpSat',
-          ]) {
+          for (const id of fs1ReadIds) {
             if (signal?.aborted) break
             try {
               result.legacyReadbacks.push({
@@ -379,26 +382,40 @@ export class AjaAdapter implements DeviceAdapter {
               result.legacyReadbacks.push({ id, error: message(error) })
             }
           }
-          const readable = result.legacyReadbacks.filter(
-            (r) => stringValue(r.response) !== '',
+          const readable = result.legacyReadbacks.filter((r) =>
+            fs1ReadValue(r.response, r.id),
           ).length
+          if (readable === fs1ReadIds.length) {
+            this.legacyJson = true
+            result.model = 'FS1'
+            result.firmware = 'Legacy FS1'
+            raw = [
+              ...fs1Descriptors,
+              { param_id: fs1ReadIds[0], param_name: 'Input' },
+              { param_id: fs1ReadIds[1], param_name: 'Input Format' },
+            ]
+            result.rawDescriptors = raw
+            result.rawDescriptorCount = fs1Descriptors.length
+          }
           result.checks.push({
             name: 'Original FS1 interface',
-            status: 'info',
-            detail: `${readable} / 7 legacy parameters returned readable values. Diagnostic values are included in this report. The original FS1 shading adapter is not implemented yet.`,
+            status: this.legacyJson ? 'pass' : 'fail',
+            detail: `${readable} / 7 legacy parameters readable. ${this.legacyJson ? 'Five native ProcAmp controls mapped.' : 'Could not read all original FS1 controls.'}`,
           })
         }
       }
-      result.checks.push({
-        name: 'Readable API',
-        status: 'fail',
-        detail: /HTTP (404|410)\b/.test(message(e))
-          ? `${message(e)}. Neither AJA descriptor endpoint was found.${result.webIdentity?.model ? ` Web interface: ${result.webIdentity.model}.` : ''} Device access is allowed; approval cannot fix a missing endpoint. This firmware needs a separate API mapping; export this report.`
-          : /response.*exceeds.*(MB|MiB)/i.test(message(e))
-            ? `${message(e)}. The connection reached the device, but Connect stopped the download at its response-size limit. Update SignalShade Connect and retry.`
-            : `${message(e)}. Check network, device address, browser access, and authentication.`,
-      })
-      return result
+      if (!this.legacyJson) {
+        result.checks.push({
+          name: 'Readable API',
+          status: 'fail',
+          detail: /HTTP (404|410)\b/.test(message(e))
+            ? `${message(e)}. Neither AJA descriptor endpoint was found.${result.webIdentity?.model ? ` Web interface: ${result.webIdentity.model}.` : ''} Device access is allowed; approval cannot fix a missing endpoint. This firmware needs a separate API mapping; export this report.`
+            : /response.*exceeds.*(MB|MiB)/i.test(message(e))
+              ? `${message(e)}. The connection reached the device, but Connect stopped the download at its response-size limit. Update SignalShade Connect and retry.`
+              : `${message(e)}. Check network, device address, browser access, and authentication.`,
+        })
+        return result
+      }
     }
     const identity = raw.filter((r) =>
       /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
@@ -413,7 +430,7 @@ export class AjaAdapter implements DeviceAdapter {
         /* reported below */
       }
     }
-    result.model = modelName(identification)
+    result.model ??= modelName(identification)
     if (!result.model) {
       try {
         result.webIdentity = (await this.request(
@@ -428,7 +445,7 @@ export class AjaAdapter implements DeviceAdapter {
     }
     if (result.model && !['FS4', 'FS2', 'FS1-X', 'FS1', 'FS-HDR'].includes(result.model))
       result.model = undefined
-    result.firmware = identification.trim() || 'Unidentified'
+    result.firmware ??= identification.trim() || 'Unidentified'
     if (result.model === 'FS-HDR')
       result.checks.push({
         name: 'SDR workflow',

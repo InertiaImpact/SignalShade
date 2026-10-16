@@ -7,9 +7,11 @@ import {
   scanOrigins,
 } from './policy.js'
 import { activeFsDescriptors } from './fs-parameters.js'
+import { fs1Descriptors, fs1ReadIds, isFs1Identity, fs1ReadValue } from './legacy-fs1.js'
 
 const queues = new Map()
 const discovered = new Map()
+const legacyReads = new Map()
 let inflight = 0
 function serialized(origin, task) {
   const previous = queues.get(origin) ?? Promise.resolve()
@@ -163,6 +165,11 @@ async function handle(m, sender) {
     const list = discovered.get(`${sender.tab.id}:${sender.documentId}:${origin}`)
     if (!scanAllowed || !list?.length)
       throw new Error('Device requires approval or descriptor identification before adding')
+    if (
+      list === fs1Descriptors &&
+      legacyReads.get(`${sender.tab.id}:${sender.documentId}:${origin}`)?.size !== fs1ReadIds.length
+    )
+      throw new Error('Read the FS1 status and ProcAmp controls before adding')
     await chrome.storage.local.set({ origins: [...new Set([...grants, origin])] })
     return { allowed: true }
   }
@@ -204,12 +211,37 @@ async function handle(m, sender) {
             raw = await fetchJson(origin, 'desc.json', m)
           } catch (e) {
             if (!/HTTP (404|410)\b/.test(e.message)) throw e
-            raw = await fetchJson(origin, 'descriptors?paramid=*', m)
+            try {
+              raw = await fetchJson(origin, 'descriptors?paramid=*', m)
+            } catch (error) {
+              if (
+                !/HTTP (404|410)\b/.test(error.message) ||
+                !m.path.startsWith('json?') ||
+                !isFs1Identity(await fetchJson(origin, 'device-info', m))
+              )
+                throw error
+              for (const id of fs1ReadIds) {
+                if (
+                  !fs1ReadValue(
+                    await fetchJson(origin, `json?action=get&paramid=${id}&configid=0&alt=json`, m),
+                    id,
+                  )
+                )
+                  throw new Error('FS1 status read failed')
+              }
+              legacyReads.set(`${owner}:${origin}`, new Set(fs1ReadIds))
+              raw = fs1Descriptors
+            }
           }
-          list = activeFsDescriptors(descriptors(raw))
+          list = raw === fs1Descriptors ? fs1Descriptors : activeFsDescriptors(descriptors(raw))
           discovered.set(`${owner}:${origin}`, list)
         }
         validateWrite(op, list)
+        if (
+          list === fs1Descriptors &&
+          legacyReads.get(`${owner}:${origin}`)?.size !== fs1ReadIds.length
+        )
+          throw new Error('Read the FS1 status and ProcAmp controls before adjusting')
         // Expired IDs cannot be dispatched: the original deadline is validated above.
         const saved = await chrome.storage.session.get(null)
         const expired = Object.keys(saved).filter(
@@ -224,6 +256,18 @@ async function handle(m, sender) {
       if (m.deadline <= Date.now())
         throw new Error('Request expired before dispatch; read device state')
       const result = await fetchJson(origin, m.path, m)
+      const ownerKey = `${sender.tab.id}:${sender.documentId}:${origin}`
+      if (op.kind === 'identity' && isFs1Identity(result)) discovered.set(ownerKey, fs1Descriptors)
+      if (
+        op.kind === 'read' &&
+        m.path.startsWith('json?') &&
+        discovered.get(ownerKey) === fs1Descriptors &&
+        fs1ReadValue(result, op.id)
+      ) {
+        const read = legacyReads.get(ownerKey) ?? new Set()
+        read.add(op.id)
+        legacyReads.set(ownerKey, read)
+      }
       if (op.kind === 'descriptors')
         discovered.set(
           `${sender.tab.id}:${sender.documentId}:${origin}`,
@@ -249,4 +293,5 @@ chrome.tabs.onRemoved.addListener((tabId) => {
   chrome.storage.session.remove(`approval:${tabId}`)
   chrome.storage.session.remove(`scan:${tabId}`)
   for (const key of discovered.keys()) if (key.startsWith(`${tabId}:`)) discovered.delete(key)
+  for (const key of legacyReads.keys()) if (key.startsWith(`${tabId}:`)) legacyReads.delete(key)
 })

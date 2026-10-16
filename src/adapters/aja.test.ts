@@ -8,6 +8,7 @@ import {
   readValue,
 } from './aja'
 import fs2Descriptors from './fixtures/fs2-descriptors.json'
+import fs1Readbacks from './fixtures/fs1-readbacks.json'
 
 const gain = {
   param_id: 'eParamID_ProcAmpGain_Vid1',
@@ -21,6 +22,45 @@ const gain = {
 }
 afterEach(() => vi.unstubAllGlobals())
 describe('AJA browser transport', () => {
+  it('connects the reported legacy FS1 readbacks and writes only its native ProcAmp endpoint', async () => {
+    const state = new Map(fs1Readbacks.map((r) => [r.name, { ...r }]))
+    const calls: string[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string) => {
+        calls.push(url)
+        const u = new URL(url),
+          id = u.searchParams.get('paramid')!
+        if (u.pathname === '/') return new Response('<title>AJA Video - FS1 Admin: Main</title>')
+        if (u.pathname !== '/json') return new Response('', { status: 404 })
+        const response = state.get(id)
+        if (!response) throw new Error('Unexpected native parameter')
+        if (u.searchParams.get('action') === 'set') response.value = u.searchParams.get('value')!
+        return new Response(JSON.stringify(response))
+      }),
+    )
+    const adapter = new AjaAdapter('10.0.0.2'),
+      report = await adapter.probe(),
+      channel = report.channels[0]
+    expect(report.checks.filter((c) => c.status === 'fail')).toEqual([])
+    expect(channel.source).toBe('SDI 1')
+    expect(channel.format).toBe('1080i 59.94')
+    expect(channel.values).toMatchObject({
+      gain: 100,
+      black: 0,
+      hue: 0,
+      saturation: 100,
+      procEnabled: 0,
+    })
+    const gain = channel.descriptors.find((d) => d.id === 'gain')!
+    expect(await adapter.write(channel, gain, 105)).toBe(105)
+    expect(calls.filter((c) => c.includes('action=set'))).toEqual([
+      `http://10.0.0.2/json?action=set&paramid=${gain.nativeId}&value=105&configid=0`,
+    ])
+    state.get('eParamID_VideoInputSelect')!.value = '1'
+    await expect(adapter.write(channel, gain, 106)).rejects.toThrow('Source changed')
+    adapter.dispose()
+  })
   it.each(['FS2', 'FS2_R'])(
     'connects %s with two active processors from repeated per-input descriptor banks',
     async (product) => {
@@ -82,7 +122,7 @@ describe('AJA browser transport', () => {
       adapter.dispose()
     },
   )
-  it('probes original FS1 native reads without enabling controls or issuing a write', async () => {
+  it('maps original FS1 native controls without issuing a write while connecting', async () => {
     const fetcher = vi.fn(async (url: string) => {
       const u = new URL(url)
       if (u.pathname === '/') return new Response('<title>AJA Video - FS1 Admin: Main</title>')
@@ -96,7 +136,15 @@ describe('AJA browser transport', () => {
     expect(report.webIdentity?.model).toBe('FS1')
     expect(report.legacyReadbacks).toHaveLength(7)
     expect(report.legacyReadbacks?.every((r) => !r.error)).toBe(true)
-    expect(report.channels).toEqual([])
+    expect(report.model).toBe('FS1')
+    expect(report.channels).toHaveLength(1)
+    expect(report.channels[0].descriptors).toHaveLength(5)
+    expect(report.channels[0].descriptors.find((d) => d.id === 'black')).toMatchObject({
+      min: -200,
+      max: 200,
+      step: 5,
+      scale: 10,
+    })
     expect(fetcher.mock.calls.some(([url]) => url.includes('action=set'))).toBe(false)
     adapter.dispose()
   })

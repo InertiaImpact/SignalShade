@@ -1,5 +1,8 @@
 # TODO
 
+- [x] Unify processor/recorder device management, add model-specific demos, simplify recorder media, and package session diagnostics in one ZIP.
+- [x] Implement original FS1 native Proc amp support and preserve processor identity without writing on routing changes.
+
 - [x] Build SignalShade Connect preview with shared FS/recorder transport, per-device approval, GitHub ZIP packaging, and installation help in the dashboard. See [installation instructions](extension/README.md).
 - [ ] Qualify the unpacked extension on actual HELO Plus and other AJA hardware, including authenticated requests, Chrome permission prompts, worker lifecycle, and current enterprise browser policy. Complete store assets/review and publish to Chrome Web Store after qualification. Preview downloads are available through GitHub releases.
 

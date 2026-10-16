@@ -1,5 +1,17 @@
 # Recorder implementation and code review
 
+## Unified devices and field-report fixes — 0.4.0
+
+Devices now manages FS processors and HELO/Ki Pro recorders together, with a larger device list, model-specific demos, connection controls, and compact recorder storage rows. HELO results from a scan enter the recorder adapter instead of the FS probe. Add and scanning remain independently cancellable. A single debug ZIP gathers workspace, recorder snapshots, probe/scan results and bounded recent request traces; credential fields are redacted before storage/export. Diagnostics survive closing the dialog within the session.
+
+The original FS1 adapter recognizes its AJA admin identity, requires seven successful native reads, and maps five bounded Proc amp parameters through `/json`. Native ranges and steps were checked against firmware 2.2.2.1 metadata and the [AJA operation guide](https://www.aja.com/support/item-download/6617/AJA_FS1_Manual_2.2.2.1r2.pdf). The dashboard and extension share this map; the worker rechecks it after restarting. Source/routing writes remain excluded. Reduced readback fixtures omit device addresses; supplied reports and vendor binaries remain ignored local files.
+
+Processor identity is independent of the physical input. Labels, groups, locks and layout remain attached when routing changes. Refresh adopts native values without writing, including while locked. An adjustment queued against an old source is cancelled without disconnecting the device; the next refresh reads the new context. No automatic resets or color reapplication occur.
+
+HELO optional polling is limited to recording destinations, media mount/capacity/space and physical storage status. Duplicate descriptors and unrelated stream URLs, clip deletion fields and internal state no longer create media cards or repeated read failures. Empty optional metrics stay unavailable; missing units/time are not guessed. Known main/backup byte fields are normalized, inactive destinations are not low-space warnings, and optional failures do not retain stale capacity.
+
+Validation: 110 dashboard tests, 9 extension tests, TypeScript/Vite build and extension packaging passed. Coverage includes captured FS1 readbacks, native write bounds and worker restart, processor routing without writes, scan/Add concurrency, recorder dispatch, demo selection, ZIP round trips/redaction, and HELO storage filtering. No physical equipment commands were sent during development.
+
 ## FS2 field reports and scan concurrency — 0.3.3
 
 The supplied FS2 tables repeat the same native IDs and enumerate saved memories for SDI, HDMI, fiber and analog inputs. The old processor expression also missed the `Vid2YUV…` form, combining both processors into one group. Shared dashboard/extension normalization now deduplicates equivalent definitions and exposes the known unsuffixed active aliases for matching bank families. Conflicting bank semantics remain an explicit mapping error. The adapter reads each active alias before adding a channel, recognizes `FS2_R`, and handles bank-resolved readback names without accepting another processor’s response. Source selection/format metadata are scoped to their processor, including `Video1 Input` and `Video2 Input`. Tests replay a reduced, non-sensitive descriptor fixture from the field report, verify both processors and source-change rejection, and confirm refreshed controls still use active aliases. The complete supplied tables also normalize without conflicts. No writes were sent to physical equipment during development.

@@ -97,6 +97,12 @@ export class RecorderStore {
     if (this.state[config.id]?.updatedAt && this.state[config.id].state !== 'offline')
       this.rememberConnection(config.id)
   }
+  disconnect(id: string) {
+    if (this.state[id]?.pending) return
+    this.connections.get(id)?.adapter.dispose()
+    this.connections.delete(id)
+    this.patch(id, { ...disconnected() })
+  }
   private preferenceKey(id: string) {
     const config = this.configs.find((c) => c.id === id)
     return `signalshade-recorder-control:${id}:${config?.address}:${config?.model}`

@@ -1,0 +1,44 @@
+[
+  {
+    "paramid": "33619968",
+    "name": "eParamID_VideoInputSelect",
+    "value": "0",
+    "value_name": "SDI 1"
+  },
+  {
+    "paramid": "2030108672",
+    "name": "eParamID_DetectInputFormat",
+    "value": "3",
+    "value_name": "1080i 59.94"
+  },
+  {
+    "paramid": "167837696",
+    "name": "eParamID_ProcAmpEnable",
+    "value": "0",
+    "value_name": "Off"
+  },
+  {
+    "paramid": "167903232",
+    "name": "eParamID_ProcAmpBlackYCGain",
+    "value": "100",
+    "value_name": "100"
+  },
+  {
+    "paramid": "167968768",
+    "name": "eParamID_ProcAmpBlackYCOffset",
+    "value": "0",
+    "value_name": "0"
+  },
+  {
+    "paramid": "168034304",
+    "name": "eParamID_ProcAmpHue",
+    "value": "0",
+    "value_name": "0"
+  },
+  {
+    "paramid": "168099840",
+    "name": "eParamID_ProcAmpSat",
+    "value": "100",
+    "value_name": "100"
+  }
+]

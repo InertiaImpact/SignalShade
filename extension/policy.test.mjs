@@ -46,7 +46,13 @@ test('rejects arbitrary paths, duplicated query keys, and invalid writes', () =>
     operation('json?action=get&paramid=eParamID_ProcAmpHue&configid=0&alt=json').kind,
     'read',
   )
-  assert.throws(() => operation('json?action=set&paramid=eParamID_ProcAmpHue&value=1&configid=0'))
+  assert.equal(
+    operation('json?action=set&paramid=eParamID_ProcAmpHue&value=1&configid=0').kind,
+    'write',
+  )
+  assert.throws(() =>
+    operation('json?action=set&paramid=eParamID_VideoInputSelect&value=1&configid=0'),
+  )
   assert.throws(() => operation('json?action=get&paramid=eParamID_SoftwareReset'))
   assert.deepEqual(operation('config?action=get&paramid=eParamID_ProductID'), {
     kind: 'read',

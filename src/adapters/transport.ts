@@ -1,3 +1,4 @@
+import { diagnostics } from '../core/diagnostics'
 type Reply = { ok: boolean; data?: unknown; error?: string }
 export class BridgeAccessError extends Error {}
 export const connectRelease =
@@ -177,6 +178,36 @@ export async function ensureDeviceAccess(
 export class AjaTransport {
   private route?: Promise<boolean>
   async fetch(origin: string, path: string, options: RequestInit): Promise<Response> {
+    const started = Date.now()
+    try {
+      const response = await this.perform(origin, path, options)
+      let value: unknown
+      if (path.startsWith('config?') || path.startsWith('json?')) {
+        try {
+          value = await response.clone().json()
+        } catch {
+          /* Response parsing belongs to the adapter. */
+        }
+      }
+      diagnostics.event({
+        origin,
+        path,
+        status: response.status,
+        elapsedMs: Date.now() - started,
+        response: value,
+      })
+      return response
+    } catch (error) {
+      diagnostics.event({
+        origin,
+        path,
+        elapsedMs: Date.now() - started,
+        error: error instanceof Error ? error.message : String(error),
+      })
+      throw error
+    }
+  }
+  private async perform(origin: string, path: string, options: RequestInit): Promise<Response> {
     this.route ??= detectConnect().then(Boolean)
     if (await this.route) {
       try {

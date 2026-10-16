@@ -1,6 +1,6 @@
 import { AjaAdapter, message } from '../adapters/aja'
 import { commonValue, isCompatible, quantize } from './color'
-import { demoWorkspace, emptyWorkspace } from './demo'
+import { demoWorkspace, emptyWorkspace, demoDevice } from './demo'
 import { loadWorkspace, saveWorkspace, validateWorkspace } from './persistence'
 import { RecorderStore } from '../recorders/store'
 import type { RecorderConfig } from '../recorders/types'
@@ -16,6 +16,7 @@ import type {
   ProbeResult,
   UndoEntry,
   Workspace,
+  Model,
 } from './types'
 
 interface Snapshot {
@@ -205,6 +206,27 @@ export class DeskStore {
         channels: this.state.workspace.channels.map((c) => (c.id === id ? { ...c, ...patch } : c)),
       })
   }
+  addDemoDevice(model: Model, label = '') {
+    if (!this.canEdit()) return
+    const demo = demoDevice(model, label, this.state.workspace)
+    if (this.state.workspace.channels.length + demo.channels.length > 32)
+      throw new Error('This workspace supports up to 32 processors')
+    this.workspace({
+      ...this.state.workspace,
+      devices: [...this.state.workspace.devices, demo.device],
+      channels: [...this.state.workspace.channels, ...demo.channels],
+    })
+    return demo.device.id
+  }
+  renameDevice(id: string, label: string) {
+    if (this.canEdit() && label.trim())
+      this.workspace({
+        ...this.state.workspace,
+        devices: this.state.workspace.devices.map((d) =>
+          d.id === id ? { ...d, label: label.trim() } : d,
+        ),
+      })
+  }
   reorderChannel(id: string, direction: -1 | 1) {
     if (!this.canEdit()) return
     const channels = [...this.state.workspace.channels],
@@ -284,6 +306,7 @@ export class DeskStore {
     this.adapters.set(result.address, adapter)
     const channels = result.channels.map((c) => ({
       ...c,
+      locked: workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.locked ?? false,
       label:
         workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.label ??
         `${deviceLabel} - Input ${c.processor}`,
@@ -441,7 +464,6 @@ export class DeskStore {
           if (!device.simulated && adapter) {
             const state = await adapter.read(channel)
             if (state.context !== job.context) {
-              this.patchChannel(channel.id, { ...state, updatedAt: Date.now() })
               throw new Error('Source changed; adjustment cancelled')
             }
             before = state.values[job.parameter]
@@ -484,7 +506,13 @@ export class DeskStore {
           const text = message(e)
           this.log(`${channel?.label ?? 'Channel'}: ${text}`, 'error')
           if (channel) this.patchChannel(channel.id, { issue: text })
-          if (channel && !this.state.workspace.devices.find((d) => d.id === deviceId)?.simulated) {
+          if (
+            channel &&
+            !/^(Source context changed; adjustment cancelled|Source changed; adjustment cancelled)$/.test(
+              text,
+            ) &&
+            !this.state.workspace.devices.find((d) => d.id === deviceId)?.simulated
+          ) {
             const dropped = queue.splice(0).length
             this.emit({ busy: this.state.busy - dropped })
             this.workspace({
@@ -662,8 +690,6 @@ export class DeskStore {
         )) {
           const state = await adapter.read(channel)
           if (generation !== this.generation || this.adapters.get(device.id) !== adapter) return
-          if (state.context !== channel.context)
-            this.log(`${channel.label}: source context changed; values refreshed`)
           this.patchChannel(channel.id, { ...state, updatedAt: Date.now(), issue: undefined })
         }
       } catch (e) {

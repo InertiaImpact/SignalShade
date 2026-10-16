@@ -1,0 +1,298 @@
+[
+  {
+    "param_id": "eParamID_MediaState",
+    "param_name": "Media State",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "Record-Stream",
+        "short_text": "Record-Stream"
+      },
+      {
+        "value": 1,
+        "text": "Data-LAN",
+        "short_text": "Data-LAN"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 3
+  },
+  {
+    "param_id": "eParamID_RecordingDuration",
+    "param_name": "Recording Duration",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_RecordingDestination",
+    "param_name": "Main Recording Media Type",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "SD",
+        "short_text": "SD"
+      },
+      {
+        "value": 1,
+        "text": "USB",
+        "short_text": "USB"
+      },
+      {
+        "value": 2,
+        "text": "SMB Network Share",
+        "short_text": "SMB"
+      },
+      {
+        "value": 3,
+        "text": "NFS Network Share",
+        "short_text": "NFS"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 3
+  },
+  {
+    "param_id": "eParamID_SecondaryRecordingDestination",
+    "param_name": "Backup Recording Media Type",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 4,
+        "text": "None",
+        "short_text": "None"
+      },
+      {
+        "value": 0,
+        "text": "SD",
+        "short_text": "SD"
+      },
+      {
+        "value": 1,
+        "text": "USB",
+        "short_text": "USB"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 4
+  },
+  {
+    "param_id": "eParamID_CurrentMediaMounted",
+    "param_name": "Current Media Mounted",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "False",
+        "short_text": "False"
+      },
+      {
+        "value": 1,
+        "text": "True",
+        "short_text": "True"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 1
+  },
+  {
+    "param_id": "eParamID_CurrentMediaAvailable",
+    "param_name": "Capacity Remaining",
+    "param_type": "integer",
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": " %",
+    "min_value": 0,
+    "max_value": 99
+  },
+  {
+    "param_id": "eParamID_CurrentMediaUnusedBytes",
+    "param_name": "Free Space Main",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_CurrentMediaTotalBytes",
+    "param_name": "Total Space Main",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SecondaryMediaMounted",
+    "param_name": "Backup Media Mounted",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "False",
+        "short_text": "False"
+      },
+      {
+        "value": 1,
+        "text": "True",
+        "short_text": "True"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 1
+  },
+  {
+    "param_id": "eParamID_SecondaryMediaAvailable",
+    "param_name": "Capacity Remaining",
+    "param_type": "integer",
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": " %",
+    "min_value": 0,
+    "max_value": 99
+  },
+  {
+    "param_id": "eParamID_SecondaryMediaUnusedBytes",
+    "param_name": "Free Space Backup",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SecondaryMediaTotalBytes",
+    "param_name": "Total Space Backup",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SL_USB_Status",
+    "param_name": "USB Status",
+    "param_type": "enum",
+    "enum_values": [],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 7
+  },
+  {
+    "param_id": "eParamID_SL_USB_TotalSpace",
+    "param_name": "USB TotalSpace",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SL_USB_FreeSpace",
+    "param_name": "USB FreeSpace",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SL_SD_Status",
+    "param_name": "SD Status",
+    "param_type": "enum",
+    "enum_values": [],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 7
+  },
+  {
+    "param_id": "eParamID_SL_SD_TotalSpace",
+    "param_name": "SD TotalSpace",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_SL_SD_FreeSpace",
+    "param_name": "SD FreeSpace",
+    "param_type": "string"
+  },
+  {
+    "param_id": "eParamID_ReplicatorCommand",
+    "param_name": "Replicator Command",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "No Command",
+        "short_text": "No Command"
+      },
+      {
+        "value": 1,
+        "text": "Record Command",
+        "short_text": "Record Command"
+      },
+      {
+        "value": 2,
+        "text": "Stop Recording Command",
+        "short_text": "Stop Recording Command"
+      },
+      {
+        "value": 3,
+        "text": "Stream Command",
+        "short_text": "Stream Command"
+      },
+      {
+        "value": 4,
+        "text": "Stop Streaming Command",
+        "short_text": "Stop Streaming Command"
+      },
+      {
+        "value": 5,
+        "text": "Shutdown",
+        "short_text": "Shutdown"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 5
+  },
+  {
+    "param_id": "eParamID_ReplicatorRecordState",
+    "param_name": "Replicator Record State",
+    "param_type": "enum",
+    "enum_values": [
+      {
+        "value": 0,
+        "text": "eRRSUninitialized",
+        "short_text": "eRRSUninitialized"
+      },
+      {
+        "value": 1,
+        "text": "eRRSIdle",
+        "short_text": "eRRSIdle"
+      },
+      {
+        "value": 2,
+        "text": "eRRSRecording",
+        "short_text": "eRRSRecording"
+      },
+      {
+        "value": 3,
+        "text": "eRRSFailingInIdle",
+        "short_text": "eRRSFailingInIdle"
+      },
+      {
+        "value": 4,
+        "text": "eRRSFailingInRecord",
+        "short_text": "eRRSFailingInRecord"
+      },
+      {
+        "value": 5,
+        "text": "eRRSShutdown",
+        "short_text": "eRRSShutdown"
+      }
+    ],
+    "scale_by": 1,
+    "offset_by": 0,
+    "units": "",
+    "min_value": 0,
+    "max_value": 5
+  }
+]

@@ -424,7 +424,10 @@ describe('recorder protocol and persistence', () => {
       const result = await adapter.read(true)
       expect(result.canControl).toBe(true)
       expect(result.state).toBe('idle')
-      expect(result.media.find((m) => m.label === 'USB')?.warnings).toContain('Read failed')
+      expect(result.media.find((m) => m.label === 'USB')).toMatchObject({
+        status: 'Unknown',
+        warnings: [],
+      })
       expect(fetcher.mock.calls.every(([url]) => !url.includes('action=set'))).toBe(true)
       await adapter.command('record')
       await adapter.command('stop')

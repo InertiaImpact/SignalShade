@@ -3,13 +3,12 @@ import { ChevronDown, Circle, Square } from 'lucide-react'
 import { desk } from '../core/store'
 import {
   disconnected,
-  durationText,
   recorderWarnings,
   type RecorderConfig,
-  type RecorderMedia,
   type RecorderSnapshot,
 } from '../recorders/types'
-import { Modal } from './Modal'
+import { mediaSummary } from '../recorders/display'
+export { mediaSummary } from '../recorders/display'
 
 const stateLabels = {
   idle: 'Ready',
@@ -21,22 +20,6 @@ const stateLabels = {
   unknown: 'Unknown',
   offline: 'Offline',
   playback: 'Playback',
-}
-const bytes = (n: number) =>
-  `${(n / 1e9).toLocaleString(undefined, { maximumFractionDigits: 1 })} GB`
-export function mediaSummary(media: RecorderMedia): string {
-  return (
-    [
-      media.remainingSeconds !== undefined ? `${durationText(media.remainingSeconds)} left` : '',
-      media.freeBytes !== undefined
-        ? `${bytes(media.freeBytes)} free`
-        : media.freePercent !== undefined
-          ? `${media.freePercent}% free`
-          : '',
-    ]
-      .filter(Boolean)
-      .join(' · ') || media.status
-  )
 }
 function RecorderCapsule({
   config,
@@ -67,6 +50,8 @@ function RecorderCapsule({
   }, [snapshot.state, snapshot.recordingId, disabled])
   const confirming = confirm && confirm.until > now && confirm.recordingId === snapshot.recordingId
   const warnings = recorderWarnings(snapshot, config, now)
+  const warning =
+    snapshot.issue && warnings[0] === snapshot.issue ? 'Connection needs attention' : warnings[0]
   const active = snapshot.media.find((m) => m.active) ?? snapshot.media[0]
   const extra = snapshot.media.filter((m) => m !== active)
   const state = snapshot.pending
@@ -102,7 +87,7 @@ function RecorderCapsule({
           title={
             disabled
               ? (snapshot.issue ??
-                (readOnly ? 'Desk locked' : 'Enable control in Recorders after connecting'))
+                (readOnly ? 'Desk locked' : 'Enable control in Devices after connecting'))
               : snapshot.scope
           }
           onClick={() => {
@@ -135,14 +120,13 @@ function RecorderCapsule({
         title={warnings.join('\n') || 'View all media and details'}
       >
         {warnings.length
-          ? `⚠ ${warnings[0]}`
+          ? `⚠ ${warning}`
           : active
             ? `${active.label}: ${mediaSummary(active)}`
             : 'Media not reported'}
         {extra.length > 0 && (
           <span>
-            {extra[0].label} {extra[0].status}
-            {extra.length > 1 ? ` · +${extra.length - 1}` : ''}
+            {extra.length} other {extra.length === 1 ? 'destination' : 'destinations'}
           </span>
         )}
       </button>
@@ -156,25 +140,23 @@ export function RecorderStrip({
 }: {
   configs: RecorderConfig[]
   readOnly: boolean
-  manage: () => void
+  manage: (id?: string) => void
 }) {
   const states = useSyncExternalStore(desk.recorders.subscribe, desk.recorders.getSnapshot)
-  const [now, setNow] = useState(Date.now()),
-    [detail, setDetail] = useState<string>()
+  const [now, setNow] = useState(Date.now())
   useEffect(() => {
     const tick = () => {
       setNow(Date.now())
       if (document.visibilityState === 'visible') void desk.recorders.tick()
     }
-    const interval = setInterval(tick, 1000)
+    const timer = setInterval(tick, 1000)
     document.addEventListener('visibilitychange', tick)
     return () => {
-      clearInterval(interval)
+      clearInterval(timer)
       document.removeEventListener('visibilitychange', tick)
     }
   }, [])
-  const config = configs.find((c) => c.id === detail)
-  const snapshot = config ? (states[config.id] ?? disconnected()) : undefined
+  if (!configs.length) return null
   const problems = configs.filter(
     (c) =>
       recorderWarnings(states[c.id] ?? disconnected(), c, now).length ||
@@ -184,97 +166,28 @@ export function RecorderStrip({
   const recording = configs.filter(
     (c) => states[c.id]?.state === 'recording' && now - states[c.id].updatedAt <= 10000,
   ).length
-  if (!configs.length) return null
   return (
-    <>
-      <section className="recorder-strip" aria-label="Recorder monitoring">
-        <button className="recorder-overview" onClick={manage}>
-          <strong>
-            {recording} REC / {configs.length}
-          </strong>
-          <small className={problems ? 'text-warning' : ''}>
-            {problems ? `${problems} need attention` : 'Recorders'}
-          </small>
-        </button>
-        <div className="recorder-scroll" tabIndex={0} role="region" aria-label="Recorder list">
-          {configs.map((c) => (
-            <RecorderCapsule
-              key={c.id}
-              config={c}
-              snapshot={states[c.id] ?? disconnected()}
-              readOnly={readOnly}
-              now={now}
-              details={() => setDetail(c.id)}
-            />
-          ))}
-        </div>
-      </section>
-      {config && snapshot && (
-        <Modal
-          title={config.label}
-          subtitle={`${config.model} · ${snapshot.firmware ?? 'Firmware not reported'}${config.simulated ? ' · DEMO' : ''}`}
-          close={() => setDetail(undefined)}
-        >
-          <p>{snapshot.scope}</p>
-          <p className="muted">
-            {snapshot.controlReason ? `${snapshot.controlReason} · ` : ''}
-            {snapshot.updatedAt
-              ? `Last status ${new Date(snapshot.updatedAt).toLocaleTimeString()}`
-              : 'Not connected'}
-          </p>
-          <p>
-            {snapshot.durationKind === 'observed' ? 'Observed duration' : 'Clip duration'}:{' '}
-            {snapshot.duration ?? 'Not reported'}
-          </p>
-          {recorderWarnings(snapshot, config, now).map((w) => (
-            <p className="text-warning" key={w}>
-              {w}
-            </p>
-          ))}
-          <div className="recorder-media-details">
-            {snapshot.media.length ? (
-              snapshot.media.map((m) => (
-                <section key={m.id}>
-                  <strong>{m.label}</strong>
-                  <span>{m.status}</span>
-                  <p>
-                    {mediaSummary(m)}
-                    {m.totalBytes !== undefined ? ` / ${bytes(m.totalBytes)} total` : ''}
-                  </p>
-                  {m.metrics.map((v) => (
-                    <p className="muted" key={v.label}>
-                      {v.label}: {v.value}
-                    </p>
-                  ))}
-                  <small className="muted">
-                    {m.updatedAt
-                      ? `Updated ${new Date(m.updatedAt).toLocaleTimeString()}`
-                      : 'Not reported'}
-                  </small>
-                </section>
-              ))
-            ) : (
-              <p className="muted">Media status, space and time remaining are not reported.</p>
-            )}
-          </div>
-          <div className="modal-footer">
-            {!config.simulated && (
-              <a href={config.address} target="_blank" rel="noreferrer" className="button">
-                Device web UI
-              </a>
-            )}
-            <button
-              className="button"
-              onClick={() => {
-                setDetail(undefined)
-                manage()
-              }}
-            >
-              Manage recorders
-            </button>
-          </div>
-        </Modal>
-      )}
-    </>
+    <section className="recorder-strip" aria-label="Recorder monitoring">
+      <button className="recorder-overview" onClick={() => manage()}>
+        <strong>
+          {recording} REC / {configs.length}
+        </strong>
+        <small className={problems ? 'text-warning' : ''}>
+          {problems ? problems + ' need attention' : 'Recorders'}
+        </small>
+      </button>
+      <div className="recorder-scroll" tabIndex={0} role="region" aria-label="Recorder list">
+        {configs.map((c) => (
+          <RecorderCapsule
+            key={c.id}
+            config={c}
+            snapshot={states[c.id] ?? disconnected()}
+            readOnly={readOnly}
+            now={now}
+            details={() => manage(c.id)}
+          />
+        ))}
+      </div>
+    </section>
   )
 }

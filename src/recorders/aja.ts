@@ -1,3 +1,6 @@
+import { diagnostics } from '../core/diagnostics'
+import { mediaMetric, groupMedia, isMediaDescriptor } from './media'
+export { mediaMetric, groupMedia } from './media'
 import { extractDescriptors, normalizeAddress } from '../adapters/aja'
 import { AjaTransport } from '../adapters/transport'
 import type {
@@ -10,12 +13,17 @@ import type {
 
 type Raw = Record<string, unknown>
 // AJA replies may identify a parameter by numeric paramid AND symbolic name.
-export function parameterResponse(input: unknown, id: string): Raw {
+export function parameterResponse(input: unknown, id: string, allowEmpty = false): Raw {
   const entries = Array.isArray(input) ? input : [input]
   const match = entries.find(
     (v) => v && typeof v === 'object' && (v.name === id || v.param_id === id || v.paramid === id),
   )
-  if (!match || !('value' in match) || match.value === null || String(match.value).trim() === '')
+  if (
+    !match ||
+    !('value' in match) ||
+    match.value === null ||
+    (!allowEmpty && String(match.value).trim() === '')
+  )
     throw new Error(`Unreadable parameter: ${id}`)
   return match
 }
@@ -28,88 +36,6 @@ export function transportState(value: unknown, helo: boolean): TransportState {
   if (n >= 16 && n <= 19) return 'error'
   if (n >= 3 && n <= 14) return 'playback'
   return 'unknown'
-}
-function finite(value: unknown): number | undefined {
-  if (value === null || value === undefined || String(value).trim() === '') return
-  const n = Number(value)
-  return Number.isFinite(n) && n >= 0 ? n : undefined
-}
-export function mediaMetric(descriptor: Raw, response: Raw, now: number): RecorderMedia {
-  const label = String(descriptor.param_name ?? descriptor.param_id)
-  const text = String(response.value_name ?? response.value)
-  const units = String(descriptor.units ?? '').trim()
-  const n = finite(response.value)
-  const media: RecorderMedia = {
-    id: String(descriptor.param_id),
-    label,
-    status: 'Reported',
-    active: /current|primary/i.test(label),
-    updatedAt: now,
-    metrics: [{ label, value: `${text}${units ? ` ${units}` : ''}` }],
-    warnings: [],
-  }
-  if (descriptor.param_id === 'eParamID_CurrentMediaAvailable' && n !== undefined && n <= 100)
-    media.freePercent = n
-  // Only normalize explicit units with no undiscovered scaling. Preserve other values verbatim.
-  const scale = descriptor.scale_by === undefined ? 1 : Number(descriptor.scale_by)
-  const offset = descriptor.offset_by === undefined ? 0 : Number(descriptor.offset_by)
-  if (n !== undefined && scale === 1 && offset === 0) {
-    const free = /available|free|remaining/i.test(label)
-    const bytes = (
-      {
-        bytes: 1,
-        B: 1,
-        KB: 1e3,
-        MB: 1e6,
-        GB: 1e9,
-        TB: 1e12,
-        KiB: 1024,
-        MiB: 1024 ** 2,
-        GiB: 1024 ** 3,
-      } as Record<string, number>
-    )[units]
-    if (free && bytes) media.freeBytes = n * bytes
-    if (/total|capacity/i.test(label) && bytes) media.totalBytes = n * bytes
-    if (free && units === '%' && n <= 100) media.freePercent = n
-    const seconds = ({ s: 1, sec: 1, seconds: 1, min: 60, minutes: 60 } as Record<string, number>)[
-      units
-    ]
-    if (free && /time|duration/i.test(label) && seconds) media.remainingSeconds = n * seconds
-  }
-  if (/status|state/i.test(label)) media.status = text
-  if (/\b(full|error|failed|read.only|not present|missing|unmounted)\b/i.test(text))
-    media.warnings.push(text)
-  return media
-}
-export function groupMedia(fields: RecorderMedia[]): RecorderMedia[] {
-  const groups = new Map<string, RecorderMedia>()
-  for (const field of fields) {
-    const slot = field.label.match(
-      /\b(?:SD(?: card)?|USB(?:\s*\d+)?|PAK\s*\d+|slot\s*[A-Z0-9]+|disk\s*\d+|SMB|NFS|network)\b/i,
-    )?.[0]
-    const current = /^current media/i.test(field.label)
-    const id = slot?.toUpperCase().replace(/\s+/g, ' ') ?? (current ? 'Current media' : field.id)
-    const old = groups.get(id)
-    if (!old)
-      groups.set(id, { ...field, id, label: slot ?? (current ? 'Current media' : field.label) })
-    else
-      groups.set(id, {
-        ...old,
-        ...Object.fromEntries(
-          Object.entries(field).filter(
-            ([key, value]) =>
-              value !== undefined &&
-              ['freeBytes', 'totalBytes', 'freePercent', 'remainingSeconds'].includes(key),
-          ),
-        ),
-        status: field.status === 'Reported' ? old.status : field.status,
-        active: old.active || field.active,
-        updatedAt: Math.min(old.updatedAt, field.updatedAt),
-        metrics: [...old.metrics, ...field.metrics],
-        warnings: [...old.warnings, ...field.warnings],
-      })
-  }
-  return [...groups.values()]
 }
 export class AjaRecorderAdapter implements RecorderAdapter {
   private transport = new AjaTransport()
@@ -138,7 +64,7 @@ export class AjaRecorderAdapter implements RecorderAdapter {
     if (this.closed) throw new Error('Connection closed')
     const controller = new AbortController()
     this.controllers.add(controller)
-    const timeout = setTimeout(() => controller.abort(), path === 'desc.json' ? 22000 : 3500)
+    const timeout = setTimeout(() => controller.abort(), path === 'desc.json' ? 22000 : 4500)
     try {
       const options: RequestInit & { targetAddressSpace?: string } = {
         ...init,
@@ -169,10 +95,11 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       this.controllers.delete(controller)
     }
   }
-  private async get(id: string) {
+  private async get(id: string, allowEmpty = false) {
     return parameterResponse(
       await this.request(`config?${new URLSearchParams({ action: 'get', paramid: id })}`),
       id,
+      allowEmpty,
     )
   }
   private async discover() {
@@ -205,7 +132,12 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       (command?.min_value === undefined || value >= Number(command.min_value)) &&
       (command?.max_value === undefined || value <= Number(command.max_value))
     this.control = !!command && accepts(this.helo ? 1 : 3) && accepts(this.helo ? 2 : 4)
-    this.descriptors = descriptors
+    this.descriptors = [...new Map(descriptors.map((d) => [String(d.param_id), d])).values()]
+    diagnostics.report(this.address, {
+      type: this.helo ? 'HELO recorder' : 'Ki Pro recorder',
+      descriptors: this.descriptors,
+      firmware: this.firmware,
+    })
   }
   async read(includeMedia: boolean): Promise<RecorderSnapshot> {
     if (!this.descriptors) await this.discover()
@@ -221,17 +153,7 @@ export class AjaRecorderAdapter implements RecorderAdapter {
       }
     }
     if (includeMedia) {
-      const candidates = this.descriptors!.filter(
-        (d) =>
-          /^eParamID_[a-zA-Z0-9_]+$/.test(String(d.param_id)) &&
-          /media|disk|storage|\bsd\b|\busb\b|\bslot\b|\bpak\b|destination/i.test(
-            String(d.param_name),
-          ) &&
-          /available|free|remaining|capacity|total|status|state|destination|write protect|mounted|present/i.test(
-            String(d.param_name),
-          ) &&
-          !/command|format media/i.test(String(d.param_name)),
-      )
+      const candidates = this.descriptors!.filter(isMediaDescriptor)
       const next: RecorderMedia[] = []
       // Small batches bound requests per appliance and keep failed optional metrics independent.
       for (let i = 0; i < candidates.length; i += 4) {
@@ -239,22 +161,17 @@ export class AjaRecorderAdapter implements RecorderAdapter {
           candidates.slice(i, i + 4).map(async (d) => {
             const id = String(d.param_id)
             try {
-              next.push(mediaMetric(d, await this.get(id), Date.now()))
+              next.push(mediaMetric(d, await this.get(id, true), Date.now()))
             } catch {
-              const old = this.mediaFields.find((m) => m.id === id)
-              next.push(
-                old
-                  ? { ...old, warnings: ['Read failed — last value'] }
-                  : {
-                      id,
-                      label: String(d.param_name),
-                      status: 'Unknown',
-                      active: false,
-                      updatedAt: 0,
-                      warnings: ['Read failed'],
-                      metrics: [],
-                    },
-              )
+              next.push({
+                id,
+                label: String(d.param_name),
+                status: 'Unknown',
+                active: /^eParamID_CurrentMedia/.test(id),
+                updatedAt: 0,
+                warnings: [],
+                metrics: [],
+              })
             }
           }),
         )

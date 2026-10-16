@@ -8,10 +8,10 @@ Connects the hosted SignalShade dashboard to AJA devices whose REST endpoints ar
 2. Extract it to a permanent folder (for example, Documents/SignalShade Connect). Keep this folder after installation.
 3. Open `chrome://extensions` in Chrome. Enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
-5. Reload [SignalShade](https://inertiaimpact.github.io/SignalShade/). Open Devices or Recorders and connect your device.
+5. Reload [SignalShade](https://inertiaimpact.github.io/SignalShade/). Open Devices and connect your device.
 6. For a new device, approve its address in the embedded SignalShade Connect panel and Chrome's permission prompt. Testing continues automatically; no separate popup or second Connect click is needed. Already approved devices skip this step.
 
-Recorder control initially requires the Enable control checkbox. That choice survives temporary network loss and reloads in the same tab, but is effective only after fresh verified status. Uncertain command failures clear it. Configured recorders resume monitoring after reload; turn off **Reconnect on load** in their settings to opt out. Passwords are not saved; devices requiring a new login may need a password on reconnect. Approval does not start or stop recording. The extension can only reach devices on your computer's network/VPN. Some managed browsers prohibit unpacked extensions; contact your IT administrator rather than disabling browser security.
+Recorder control initially requires the Enable control button. That choice survives temporary network loss and reloads in the same tab, but is effective only after fresh verified status. Uncertain command failures clear it. Configured recorders resume monitoring after reload; turn off **Reconnect on load** in their settings to opt out. Passwords are not saved; devices requiring a new login may need a password on reconnect. Approval does not start or stop recording. The extension can only reach devices on your computer's network/VPN. Some managed browsers prohibit unpacked extensions; contact your IT administrator rather than disabling browser security.
 
 The extension has no device settings. All addresses and controls remain in SignalShade. Its content relay is limited to the production SignalShade URL. Local development builds are deliberately not supported by the distributed manifest.
 
@@ -23,10 +23,10 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 
 ## Current scope
 
-- v0.3.3 fixes FS2 active controls by collapsing repeated input-memory descriptors, keeping processors separate, and accepting `FS2_R` identification. Update both Connect and the dashboard so the same control aliases are used for reads and writes. Add/Connect can run while scanning continues. Original FS1 uses a different API; legacy diagnostics are included but its shading adapter remains incomplete.
-- v0.3.2 adds **Open Chrome extensions** in Devices to open Connect’s entry for reloading. Download and install/update links remain visible with or without an installed extension. Older versions offer **Copy Chrome extensions address**. After replacing the unpacked files, reload Connect and then reload SignalShade.
-- v0.3.1 accepts descriptor tables up to 32 MiB; ordinary responses remain capped at 4 MiB. This fixes the observed FS descriptor download being rejected before identification. The scan results list contains identified AJA interfaces only; unrelated/unauthenticated web responses stay in diagnostics rather than appearing as Add candidates.
-- For an original FS1 identified by its AJA admin page, a failed descriptor connection now exports seven known `/json` diagnostic reads. Firmware 2.2.2.1 uses that legacy interface. Native response/range qualification is pending; legacy shading writes are deliberately not mapped yet.
+- v0.4.0 adds original FS1 2.2.2.1 Proc amp support through its native `/json` interface. AJA FS1 identity and all seven known status reads are required before allowing five bounded shading parameters. Source selection and other configuration writes remain excluded. Update Connect and reload SignalShade together.
+- The dashboard manages processors and recorders in one Devices menu, offers model-specific demos, and exports one combined debug ZIP. Scanned HELO devices are routed to their recorder adapter. Media polling excludes streaming destinations, clip deletion fields and internal subsystem status.
+- v0.3.3 added FS2 active controls by collapsing repeated input-memory descriptors, keeping processors separate, and accepting `FS2_R` identification. Add/Connect can run while scanning continues.
+- The **Open Chrome extensions** and download/install links remain visible in Devices for quick updating and reloading.
 
 - v0.3.0 adds one approval for an explicit HTTP address range within one private /24 subnet. Chrome grants the listed hosts; the extension keeps scan access read-only and limited to the approved range for 30 minutes in that tab. Repeat scans in that window reuse approval. Network/broadcast addresses are excluded. Selecting Add identifies the device and saves its individual connection grant; it does not enable live writes.
 - Discovery reads the device web page, so older units missing the descriptor API remain visible. Full descriptor/source-context verification occurs when adding. A discovered FS1 is not a promise that its firmware's control API is supported. Failed adds retain details and reports, including the detected web identity when available.
@@ -37,7 +37,7 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 - FS descriptor/status reads and supported Proc amp/RGB shading writes. Legalizer and other configuration writes are excluded.
 - Read-only direct connection remains available when the extension is absent. An adapter selects one route at creation; reload/reconnect after installing or removing the extension.
 - Writes are not replayed after failure. Recent write ownership prevents simultaneous writes from another tab for 30 seconds. After a service-worker restart, the extension automatically rediscovers descriptors through reads before validating a new write.
-- FS discovery tries `/desc.json`, then the documented legacy `/descriptors?paramid=*` only for HTTP 404/410. Legacy value reads explicitly request JSON. This is based on AJA's [REST Automation archive](https://www.aja.com/support/item/9619); exact FS1 firmware behavior still needs a new field test.
+- FS discovery tries `/desc.json`, then the documented legacy `/descriptors?paramid=*` only for HTTP 404/410. Legacy value reads explicitly request JSON. This is based on AJA's [REST Automation archive](https://www.aja.com/support/item/9619); original FS1 instead uses its fixed, bounded legacy map after successful identity and live reads.
 - Descriptor reads have a 20-second transport deadline; normal status/control reads keep their shorter deadline. This accommodates slower legacy descriptor responses without delaying scans, which use lightweight web-page identification.
 - Known limitations: hardware/browser authentication qualification pending; background-tab timers may be throttled; no persistent multi-tab control lease UI yet. Never use the extension as evidence that a model is hardware-qualified.
 

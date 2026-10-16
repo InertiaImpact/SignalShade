@@ -1,5 +1,5 @@
 import { defaultFavorites, parameters } from './color'
-import type { Device, Workspace } from './types'
+import type { Device, Workspace, Model, Channel } from './types'
 import { broadcastTheme } from '../theme'
 
 export function demoWorkspace(): Workspace {
@@ -106,5 +106,45 @@ export function emptyWorkspace(): Workspace {
     favorites: defaultFavorites,
     density: 'comfortable',
     hiddenSections: [],
+  }
+}
+export function demoDevice(
+  model: Model,
+  label: string,
+  workspace: Workspace,
+): { device: Device; channels: Channel[] } {
+  let number = 1
+  while (workspace.devices.some((d) => d.label === `FS${number}`)) number++
+  const id = `demo-${crypto.randomUUID()}`,
+    name = label.trim() || `FS${number}`
+  const count = model === 'FS4' || model === 'FS-HDR' ? 4 : model === 'FS2' ? 2 : 1
+  const descriptors = structuredClone(parameters).filter(
+    (d) => model !== 'FS1' || d.section === 'Proc amp',
+  )
+  return {
+    device: {
+      id,
+      label: name,
+      model,
+      firmware: 'Demo',
+      address: '',
+      simulated: true,
+      status: 'online',
+      armed: true,
+    },
+    channels: Array.from({ length: count }, (_, i) => ({
+      id: `${id}/vid${i + 1}`,
+      deviceId: id,
+      processor: i + 1,
+      label: `${name} - Input ${i + 1}`,
+      source: `SDI ${i + 1}`,
+      format: '1080i / 59.94',
+      context: 'demo',
+      updatedAt: Date.now(),
+      locked: false,
+      pending: false,
+      descriptors: structuredClone(descriptors),
+      values: Object.fromEntries(descriptors.map((d) => [d.id, d.neutral])),
+    })),
   }
 }

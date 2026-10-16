@@ -41,7 +41,6 @@ import { ParameterControl } from './components/ParameterControl'
 import { GangControls } from './components/GangControls'
 import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
-import { RecorderDialog } from './components/RecorderDialog'
 import { RecorderStrip } from './components/RecorderStrip'
 import {
   ConfirmWorkspace,
@@ -66,8 +65,7 @@ import { RgbTabs } from './components/RgbTabs'
 import { toggleSelection } from './core/selection'
 import type { CSSProperties, MouseEvent } from 'react'
 
-type Dialog =
-  'devices' | 'recorders' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
+type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
 let initialized = false
 export default function App() {
   const snapshot = useSyncExternalStore(desk.subscribe, desk.getSnapshot),
@@ -78,6 +76,11 @@ export default function App() {
     [query, setQuery] = useState(''),
     [sort, setSort] = useState('custom'),
     [dialog, setDialog] = useState<Dialog>(null)
+  const [deviceSelection, setDeviceSelection] = useState<string>()
+  const openDevices = (id?: string) => {
+    setDeviceSelection(id)
+    setDialog('devices')
+  }
   const [editGang, setEditGang] = useState<Gang>(),
     [resetScope, setResetScope] = useState<{
       ids: string[]
@@ -97,7 +100,8 @@ export default function App() {
   const importRef = useRef<HTMLInputElement>(null)
   const globalLock = snapshot.controlsLocked
   const update = useSyncExternalStore(subscribeUpdates, getWaitingUpdate)
-  const recorderBusy = useSyncExternalStore(desk.recorders.subscribe, () => desk.recorders.pending)
+  const recorderStates = useSyncExternalStore(desk.recorders.subscribe, desk.recorders.getSnapshot)
+  const recorderBusy = Object.values(recorderStates).some((s) => s.pending)
   const close = () => setDialog(null)
   const group = w.gangs.find((g) => g.id === selected)
   const selectedChannel = w.channels.find((c) => c.id === selected)
@@ -144,8 +148,13 @@ export default function App() {
       )
     return list
   }, [w, view, currentViewGang, query, sort])
-  const simulated = w.devices.filter((d) => d.simulated).length,
-    online = w.devices.filter((d) => d.status === 'online').length
+  const connectionCount = w.devices.length + (w.recorders?.length ?? 0)
+  const simulated =
+      w.devices.filter((d) => d.simulated).length +
+      (w.recorders ?? []).filter((c) => c.simulated).length,
+    online =
+      w.devices.filter((d) => d.status === 'online').length +
+      Object.values(recorderStates).filter((s) => s.updatedAt && s.state !== 'offline').length
   const readOnly = snapshot.lockedTab || globalLock || !snapshot.ready
   const controlsDisabled =
     readOnly ||
@@ -264,18 +273,15 @@ export default function App() {
             <ChevronDown size={15} />
           </button>
           <div className="topbar-right">
-            <button className="button header-recorders" onClick={() => setDialog('recorders')}>
-              Recorders{w.recorders?.length ? ` · ${w.recorders.length}` : ''}
-            </button>
             <button
               className="connection-summary"
               aria-label="Manage connections"
-              title={`${online} of ${w.devices.length} devices connected · ${simulated} simulated`}
-              onClick={() => setDialog('devices')}
+              title={`${online} of ${connectionCount} devices connected · ${simulated} simulated`}
+              onClick={() => openDevices()}
             >
-              <span className={`status-dot ${online < w.devices.length ? 'offline' : ''}`} />
+              <span className={`status-dot ${online < connectionCount ? 'offline' : ''}`} />
               <span>
-                {online}/{w.devices.length} <span className="connection-label">devices</span>
+                {online}/{connectionCount} <span className="connection-label">devices</span>
               </span>
               <ChevronDown size={13} />
             </button>
@@ -290,7 +296,7 @@ export default function App() {
             </button>
             <span className={`mode-pill ${simulated ? 'demo' : ''}`}>
               <span />
-              {simulated === w.devices.length && simulated
+              {simulated === connectionCount && simulated
                 ? 'DEMO'
                 : simulated
                   ? 'MIXED'
@@ -316,11 +322,7 @@ export default function App() {
             </button>
           </div>
         </header>
-        <RecorderStrip
-          configs={w.recorders ?? []}
-          readOnly={readOnly}
-          manage={() => setDialog('recorders')}
-        />
+        <RecorderStrip configs={w.recorders ?? []} readOnly={readOnly} manage={openDevices} />
       </div>
       <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top">
@@ -928,11 +930,8 @@ export default function App() {
           workspace={w}
           close={close}
           readOnly={readOnly}
-          recorders={() => setDialog('recorders')}
+          initialSelection={deviceSelection}
         />
-      )}
-      {dialog === 'recorders' && (
-        <RecorderDialog configs={w.recorders ?? []} close={close} readOnly={readOnly} />
       )}
       {dialog === 'gang' && (
         <GangDialog workspace={w} gang={editGang} initialMembers={targetIds} close={close} />

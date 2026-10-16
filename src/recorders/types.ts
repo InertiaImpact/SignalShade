@@ -11,6 +11,12 @@ export const recorderModels = [
   'Ki Pro GO2',
 ] as const
 export type RecorderModel = (typeof recorderModels)[number]
+export function detectRecorderModel(text: string): RecorderModel | undefined {
+  const compact = text.toLowerCase().replace(/[^a-z0-9]/g, '')
+  return [...recorderModels]
+    .sort((a, b) => b.length - a.length)
+    .find((m) => compact.includes(m.toLowerCase().replace(/[^a-z0-9]/g, '')))
+}
 export interface RecorderConfig {
   id: string
   label: string

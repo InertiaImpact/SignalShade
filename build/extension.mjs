@@ -6,6 +6,7 @@ const names = [
   'manifest.json',
   'policy.js',
   'fs-parameters.js',
+  'legacy-fs1.js',
   'worker.js',
   'content.js',
   'approve.html',

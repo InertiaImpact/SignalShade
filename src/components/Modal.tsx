@@ -7,12 +7,14 @@ export function Modal({
   children,
   close,
   wide = false,
+  className = '',
 }: {
   title: string
   subtitle?: string
   children: ReactNode
   close: () => void
   wide?: boolean
+  className?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const closeRef = useRef(close)
@@ -56,7 +58,7 @@ export function Modal({
       }}
     >
       <div
-        className={`modal ${wide ? 'wide' : ''}`}
+        className={`modal ${wide ? 'wide' : ''} ${className}`}
         role="dialog"
         aria-modal="true"
         aria-label={title}

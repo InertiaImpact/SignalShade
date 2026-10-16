@@ -57,6 +57,80 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('keeps processor identity and settings while reading native values after routing changes', async () => {
+    const { channel, adapter } = hardwareFixture()
+    store.updateChannel(channel.id, { label: 'Wide camera' })
+    const gang = { ...store.getSnapshot().workspace.gangs[0], members: [channel.id] }
+    store.saveGang(gang)
+    const live = { ...channel.values, gain: 1.4, procEnabled: 0 }
+    vi.mocked(adapter.read).mockResolvedValue({
+      values: live,
+      context: 'input-2',
+      source: 'SDI 2',
+      format: '1080i',
+    })
+    await store.refresh()
+    const after = store.getSnapshot().workspace.channels.find((c) => c.id === channel.id)!
+    expect(after).toMatchObject({
+      id: channel.id,
+      processor: channel.processor,
+      label: 'Wide camera',
+      context: 'input-2',
+      source: 'SDI 2',
+      values: live,
+    })
+    expect(store.getSnapshot().workspace.gangs.find((g) => g.id === gang.id)?.members).toEqual([
+      channel.id,
+    ])
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(store.getSnapshot().busy).toBe(0)
+  })
+  it('refreshes routed processor values while locked without writing on unlock', async () => {
+    const { channel, adapter } = hardwareFixture()
+    const live = { ...channel.values, gain: 1.4 }
+    vi.mocked(adapter.read).mockResolvedValue({ values: live, context: 'input-2' })
+    store.updateChannel(channel.id, { locked: true })
+    await store.refresh()
+    expect(value(channel.id)).toBe(1.4)
+    expect(store.getSnapshot().workspace.channels.find((c) => c.id === channel.id)?.locked).toBe(
+      true,
+    )
+    store.updateChannel(channel.id, { locked: false })
+    await store.refresh()
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(value(channel.id)).toBe(1.4)
+  })
+  it('adds model-specific demos without changing existing processors', () => {
+    const before = store.getSnapshot().workspace.channels.map((c) => c.id)
+    const id = store.addDemoDevice('FS1', 'Demo legacy')!
+    const channels = store.getSnapshot().workspace.channels.filter((c) => c.deviceId === id)
+    expect(channels).toHaveLength(1)
+    expect(channels[0].descriptors.every((d) => d.section === 'Proc amp')).toBe(true)
+    expect(
+      store
+        .getSnapshot()
+        .workspace.channels.slice(0, before.length)
+        .map((c) => c.id),
+    ).toEqual(before)
+  })
+  it('cancels an edit after a routing change without disconnecting or resetting the processor', async () => {
+    const { channel, adapter } = hardwareFixture()
+    vi.mocked(adapter.read).mockResolvedValue({
+      values: { ...channel.values, gain: 1.4 },
+      context: 'input-2',
+    })
+    store.adjust([channel.id], 'gain', 1.2, 'absolute')
+    await settle()
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(
+      store.getSnapshot().workspace.devices.find((d) => d.id === channel.deviceId),
+    ).toMatchObject({ status: 'online', armed: true })
+    await store.refresh()
+    expect(value(channel.id)).toBe(1.4)
+    expect(store.getSnapshot().workspace.channels.find((c) => c.id === channel.id)?.context).toBe(
+      'input-2',
+    )
+  })
   it('enforces the desk lock in the store and preserves saved gang order', async () => {
     store.setControlsLocked(true)
     store.adjust(['demo-ch-1'], 'gain', 1.4, 'absolute')

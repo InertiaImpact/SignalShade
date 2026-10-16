@@ -1,3 +1,4 @@
+import { fs1ReadIds, fs1Descriptors } from './legacy-fs1.js'
 export const SITE = 'https://inertiaimpact.github.io'
 export function trustedPage(input) {
   try {
@@ -47,18 +48,13 @@ export function operation(path) {
   if (!/^eParamID_[A-Za-z0-9_]{1,120}$/.test(id ?? '')) throw new Error('Invalid parameter')
   if (
     legacy &&
-    (q.get('action') !== 'get' ||
-      ![
-        'eParamID_VideoInputSelect',
-        'eParamID_DetectInputFormat',
-        'eParamID_ProcAmpEnable',
-        'eParamID_ProcAmpBlackYCGain',
-        'eParamID_ProcAmpBlackYCOffset',
-        'eParamID_ProcAmpHue',
-        'eParamID_ProcAmpSat',
-      ].includes(id))
+    !(q.get('action') === 'get'
+      ? fs1ReadIds.includes(id)
+      : q.get('action') === 'set' && fs1Descriptors.some((d) => d.param_id === id))
   )
-    throw new Error('Only known FS1 diagnostic reads are supported on the legacy endpoint')
+    throw new Error(
+      'Only FS1 status reads and bounded ProcAmp controls are supported on the legacy endpoint',
+    )
   if (
     q.get('action') === 'get' &&
     !q.has('value') &&
@@ -137,11 +133,15 @@ export function validateWrite(op, list) {
     throw new Error('Only supported FS shading parameters may be changed')
   const min = Number(d.min_value),
     max = Number(d.max_value)
+  const step = Number(d.adjust_by)
   if (
     !Number.isFinite(min) ||
     !Number.isFinite(max) ||
     op.value < min ||
     op.value > max ||
+    (Number.isFinite(step) &&
+      step > 0 &&
+      Math.abs((op.value - min) / step - Math.round((op.value - min) / step)) > 1e-6) ||
     (Array.isArray(d.enum_values) && !d.enum_values.some((e) => Number(e.value) === op.value))
   )
     throw new Error('Value outside device range')

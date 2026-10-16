@@ -12,8 +12,30 @@ const mocks = vi.hoisted(() => ({
   connect: vi.fn(),
   access: vi.fn(),
   bridge: vi.fn(),
+  demo: vi.fn(),
+  saveRecorders: vi.fn(),
+  recorderConnect: vi.fn(),
+  states: {} as Record<string, import('../recorders/types').RecorderSnapshot>,
+  debug: vi.fn(),
 }))
-vi.mock('../core/store', () => ({ desk: { connect: mocks.connect } }))
+vi.mock('../core/store', () => ({
+  desk: {
+    connect: mocks.connect,
+    addDemoDevice: mocks.demo,
+    saveRecorders: mocks.saveRecorders,
+    getSnapshot: () => ({ activities: [] }),
+    recorders: {
+      subscribe: () => () => {},
+      getSnapshot: () => mocks.states,
+      connect: mocks.recorderConnect,
+      disconnect: vi.fn(),
+    },
+  },
+}))
+vi.mock('../core/diagnostics', async (original) => ({
+  ...(await original<object>()),
+  downloadDebugPackage: mocks.debug,
+}))
 vi.mock('../adapters/discovery', () => ({ scanDevices: mocks.scan }))
 vi.mock('../adapters/transport', () => ({
   detectConnect: async () => '0.3.3',
@@ -69,6 +91,17 @@ beforeEach(async () => {
   vi.clearAllMocks()
   mocks.bridge.mockResolvedValue({ allowed: true })
   mocks.access.mockResolvedValue(undefined)
+  mocks.recorderConnect.mockImplementation(async (config) => {
+    mocks.states[config.id] = {
+      state: 'idle',
+      updatedAt: Date.now(),
+      scope: 'Recording only',
+      media: [],
+      warnings: [],
+      canControl: true,
+      enabled: false,
+    }
+  })
   mocks.scan.mockImplementation((_ips, signal, onResult, onProgress) => {
     scanSignal = signal
     onResult({ address: report.address, model: 'FS2', status: 'found', detail: 'Reachable' })
@@ -88,14 +121,7 @@ beforeEach(async () => {
   document.body.append(host)
   root = createRoot(host)
   await act(async () => {
-    root.render(
-      <DeviceDialog
-        workspace={emptyWorkspace()}
-        readOnly={false}
-        close={() => {}}
-        recorders={() => {}}
-      />,
-    )
+    root.render(<DeviceDialog workspace={emptyWorkspace()} readOnly={false} close={() => {}} />)
   })
 })
 afterEach(async () => {
@@ -135,4 +161,44 @@ it('cancels a device connection without stopping the scan', async () => {
   expect(mocks.connect).not.toHaveBeenCalled()
   expect(button('Stop scan')).toBeDefined()
   await act(async () => finishScan())
+})
+it('routes a discovered HELO Plus to the recorder adapter in the same manager', async () => {
+  mocks.scan.mockImplementationOnce((_ips, signal, onResult, onProgress) => {
+    scanSignal = signal
+    onResult({
+      address: report.address,
+      model: 'HELO Plus',
+      title: 'AJA HELO Plus',
+      status: 'found',
+      detail: 'Reachable',
+    })
+    onProgress(1)
+    return new Promise<void>((resolve) => {
+      finishScan = resolve
+    })
+  })
+  await startScan()
+  await click('Add')
+  expect(mocks.saveRecorders).toHaveBeenCalledWith([
+    expect.objectContaining({ address: report.address, model: 'HELO Plus' }),
+  ])
+  expect(mocks.recorderConnect).toHaveBeenCalledOnce()
+  expect(mocks.probe).not.toHaveBeenCalled()
+  await act(async () => finishScan())
+})
+it('adds a selectable demo model and offers one combined debug download', async () => {
+  await click('Demo device')
+  const select = host.querySelector('section[aria-label="Add by IP"] select') as HTMLSelectElement
+  await act(async () => {
+    select.value = 'FS1'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+  })
+  const form = host.querySelector('section[aria-label="Add by IP"] form')!
+  await act(async () => {
+    form.dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+  })
+  expect(mocks.demo).toHaveBeenCalledWith('FS1', '')
+  await click('Download debug ZIP')
+  expect(mocks.debug).toHaveBeenCalledOnce()
+  expect(mocks.access).not.toHaveBeenCalled()
 })
