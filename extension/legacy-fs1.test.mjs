@@ -3,6 +3,11 @@ import assert from 'node:assert/strict'
 import { fs1Descriptors, fs1ReadIds } from './legacy-fs1.js'
 import { validateWrite, operation } from './policy.js'
 test('legacy FS1 accepts only five native ProcAmp controls with their actual ranges and steps', () => {
+  assert.deepEqual(operation('json?action=get&paramid=eParamID_SysName&configid=0&alt=json'), {
+    kind: 'read',
+    id: 'eParamID_SysName',
+  })
+  assert.throws(() => operation('json?action=set&paramid=eParamID_SysName&value=1&configid=0'))
   validateWrite(
     operation('json?action=set&paramid=eParamID_ProcAmpBlackYCOffset&value=5&configid=0'),
     fs1Descriptors,
@@ -84,6 +89,10 @@ test('worker identifies legacy FS1, requires live reads, and recovers its mappin
     assert.equal(writes.length, 0)
     for (const id of fs1ReadIds)
       assert.equal((await send(`json?action=get&paramid=${id}&configid=0&alt=json`)).ok, true)
+    assert.equal(
+      (await send('json?action=get&paramid=eParamID_SysName&configid=0&alt=json')).ok,
+      true,
+    )
     assert.equal((await send(write)).ok, true)
     assert.equal(writes.length, 1)
     await import(`./worker.js?legacy=restart-${Date.now()}`)

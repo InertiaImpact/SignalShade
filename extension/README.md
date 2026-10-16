@@ -23,6 +23,8 @@ Remove device host permissions through the extension's Chrome Details / Site acc
 
 ## Current scope
 
+- v0.4.1 adds configured device names to scan results, with model/IP alongside and the name used as the initial label on Add. Existing labels remain unchanged. Original FS1 names require this extension update; its system-name parameter is read-only. Missing names never hide a discovered device.
+
 - v0.4.0 adds original FS1 2.2.2.1 Proc amp support through its native `/json` interface. AJA FS1 identity and all seven known status reads are required before allowing five bounded shading parameters. Source selection and other configuration writes remain excluded. Update Connect and reload SignalShade together.
 - The dashboard manages processors and recorders in one Devices menu, offers model-specific demos, and exports one combined debug ZIP. Scanned HELO devices are routed to their recorder adapter. Media polling excludes streaming destinations, clip deletion fields and internal subsystem status.
 - v0.3.3 added FS2 active controls by collapsing repeated input-memory descriptors, keeping processors separate, and accepting `FS2_R` identification. Add/Connect can run while scanning continues.

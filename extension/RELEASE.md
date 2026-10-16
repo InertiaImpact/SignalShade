@@ -1,5 +1,9 @@
 SignalShade Connect preview connects SignalShade to approved local AJA devices without a separate bridge server.
 
+Version 0.4.1 reads each identified AJA device’s configured system name during scanning. Results show the name, model and IP address; Add uses that name as the initial device label. Existing custom labels are preserved, and missing or unreadable names do not hide devices. Only identified AJA units receive these optional, time-bounded reads.
+
+For original FS1, Connect now permits the read-only `eParamID_SysName` query on its legacy endpoint. This does not add any writable parameters or Chrome permissions. Update the unpacked extension and reload SignalShade to get legacy FS1 names.
+
 Version 0.4.0 adds original FS1 firmware 2.2.2.1 Proc amp controls using the native `/json` API. The extension checks AJA FS1 identity, seven known status reads, and native parameter bounds before allowing shading writes. No new permissions are required. Source selection, routing and device resets remain excluded.
 
 The dashboard now has one Devices manager for FS processors and HELO/Ki Pro recorders: a larger added-device list, selectable demo models, compact recording/storage status, and one **Download debug ZIP** containing scan, connection and recorder diagnostics. Scanned HELO devices use the recorder adapter. HELO media reads now exclude unrelated streaming/clip/internal parameters. Processor labels, groups and locks persist across input changes; refreshing routing never resets or reapplies color values.

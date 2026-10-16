@@ -49,7 +49,7 @@ export function operation(path) {
   if (
     legacy &&
     !(q.get('action') === 'get'
-      ? fs1ReadIds.includes(id)
+      ? fs1ReadIds.includes(id) || id === 'eParamID_SysName'
       : q.get('action') === 'set' && fs1Descriptors.some((d) => d.param_id === id))
   )
     throw new Error(

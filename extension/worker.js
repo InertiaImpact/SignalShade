@@ -261,6 +261,7 @@ async function handle(m, sender) {
       if (
         op.kind === 'read' &&
         m.path.startsWith('json?') &&
+        fs1ReadIds.includes(op.id) &&
         discovered.get(ownerKey) === fs1Descriptors &&
         fs1ReadValue(result, op.id)
       ) {

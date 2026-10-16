@@ -38,7 +38,7 @@ Open the URL Vite prints. `npm test` runs the tests; `npm run build` checks Type
 ## Connect hardware
 
 1. Start an empty workspace from the **⋯** menu, or remove demo devices as needed.
-2. Open **Manage connections**, enter a private IPv4 address and optional device label under **Add by IP**, then connect. You can also scan and add an identified AJA device.
+2. Open **Manage connections**, enter a private IPv4 address and optional device label under **Add by IP**, then connect. You can also scan and add an identified AJA device. Scan results show its configured system name alongside the model and IP when readable; Add uses that name as the default label. Missing names fall back to model/IP, and existing labels are preserved.
 3. Allow local network access in the browser if prompted. Device CORS must separately permit readable API responses. Opening an AJA interface in another tab does not establish this permission.
 4. SignalShade reads the device identity, available color descriptors, native ranges, and current values, then adds its mapped controls. Hardware test-history labels do not gate controls.
 5. Use the device’s **Lock control** button or channel/desk locks to pause adjustments. For an initial check, make a small change against the AJA interface, verify readback, and restore the starting value.

@@ -168,6 +168,7 @@ it('routes a discovered HELO Plus to the recorder adapter in the same manager', 
     onResult({
       address: report.address,
       model: 'HELO Plus',
+      name: 'Program recorder',
       title: 'AJA HELO Plus',
       status: 'found',
       detail: 'Reachable',
@@ -180,10 +181,37 @@ it('routes a discovered HELO Plus to the recorder adapter in the same manager', 
   await startScan()
   await click('Add')
   expect(mocks.saveRecorders).toHaveBeenCalledWith([
-    expect.objectContaining({ address: report.address, model: 'HELO Plus' }),
+    expect.objectContaining({
+      address: report.address,
+      model: 'HELO Plus',
+      label: 'Program recorder',
+    }),
   ])
   expect(mocks.recorderConnect).toHaveBeenCalledOnce()
   expect(mocks.probe).not.toHaveBeenCalled()
+  await act(async () => finishScan())
+})
+it('shows a scanned system name beside its model and IP and uses it when adding a processor', async () => {
+  mocks.scan.mockImplementationOnce((_ips, signal, onResult) => {
+    scanSignal = signal
+    onResult({
+      address: report.address,
+      model: 'FS2',
+      name: 'Truck A shading',
+      status: 'found',
+      detail: 'Reachable',
+    })
+    return new Promise<void>((resolve) => {
+      finishScan = resolve
+    })
+  })
+  await startScan()
+  const result = host.querySelector('.scan-result')!
+  expect(result.querySelector('strong')?.textContent).toBe('Truck A shading')
+  expect(result.textContent).toContain(`FS2 · ${report.address}`)
+  await click('Add')
+  await act(async () => finishProbe(report))
+  expect(mocks.connect).toHaveBeenCalledWith(expect.anything(), report, 'Truck A shading')
   await act(async () => finishScan())
 })
 it('adds a selectable demo model and offers one combined debug download', async () => {
@@ -201,4 +229,37 @@ it('adds a selectable demo model and offers one combined debug download', async 
   await click('Download debug ZIP')
   expect(mocks.debug).toHaveBeenCalledOnce()
   expect(mocks.access).not.toHaveBeenCalled()
+})
+it('retains an added device custom label when a scan reports a different system name', async () => {
+  const workspace = emptyWorkspace()
+  workspace.devices = [
+    {
+      id: report.address,
+      address: report.address,
+      label: 'Custom desk label',
+      model: 'FS2',
+      firmware: 'fixture',
+      simulated: false,
+      status: 'online',
+      armed: true,
+    },
+  ]
+  await act(async () =>
+    root.render(<DeviceDialog workspace={workspace} readOnly={false} close={() => {}} />),
+  )
+  mocks.scan.mockImplementationOnce((_ips, _signal, onResult) => {
+    onResult({
+      address: report.address,
+      model: 'FS2',
+      name: 'Factory rack name',
+      status: 'found',
+      detail: 'Reachable',
+    })
+    return Promise.resolve()
+  })
+  await startScan()
+  expect(host.querySelector('.connections-list')?.textContent).toContain('Custom desk label')
+  expect(host.querySelector('.scan-result strong')?.textContent).toBe('Factory rack name')
+  expect(button('Added').disabled).toBe(true)
+  expect(mocks.connect).not.toHaveBeenCalled()
 })

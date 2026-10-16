@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Scan device names — 0.4.1
+
+After web identification confirms an AJA interface, discovery reads its configured system name using the known `SysName`/`SystemName` fields. Original FS1 uses its legacy `/json` endpoint. Optional reads have a shared 1.8-second budget and follow scan cancellation; blank, mismatched, malformed or inaccessible values leave the device discoverable. Results retain model/IP and use the reported name as the initial label only when adding. Scans never rename existing devices or change processor labels/settings.
+
+Connect adds one legacy name read without widening writable parameters or permissions. Its optional name read is excluded from the seven shading/status reads used to authorize legacy FS1 control. Tests cover device families, fallback, timeouts, unrelated web pages, display/default labels, retained custom labels, and legacy read/write boundaries.
+
 ## Unified devices and field-report fixes — 0.4.0
 
 Devices now manages FS processors and HELO/Ki Pro recorders together, with a larger device list, model-specific demos, connection controls, and compact recorder storage rows. HELO results from a scan enter the recorder adapter instead of the FS probe. Add and scanning remain independently cancellable. A single debug ZIP gathers workspace, recorder snapshots, probe/scan results and bounded recent request traces; credential fields are redacted before storage/export. Diagnostics survive closing the dialog within the session.

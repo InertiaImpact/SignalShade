@@ -598,8 +598,11 @@ export function DeviceDialog({
                 {visible.map((r) => (
                   <div className="scan-result" key={r.address}>
                     <div className="grow">
-                      <strong>{r.model ?? r.title ?? 'AJA device'}</strong>
-                      <p>{r.address}</p>
+                      <strong>{r.name ?? r.model ?? r.title ?? 'AJA device'}</strong>
+                      <p>
+                        {r.name ? `${r.model ?? 'AJA device'} · ` : ''}
+                        {r.address}
+                      </p>
                       {errors[r.address] && <p className="text-error">{errors[r.address]}</p>}
                     </div>
                     <button
@@ -608,7 +611,7 @@ export function DeviceDialog({
                       onClick={() =>
                         void addDevice(
                           r.address,
-                          '',
+                          r.name ?? '',
                           true,
                           detectRecorderModel(`${r.title ?? ''} ${r.model ?? ''}`) ??
                             (fsModels.includes(r.model as Model) ? (r.model as Model) : 'auto'),
