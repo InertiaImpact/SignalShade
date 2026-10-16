@@ -82,7 +82,9 @@ export function DeviceDetails({
         <>
           <p className="muted">
             {device.firmware} · {workspace.channels.filter((c) => c.deviceId === device.id).length}{' '}
-            processors
+            {workspace.channels.filter((c) => c.deviceId === device.id).length === 1
+              ? 'processor'
+              : 'processors'}
           </p>
           <div className="processor-label-list">
             {workspace.channels

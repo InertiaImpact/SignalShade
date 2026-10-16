@@ -277,6 +277,7 @@ export function DeviceDialog({
     try {
       if (recorder) desk.saveRecorders(recordersRef.current.filter((c) => c.id !== id))
       else desk.removeDevice(id)
+      setNotice('')
       setSelected('')
     } catch (e) {
       setNotice(message(e))

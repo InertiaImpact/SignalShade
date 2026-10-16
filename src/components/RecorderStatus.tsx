@@ -25,7 +25,17 @@ export function RecorderStatus({
         <strong className={snapshot.state === 'recording' ? 'text-recording' : ''}>
           {recorderStateLabel[snapshot.state]}
         </strong>
-        <span className="mono">{snapshot.duration ?? '—'}</span>
+        <span
+          className="mono"
+          title={
+            snapshot.durationKind === 'observed'
+              ? 'Estimated recording duration'
+              : 'Reported clip duration'
+          }
+        >
+          {snapshot.durationKind === 'observed' ? '~' : ''}
+          {snapshot.duration ?? '—'}
+        </span>
       </div>
       {warnings.length > 0 && (
         <p className="text-warning">
