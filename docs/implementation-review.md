@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Stage state controls — 0.4.3
+
+Proc amp and RGB enable dropdowns are now segmented On/Off controls, including native boolean enums. Multi-member targets add a read-only Mixed position and show a tick for each member under its current Off or On setting. Unknown values remain uncounted and show an unavailable indicator when a real On/Off mix is not established. Button actions always send explicit absolute On/Off values; Mixed sends no command, selecting the existing uniform state is a no-op, and counts do not move until readbacks update. Non-boolean enums retain their native dropdowns. Compact cards give stage controls a full row, and tick rows reserve stable space as members change state.
+
+Coverage includes boolean/enum/numeric stage descriptors, live distribution changes, unavailable values, locks, no-op selection and unchanged multi-setting controls. An isolated browser demo confirms a 1-off/9-on split, group Off/On applied to all 10 members, and the same tick display in compact gang cards and narrow/wide layouts. No physical device commands are sent by those checks.
+
 ## Relative group member positions — 0.4.2
 
 Shared numeric sliders in relative mode show one non-interactive tick per readable member, in both gang cards and expanded controls. Ticks use the union of compatible native ranges, share the slider’s thumb travel, and update from channel readbacks. Coincident values overlap rather than being displaced to invented positions. The shared handle starts at the quantized group mean; its origin stays fixed throughout each gesture while successive changes dispatch incremental relative trims. This avoids mixing absolute member positions with the previous centered delta scale or allowing asynchronous readbacks to change the trim amount during a drag. Individual relative controls and absolute controls retain their existing behavior. Arrow step multipliers, store locks, device clamping and undo grouping are unchanged.

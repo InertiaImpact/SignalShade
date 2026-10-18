@@ -3,6 +3,7 @@ import { ChevronLeft, ChevronRight, RotateCcw, Star } from 'lucide-react'
 import { commonValue, formatValue, isCompatible, quantize } from '../core/color'
 import { desk } from '../core/store'
 import type { Channel, ParameterDescriptor } from '../core/types'
+import { ToggleControl } from './ToggleControl'
 
 export function ParameterControl({
   descriptor: d,
@@ -68,7 +69,17 @@ export function ParameterControl({
     const value = c.values[d.id]
     return value !== undefined && Number.isFinite(value) ? [{ id: c.id, value }] : []
   })
-  const positions = relative && compatible && channels.length > 1 && d.kind === 'number'
+  const toggle =
+    d.kind === 'toggle' ||
+    ((d.id === 'procEnabled' || d.id === 'rgbEnabled') &&
+      d.min === 0 &&
+      d.max === 1 &&
+      d.step === 1 &&
+      (!d.choices ||
+        (d.choices.length === 2 &&
+          d.choices.some((c) => c.value === 0) &&
+          d.choices.some((c) => c.value === 1))))
+  const positions = relative && compatible && channels.length > 1 && d.kind === 'number' && !toggle
   // Member ticks and the handle share the native range. Freeze the reference during a drag;
   // otherwise successive hardware readbacks would change the amount being trimmed.
   const bounds = positions
@@ -80,7 +91,6 @@ export function ParameterControl({
     ? members.reduce((sum, m) => sum + m.value, 0) / members.length
     : d.neutral
   const reference = quantize(center, { ...d, min: valueMin, max: valueMax })
-  const toggle = d.kind === 'toggle'
   const mixed = current === undefined
   const lock = disabled || !compatible
   // An absolute group needs a common starting value before an arrow can step it.
@@ -106,16 +116,32 @@ export function ParameterControl({
     max = positions ? valueMax : relative ? rangeSpan : d.max
   return (
     <div
-      className={['parameter', 'tone-' + tone, compact ? 'small' : '', lock ? 'disabled' : ''].join(
-        ' ',
-      )}
+      className={[
+        'parameter',
+        'tone-' + tone,
+        compact ? 'small' : '',
+        toggle ? 'is-toggle' : '',
+        lock ? 'disabled' : '',
+      ].join(' ')}
     >
       <div className="parameter-heading">
-        <label className="function-tag" htmlFor={inputId}>
-          {d.label}
-        </label>
+        {toggle ? (
+          <span className="function-tag">{d.label}</span>
+        ) : (
+          <label className="function-tag" htmlFor={inputId}>
+            {d.label}
+          </label>
+        )}
 
-        {toggle || d.kind === 'enum' ? (
+        {toggle ? (
+          <ToggleControl
+            id={inputId}
+            descriptor={d}
+            channels={channels}
+            disabled={lock}
+            onSet={(value) => send(value, 'absolute')}
+          />
+        ) : d.kind === 'enum' ? (
           <select
             id={inputId}
             disabled={lock}

@@ -4394,6 +4394,71 @@ button {
 .connect-help a {
   color: #ffce00;
 }
+/* On/Off stage controls */
+.app .parameter.is-toggle {
+  grid-column: 1 / -1;
+}
+.app .parameter.is-toggle .parameter-heading {
+  height: auto;
+  min-height: 34px;
+  flex-wrap: wrap;
+  row-gap: 6px;
+}
+.state-toggle {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: stretch;
+  margin-left: auto;
+  padding: 2px;
+  gap: 2px;
+  border: 1px solid var(--border-default);
+  border-radius: 5px;
+  background: var(--surface-field);
+}
+.state-toggle > button,
+.state-mixed {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 7px;
+  min-width: 44px;
+  min-height: 28px;
+  border-radius: 3px;
+  font-size: 12px;
+  line-height: 16px;
+  color: var(--text-muted);
+}
+.state-toggle > button:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--text-primary);
+}
+.state-toggle > button[aria-pressed='true'],
+.state-mixed.active {
+  background: var(--accent-soft);
+  color: var(--accent-text);
+}
+.state-mixed {
+  cursor: default;
+  color: var(--text-faint);
+}
+.state-ticks {
+  display: grid;
+  grid-template-columns: repeat(8, 2px);
+  grid-auto-rows: 4px;
+  gap: 2px;
+  width: 30px;
+  justify-content: start;
+  color: var(--text-primary);
+  pointer-events: none;
+}
+.state-ticks > i {
+  width: 2px;
+  height: 4px;
+  border-radius: 1px;
+  background: currentColor;
+}
 /* Unified connection manager */
 .modal.wide.connections-modal {
   width: 1120px;

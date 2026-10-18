@@ -122,3 +122,102 @@ it('retains the centered trim for one member and hides ticks for incompatible co
   expect(slider().disabled).toBe(true)
   expect(ticks()).toHaveLength(0)
 })
+async function renderToggle(kind: 'toggle' | 'enum' | 'number' = 'toggle', disabled = false) {
+  const descriptor = { ...channels[0].descriptors.find((d) => d.id === 'procEnabled')!, kind }
+  if (kind === 'enum')
+    descriptor.choices = [
+      { value: 0, label: 'Off' },
+      { value: 1, label: 'On' },
+    ]
+  channels = channels.map((c) => ({
+    ...c,
+    descriptors: c.descriptors.map((d) => (d.id === descriptor.id ? descriptor : d)),
+  }))
+  await act(async () =>
+    root.render(
+      <ParameterControl
+        descriptor={descriptor}
+        channels={channels}
+        relative
+        disabled={disabled}
+        multiplier={1}
+        compact
+      />,
+    ),
+  )
+}
+const stateButton = (state: string) =>
+  host.querySelector<HTMLButtonElement>(`button[aria-label="Proc amp ${state}"]`)!
+it('replaces boolean stage dropdowns with Off / Mixed / On and counts members with ticks', async () => {
+  channels.forEach((c, i) => (c.values.procEnabled = i === 2 ? 1 : 0))
+  await renderToggle()
+  expect(host.querySelector('select')).toBeNull()
+  expect(host.querySelector('.state-mixed.active')?.textContent).toBe('Mixed')
+  expect(stateButton('Off').querySelectorAll('.state-ticks i')).toHaveLength(2)
+  expect(stateButton('On').querySelectorAll('.state-ticks i')).toHaveLength(1)
+  expect(stateButton('Off').getAttribute('aria-description')).toBe('2 of 3 members')
+  await act(async () => (host.querySelector('.state-mixed') as HTMLElement).click())
+  expect(adjust).not.toHaveBeenCalled()
+  await act(async () => stateButton('On').click())
+  expect(adjust.mock.calls[0].slice(0, 4)).toEqual([
+    channels.map((c) => c.id),
+    'procEnabled',
+    1,
+    'absolute',
+  ])
+  expect(host.querySelector('.state-mixed.active')).not.toBeNull() // Wait for actual readbacks.
+  channels.forEach((c) => (c.values.procEnabled = 1))
+  await renderToggle()
+  expect(stateButton('On').getAttribute('aria-pressed')).toBe('true')
+  expect(stateButton('Off').querySelectorAll('.state-ticks i')).toHaveLength(0)
+  expect(stateButton('On').querySelectorAll('.state-ticks i')).toHaveLength(3)
+  await act(async () => stateButton('On').click())
+  expect(adjust).toHaveBeenCalledTimes(1) // Selecting the current state sends no redundant writes.
+  await act(async () => stateButton('Off').click())
+  expect(adjust.mock.calls[1].slice(1, 4)).toEqual(['procEnabled', 0, 'absolute'])
+})
+it.each(['enum', 'number'] as const)(
+  'uses the same stage toggle for native %s boolean descriptors',
+  async (kind) => {
+    await renderToggle(kind)
+    expect(host.querySelector('select')).toBeNull()
+    expect(host.querySelector('input[type=range]')).toBeNull()
+    await act(async () => stateButton('Off').click())
+    expect(adjust.mock.calls[0].slice(1, 4)).toEqual(['procEnabled', 0, 'absolute'])
+  },
+)
+it('shows two buttons for an individual stage and respects control locks', async () => {
+  channels = [channels[0]]
+  await renderToggle('toggle', true)
+  expect(host.querySelectorAll('.state-toggle button')).toHaveLength(2)
+  expect(host.querySelector('.state-mixed')).toBeNull()
+  expect(host.querySelector('.state-ticks')).toBeNull()
+  await act(async () => stateButton('Off').click())
+  expect(adjust).not.toHaveBeenCalled()
+  expect(stateButton('Off').disabled).toBe(true)
+})
+it('does not count unreadable members as Off or invent a Mixed state', async () => {
+  channels[0].values.procEnabled = 1
+  channels[1].values.procEnabled = undefined
+  channels[2].values.procEnabled = undefined
+  await renderToggle()
+  expect(stateButton('Off').querySelectorAll('.state-ticks i')).toHaveLength(0)
+  expect(stateButton('On').querySelectorAll('.state-ticks i')).toHaveLength(1)
+  expect(host.querySelector('.state-mixed.active')?.textContent).toBe('—')
+  expect(host.querySelector('[role=status]')?.getAttribute('aria-label')).toContain('2 unavailable')
+})
+it('retains native dropdowns for controls with more than two settings', async () => {
+  await act(async () =>
+    root.render(
+      <ParameterControl
+        descriptor={channels[0].descriptors.find((d) => d.id === 'legalizer.mode')!}
+        channels={channels}
+        relative={false}
+        disabled={false}
+        multiplier={1}
+      />,
+    ),
+  )
+  expect(host.querySelector('select')?.options).toHaveLength(4) // Three native settings and Mixed.
+  expect(host.querySelector('.state-toggle')).toBeNull()
+})
