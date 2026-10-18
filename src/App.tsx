@@ -42,6 +42,7 @@ import { GangControls } from './components/GangControls'
 import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
 import { RecorderStrip } from './components/RecorderStrip'
+import { DemoIndicator } from './components/DemoIndicator'
 import {
   ConfirmWorkspace,
   GangDialog,
@@ -294,16 +295,7 @@ export default function App() {
             >
               <RefreshCw size={15} className={snapshot.busy ? 'spin' : ''} />
             </button>
-            <span className={`mode-pill ${simulated ? 'demo' : ''}`}>
-              <span />
-              {simulated === connectionCount && simulated
-                ? 'DEMO'
-                : simulated
-                  ? 'MIXED'
-                  : w.devices.length
-                    ? 'LIVE'
-                    : 'NO DEVICES'}
-            </span>
+            <DemoIndicator simulated={simulated} total={connectionCount} />
             <button
               className={`icon-button ${globalLock ? 'text-warning' : ''}`}
               aria-label={globalLock ? 'Unlock desk' : 'Lock desk'}

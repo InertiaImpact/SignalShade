@@ -222,6 +222,7 @@ button {
   align-items: center;
 }
 .mode-pill {
+  position: relative;
   display: flex;
   align-items: center;
   gap: 7px;
@@ -243,6 +244,14 @@ button {
   color: var(--warning-text);
   border-color: var(--warning-border);
   background: var(--warning-surface);
+}
+.demo-ping {
+  position: absolute;
+  inset: -1px;
+  border: 2px solid currentColor;
+  border-radius: inherit;
+  pointer-events: none;
+  animation: stage-ping 700ms ease-out both;
 }
 .topbar-divider {
   height: 20px;
@@ -4262,6 +4271,10 @@ button {
   }
   .app .topbar .mode-pill {
     display: none;
+  }
+  .app .topbar .mode-pill.demo {
+    display: flex;
+    flex-shrink: 0;
   }
   .recorder-overview {
     flex-basis: 78px;

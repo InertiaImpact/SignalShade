@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Demo action reminder — 0.4.6
+
+Demo adjustments, resets, recalls and undo pulse the top DEMO/MIXED badge, as do changes to demo device/channel settings and demo recorder enable, connect, disconnect, Record and Stop actions. The tooltip identifies simulated targets; a mixed live/demo fleet retains its MIXED label. Poll timestamps, pending flags and recorder duration/media refreshes do not trigger feedback, and live-only edits do not pulse. Pulses are throttled to one per 700 ms and removed after 700 ms; reduced motion shows a static outline. The demo badge remains visible on narrow screens. Recorder-only live workspaces now correctly show LIVE.
+
+Regression tests cover demo/live/mixed command routing, settings changes, recorder actions versus monitoring, first-demo addition, throttling and pulse cleanup. Isolated browser checks verify actual control interactions and reduced-motion rendering without contacting hardware.
+
 ## Relative trim feedback and bypass indication — 0.4.5
 
 The relative entry shows a signed live gesture offset while dragging and “Trim” when idle. Manual Enter/blur entry remains available; finishing a gesture cannot replay its displayed offset. Disabling a field cancels its draft and gesture. Numeric controls gray and disable when all targets have a known Off state for that stage, including individual channels, gang cards and expanded controls. Enable controls remain usable, and unrelated stages are unaffected. Attempting a pointer adjustment on a bypassed field pulses its corresponding Off toggle without sending a command; pinning presentation controls remains independent. Missing optional stage metadata is not treated as Off.

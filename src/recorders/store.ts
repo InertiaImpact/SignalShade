@@ -1,6 +1,7 @@
 import { message } from '../adapters/aja'
 import { AjaRecorderAdapter } from './aja'
 import { DemoRecorderAdapter } from './demo'
+import { notifyDemoChange } from '../core/demo-feedback'
 import {
   disconnected,
   durationText,
@@ -93,12 +94,14 @@ export class RecorderStore {
         ? new DemoRecorderAdapter(config.model)
         : new AjaRecorderAdapter(config, password),
     )
+    if (config.simulated) notifyDemoChange([config.label])
     await this.refresh(config.id)
     if (this.state[config.id]?.updatedAt && this.state[config.id].state !== 'offline')
       this.rememberConnection(config.id)
   }
   disconnect(id: string) {
     if (this.state[id]?.pending) return
+    if (this.connections.has(id)) this.announceDemo(id)
     this.connections.get(id)?.adapter.dispose()
     this.connections.delete(id)
     this.patch(id, { ...disconnected() })
@@ -135,8 +138,13 @@ export class RecorderStore {
           s.state === 'offline'))
     )
       return
+    if (s.enabled !== enabled) this.announceDemo(id)
     this.rememberControl(id, enabled)
     this.patch(id, { enabled })
+  }
+  private announceDemo(id: string) {
+    const config = this.configs.find((c) => c.id === id)
+    if (config?.simulated) notifyDemoChange([config.label])
   }
   private current(id: string, connection: Connection) {
     return this.connections.get(id) === connection
@@ -236,6 +244,7 @@ export class RecorderStore {
       )
         throw new Error('Recorder is not ready for this command')
       attempted = true
+      this.announceDemo(id)
       await c.adapter.command(action)
       let confirmed = false
       let pausedStopSent = false

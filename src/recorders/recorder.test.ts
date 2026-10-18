@@ -18,6 +18,7 @@ import {
 } from './types'
 import { validateWorkspace } from '../core/persistence'
 import { emptyWorkspace } from '../core/demo'
+import { subscribeDemoChanges } from '../core/demo-feedback'
 
 const config: RecorderConfig = {
   id: 'test',
@@ -68,6 +69,33 @@ async function fixture(model: RecorderConfig['model'] = 'HELO') {
   }
 }
 describe('recorder command lifecycle', () => {
+  it('announces demo enable, Record and Stop actions but not background monitoring or live commands', async () => {
+    const notice = vi.fn(),
+      unsubscribe = subscribeDemoChanges(notice)
+    try {
+      const demo = demoRecorder('HELO Plus')
+      store.sync([demo])
+      await store.refresh(demo.id)
+      expect(notice).not.toHaveBeenCalled()
+      store.enable(demo.id, true)
+      expect(notice).toHaveBeenCalledWith([demo.label])
+      notice.mockClear()
+      await store.command(demo.id, 'record')
+      expect(notice).toHaveBeenCalledWith([demo.label])
+      notice.mockClear()
+      await vi.advanceTimersByTimeAsync(2500)
+      await store.tick()
+      expect(notice).not.toHaveBeenCalled()
+      await store.command(demo.id, 'stop')
+      expect(notice).toHaveBeenCalledWith([demo.label])
+      await fixture()
+      notice.mockClear()
+      await store.command(config.id, 'record')
+      expect(notice).not.toHaveBeenCalled()
+    } finally {
+      unsubscribe()
+    }
+  })
   it('automatically recovers monitoring and the chosen control state after a transient poll failure', async () => {
     const { adapter } = await fixture()
     vi.mocked(adapter.read).mockRejectedValueOnce(new Error('Temporary network loss'))

@@ -6,6 +6,7 @@ import { RecorderStore } from '../recorders/store'
 import type { RecorderConfig } from '../recorders/types'
 import { isVisibleControl } from './layout'
 import { correctionStage, notifyStageAdjustment, type StageId } from './stages'
+import { changedDemoLabels, notifyDemoChange } from './demo-feedback'
 import type {
   Activity,
   Change,
@@ -89,7 +90,9 @@ export class DeskStore {
     this.listeners.forEach((l) => l())
   }
   private workspace(workspace: Workspace) {
+    const demoChanges = this.state.ready ? changedDemoLabels(this.state.workspace, workspace) : []
     this.emit({ workspace })
+    notifyDemoChange(demoChanges)
     clearTimeout(this.saveTimer)
     if (this.state.ready && !this.state.lockedTab)
       this.saveTimer = setTimeout(() => {
@@ -417,6 +420,15 @@ export class DeskStore {
     operations.forEach((job) => this.enqueue(job))
   }
   private announceAdjustments(operations: Pick<Job, 'channelId' | 'parameter'>[]) {
+    const channelIds = new Set(operations.map((operation) => operation.channelId))
+    const deviceIds = new Set(
+      this.state.workspace.channels.filter((c) => channelIds.has(c.id)).map((c) => c.deviceId),
+    )
+    notifyDemoChange(
+      this.state.workspace.devices
+        .filter((d) => d.simulated && deviceIds.has(d.id))
+        .map((d) => d.label),
+    )
     const targets = new Map<StageId, Set<string>>()
     for (const operation of operations) {
       const channel = this.state.workspace.channels.find((c) => c.id === operation.channelId)

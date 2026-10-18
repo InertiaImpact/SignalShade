@@ -4,6 +4,7 @@ import { demoWorkspace } from './demo'
 import { AjaAdapter } from '../adapters/aja'
 import type { ProbeResult, Workspace } from './types'
 import { subscribeStageAdjustments } from './stages'
+import { subscribeDemoChanges } from './demo-feedback'
 vi.mock('./persistence', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   loadWorkspace: vi.fn(async () => undefined),
@@ -58,6 +59,30 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('announces demo edits and adjustments without announcing live writes or background refresh', async () => {
+    const notice = vi.fn(),
+      unsubscribe = subscribeDemoChanges(notice)
+    try {
+      await store.refresh()
+      expect(notice).not.toHaveBeenCalled()
+      store.updateChannel('demo-ch-1', { label: 'Wide demo' })
+      expect(notice).toHaveBeenCalledWith(['FS1'])
+      notice.mockClear()
+      store.adjust(['demo-ch-1'], 'gain', 0.1, 'relative')
+      expect(notice).toHaveBeenCalledWith(['FS1'])
+      await settle()
+      const { channel } = hardwareFixture()
+      notice.mockClear()
+      store.adjust([channel.id], 'gain', 0.1, 'relative')
+      await settle()
+      expect(notice).not.toHaveBeenCalled()
+      store.adjust([channel.id, 'demo-ch-1'], 'gain', 0.1, 'relative')
+      expect(notice).toHaveBeenCalledWith(['FS1'])
+      await settle()
+    } finally {
+      unsubscribe()
+    }
+  })
   it('announces bypassed members on mixed adjustments without excluding their stored values', async () => {
     const off = store.getSnapshot().workspace.channels[0]
     const on = store.getSnapshot().workspace.channels[1]
