@@ -4418,6 +4418,7 @@ button {
   row-gap: 6px;
 }
 .state-toggle {
+  position: relative;
   display: inline-flex;
   flex: 0 0 auto;
   align-items: stretch;

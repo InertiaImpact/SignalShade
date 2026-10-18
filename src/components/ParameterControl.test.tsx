@@ -355,7 +355,7 @@ it('ends the trim when a stage is bypassed mid-gesture and does not replay it af
   })
   expect(adjust).toHaveBeenCalledTimes(1)
 })
-it('pings the relevant Mixed indicator at most once per 700ms and preserves its status node', async () => {
+it('pings the entire relevant mixed toggle at most once per 700ms and preserves its status node', async () => {
   vi.useFakeTimers()
   try {
     channels[0].values.procEnabled = 0
@@ -367,6 +367,9 @@ it('pings the relevant Mixed indicator at most once per 700ms and preserves its 
     expect(host.querySelector('.state-ping')).toBeNull()
     await act(async () => notifyStageAdjustment(channels, 'procEnabled'))
     expect(host.querySelector('.state-ping')?.getAttribute('data-ping')).toBe('1')
+    expect(host.querySelector('.state-toggle > .state-ping')).not.toBeNull()
+    expect(status?.querySelector('.state-ping')).toBeNull()
+    expect(host.querySelector('button .state-ping')).toBeNull()
     await act(async () => notifyStageAdjustment(channels, 'procEnabled'))
     expect(host.querySelector('.state-ping')?.getAttribute('data-ping')).toBe('1')
     await vi.advanceTimersByTimeAsync(701)

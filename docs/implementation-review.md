@@ -1,5 +1,9 @@
 # Recorder implementation and code review
 
+## Whole-toggle mixed feedback — 0.4.7
+
+Adjusting a mixed group now pulses the border of the entire Off / Mixed / On control. The read-only Mixed segment stays unchanged so the reminder does not suggest clicking it. The existing timing, reduced-motion support and stage targeting are retained. Attempting an adjustment while every member is Off still points directly to the Off setting. Regression coverage checks the pulse belongs to the group container and does not sit inside a segment.
+
 ## Demo action reminder — 0.4.6
 
 Demo adjustments, resets, recalls and undo pulse the top DEMO/MIXED badge, as do changes to demo device/channel settings and demo recorder enable, connect, disconnect, Record and Stop actions. The tooltip identifies simulated targets; a mixed live/demo fleet retains its MIXED label. Poll timestamps, pending flags and recorder duration/media refreshes do not trigger feedback, and live-only edits do not pulse. Pulses are throttled to one per 700 ms and removed after 700 ms; reduced motion shows a static outline. The demo badge remains visible on narrow screens. Recorder-only live workspaces now correctly show LIVE.

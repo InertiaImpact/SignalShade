@@ -113,10 +113,10 @@ export function ToggleControl({
         >
           <span>{unknown > 0 && !mixed ? '—' : 'Mixed'}</span>
           {tickSlot()}
-          {mixed && pulse('mixed')}
         </span>
       )}
       {setting(1, 'On', on, allOn)}
+      {mixed && pulse('mixed')}
     </div>
   )
 }
