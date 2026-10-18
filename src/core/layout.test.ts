@@ -4,6 +4,7 @@ import { sections } from './color'
 import {
   defaultLayout,
   quickControls,
+  quickStages,
   visibleSections,
   visibleControlSections,
   availableRgbFamilies,
@@ -13,6 +14,28 @@ import {
 import { validateWorkspace } from './persistence'
 
 describe('recoverable control layout', () => {
+  it('shows only supported stage controls relevant to Quick fields, including an explicitly pinned enable', () => {
+    const available = demoWorkspace().channels[0].descriptors
+    expect(
+      quickStages(quickControls({ descriptors: available }, ['gain']), available).map((d) => d.id),
+    ).toEqual(['procEnabled'])
+    expect(
+      quickStages(quickControls({ descriptors: available }, ['gain', 'redGain']), available).map(
+        (d) => d.id,
+      ),
+    ).toEqual(['procEnabled', 'rgbEnabled'])
+    expect(
+      quickStages(quickControls({ descriptors: available }, ['rgbEnabled']), available).map(
+        (d) => d.id,
+      ),
+    ).toEqual(['rgbEnabled'])
+    expect(
+      quickStages(
+        quickControls({ descriptors: available }, ['gain']),
+        available.filter((d) => d.id !== 'procEnabled'),
+      ),
+    ).toEqual([])
+  })
   it('restores tabs from a saved layout with every section hidden without altering signal settings', () => {
     const workspace = demoWorkspace()
     workspace.hiddenSections = [...sections]

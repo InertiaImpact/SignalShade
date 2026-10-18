@@ -56,3 +56,11 @@ export function quickControls(
     .filter((descriptor): descriptor is ParameterDescriptor => !!descriptor)
   return fallback.length ? fallback : available.slice(0, 4)
 }
+
+export function quickStages(fields: ParameterDescriptor[], available: ParameterDescriptor[]) {
+  return available.filter(
+    (d) =>
+      (d.id === 'procEnabled' || d.id === 'rgbEnabled') &&
+      fields.some((field) => field.section === d.section),
+  )
+}

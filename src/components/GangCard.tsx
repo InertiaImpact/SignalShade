@@ -4,6 +4,7 @@ import {
   availableRgbFamilies,
   gangDescriptors,
   quickControls,
+  quickStages,
   rgbControls,
   visibleControlSections,
   type RgbFamily,
@@ -11,6 +12,7 @@ import {
 import type { Gang, Section, Workspace } from '../core/types'
 import { ParameterControl } from './ParameterControl'
 import { RgbTabs } from './RgbTabs'
+import { QuickStageControls } from './QuickStageControls'
 
 export function GangCard({
   gang,
@@ -58,6 +60,9 @@ export function GangCard({
     })
   const sectionTone =
     activeTab === 'RGB correction' ? 'rgb' : activeTab === 'Proc amp' ? 'procamp' : 'quick'
+  const quickStageDescriptors =
+    activeTab === 'quick' ? quickStages(fields, gangDescriptors(channels)) : []
+  const controls = fields.filter((d) => !quickStageDescriptors.some((stage) => stage.id === d.id))
 
   return (
     <article
@@ -158,7 +163,14 @@ export function GangCard({
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for gang ${gang.name}`}
         data-control-section={sectionTone}
       >
-        {fields.map((d) => (
+        <QuickStageControls
+          descriptors={quickStageDescriptors}
+          channels={channels}
+          disabled={blocked}
+          editableIds={descriptors.map((d) => d.id)}
+          idPrefix={`quick-gang-${gang.id}`}
+        />
+        {controls.map((d) => (
           <ParameterControl
             key={`${d.id}-${relative}`}
             descriptor={d}

@@ -16,6 +16,7 @@ export function ParameterControl({
   multiplier,
   compact = false,
   idPrefix,
+  hideReset = false,
 }: {
   descriptor: ParameterDescriptor
   channels: Channel[]
@@ -26,6 +27,7 @@ export function ParameterControl({
   multiplier: number
   compact?: boolean
   idPrefix?: string
+  hideReset?: boolean
 }) {
   const ids = channels.map((c) => c.id),
     current = commonValue(channels, d.id)
@@ -232,26 +234,30 @@ export function ParameterControl({
             {mixed && !relative && <span className="mixed-label">Mixed</span>}
           </div>
         )}
-        <span className="parameter-actions">
-          {toggleFavorite && (
-            <button
-              className={'icon-button tiny ' + (favorite ? 'favorite' : '')}
-              aria-label={(favorite ? 'Unpin ' : 'Pin ') + d.label}
-              onClick={toggleFavorite}
-            >
-              <Star size={12} fill={favorite ? 'currentColor' : 'none'} />
-            </button>
-          )}
-          <button
-            className="icon-button tiny"
-            disabled={lock}
-            title={'Reset ' + d.label + ' to ' + formatValue(d.neutral, d)}
-            aria-label={'Reset ' + d.label}
-            onClick={() => send(d.neutral, 'absolute')}
-          >
-            <RotateCcw size={12} />
-          </button>
-        </span>
+        {(!hideReset || toggleFavorite) && (
+          <span className="parameter-actions">
+            {toggleFavorite && (
+              <button
+                className={'icon-button tiny ' + (favorite ? 'favorite' : '')}
+                aria-label={(favorite ? 'Unpin ' : 'Pin ') + d.label}
+                onClick={toggleFavorite}
+              >
+                <Star size={12} fill={favorite ? 'currentColor' : 'none'} />
+              </button>
+            )}
+            {!hideReset && (
+              <button
+                className="icon-button tiny"
+                disabled={lock}
+                title={'Reset ' + d.label + ' to ' + formatValue(d.neutral, d)}
+                aria-label={'Reset ' + d.label}
+                onClick={() => send(d.neutral, 'absolute')}
+              >
+                <RotateCcw size={12} />
+              </button>
+            )}
+          </span>
+        )}
       </div>
       {!toggle && d.kind !== 'enum' && (
         <>

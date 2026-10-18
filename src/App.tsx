@@ -43,6 +43,7 @@ import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
 import { RecorderStrip } from './components/RecorderStrip'
 import { DemoIndicator } from './components/DemoIndicator'
+import { QuickStageControls } from './components/QuickStageControls'
 import {
   ConfirmWorkspace,
   GangDialog,
@@ -56,6 +57,7 @@ import { Modal } from './components/Modal'
 import { useChannelSelection } from './components/useChannelSelection'
 import {
   quickControls,
+  quickStages,
   visibleControlSections as visibleSections,
   gangDescriptors,
   rgbControls,
@@ -1060,6 +1062,10 @@ function ChannelCard({
         : c.descriptors.filter((d) => d.section === activeTab)
   const blocked =
     disabled || c.locked || !device.armed || device.status !== 'online' || !!c.issue || !c.updatedAt
+  const quickStageDescriptors = activeTab === 'quick' ? quickStages(descriptors, c.descriptors) : []
+  const fields = descriptors.filter(
+    (d) => !quickStageDescriptors.some((stage) => stage.id === d.id),
+  )
   const groups = w.gangs.filter((g) => g.members.includes(c.id))
   return (
     <article
@@ -1205,7 +1211,13 @@ function ChannelCard({
         role="tabpanel"
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for ${c.label}`}
       >
-        {descriptors.map((d) => (
+        <QuickStageControls
+          descriptors={quickStageDescriptors}
+          channels={[c]}
+          disabled={blocked}
+          idPrefix="quick-card"
+        />
+        {fields.map((d) => (
           <ParameterControl
             key={d.id}
             descriptor={d}

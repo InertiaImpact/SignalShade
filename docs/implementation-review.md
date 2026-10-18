@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Compact Quick stage controls — 0.4.8
+
+Channel and gang cards show compact stage toggles above their Quick sliders, limited to the Proc amp/RGB stages used by the current Quick fields. Explicitly pinned enable controls appear once in this strip. The smaller controls retain member ticks, unknown-state reporting, absolute On/Off actions, whole-toggle mixed pulses and Off hints from bypassed sliders. Resets remain available in the full stage tabs. Stages absent from a model’s descriptors are not invented. A gang mask that excludes enable control still permits viewing stage state and feedback, with its buttons disabled so Quick cannot write outside the mask.
+
+Tests cover relevant-stage selection, mixed counts and pulses, explicit enable writes, single enable rendering, independent bypass state and mask enforcement. Isolated browser checks verify channel/gang Quick feedback, compact dimensions versus full tabs and narrow layouts.
+
 ## Whole-toggle mixed feedback — 0.4.7
 
 Adjusting a mixed group now pulses the border of the entire Off / Mixed / On control. The read-only Mixed segment stays unchanged so the reminder does not suggest clicking it. The existing timing, reduced-motion support and stage targeting are retained. Attempting an adjustment while every member is Off still points directly to the Off setting. Regression coverage checks the pulse belongs to the group container and does not sit inside a segment.

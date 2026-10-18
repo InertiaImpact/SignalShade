@@ -4408,6 +4408,40 @@ button {
   color: #ffce00;
 }
 /* On/Off stage controls */
+.quick-stage-controls {
+  grid-column: 1 / -1;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: start;
+  gap: 8px 16px;
+}
+.app .quick-stage-controls .parameter.is-toggle .parameter-heading {
+  align-items: center;
+  flex-wrap: nowrap;
+  min-height: 0;
+  gap: 6px;
+}
+.app .quick-stage-controls .function-tag {
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+.quick-stage-controls .state-toggle {
+  margin-left: 0;
+}
+.quick-stage-controls .state-toggle > button,
+.quick-stage-controls .state-mixed {
+  min-width: 30px;
+  min-height: 23px;
+  padding: 2px 4px;
+  gap: 2px;
+  font-size: 10px;
+  line-height: 14px;
+}
+.quick-stage-controls .state-ticks {
+  width: 23px;
+  column-gap: 1px;
+}
 .app .parameter.is-toggle {
   grid-column: 1 / -1;
 }
