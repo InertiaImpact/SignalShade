@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## Relative group member positions — 0.4.2
+
+Shared numeric sliders in relative mode show one non-interactive tick per readable member, in both gang cards and expanded controls. Ticks use the union of compatible native ranges, share the slider’s thumb travel, and update from channel readbacks. Coincident values overlap rather than being displaced to invented positions. The shared handle starts at the quantized group mean; its origin stays fixed throughout each gesture while successive changes dispatch incremental relative trims. This avoids mixing absolute member positions with the previous centered delta scale or allowing asynchronous readbacks to change the trim amount during a drag. Individual relative controls and absolute controls retain their existing behavior. Arrow step multipliers, store locks, device clamping and undo grouping are unchanged.
+
+DOM regressions cover tick positions, compact cards, differing compatible limits, readback updates during a gesture, incremental commands with one undo gesture, limits, arrows, absolute mode and unsupported controls. Headless browser checks use an isolated demo workspace and local built assets; no physical device requests are issued.
+
 ## Scan device names — 0.4.1
 
 After web identification confirms an AJA interface, discovery reads its configured system name using the known `SysName`/`SystemName` fields. Original FS1 uses its legacy `/json` endpoint. Optional reads have a shared 1.8-second budget and follow scan cancellation; blank, mismatched, malformed or inaccessible values leave the device discoverable. Results retain model/IP and use the reported name as the initial label only when adding. Scans never rename existing devices or change processor labels/settings.

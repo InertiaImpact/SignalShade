@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { ChevronLeft, ChevronRight, RotateCcw, Star } from 'lucide-react'
-import { commonValue, formatValue, isCompatible } from '../core/color'
+import { commonValue, formatValue, isCompatible, quantize } from '../core/color'
 import { desk } from '../core/store'
 import type { Channel, ParameterDescriptor } from '../core/types'
 
@@ -32,6 +32,7 @@ export function ParameterControl({
     [sliding, setSliding] = useState<number | null>(null)
   const focused = useRef(false),
     delta = useRef(0),
+    origin = useRef<number | undefined>(undefined),
     gesture = useRef<string | undefined>(undefined)
   const cancelled = useRef(false)
   useEffect(() => {
@@ -58,11 +59,27 @@ export function ParameterControl({
   const finish = () => {
     gesture.current = undefined
     delta.current = 0
+    origin.current = undefined
     setSliding(null)
   }
   const nudge = (direction: number) => send(direction * d.step * multiplier, 'relative')
   const rangeSpan = d.step * 10 * multiplier
-  const values = channels.map((c) => c.values[d.id]).filter((v): v is number => v !== undefined)
+  const members = channels.flatMap((c) => {
+    const value = c.values[d.id]
+    return value !== undefined && Number.isFinite(value) ? [{ id: c.id, value }] : []
+  })
+  const positions = relative && compatible && channels.length > 1 && d.kind === 'number'
+  // Member ticks and the handle share the native range. Freeze the reference during a drag;
+  // otherwise successive hardware readbacks would change the amount being trimmed.
+  const bounds = positions
+    ? channels.flatMap((c) => c.descriptors.filter((p) => p.id === d.id))
+    : [d]
+  const valueMin = Math.min(...bounds.map((p) => p.min)),
+    valueMax = Math.max(...bounds.map((p) => p.max))
+  const center = members.length
+    ? members.reduce((sum, m) => sum + m.value, 0) / members.length
+    : d.neutral
+  const reference = quantize(center, { ...d, min: valueMin, max: valueMax })
   const toggle = d.kind === 'toggle'
   const mixed = current === undefined
   const lock = disabled || !compatible
@@ -84,9 +101,9 @@ export function ParameterControl({
                 ? 'black'
                 : 'gain'
   const inputId = (idPrefix ?? (compact ? 'card' : 'detail')) + '-' + channels[0]?.id + '-' + d.id
-  const sliderValue = sliding ?? (relative ? 0 : (current ?? d.neutral))
-  const min = relative ? -rangeSpan : d.min,
-    max = relative ? rangeSpan : d.max
+  const sliderValue = sliding ?? (positions ? reference : relative ? 0 : (current ?? d.neutral))
+  const min = positions ? valueMin : relative ? -rangeSpan : d.min,
+    max = positions ? valueMax : relative ? rangeSpan : d.max
   return (
     <div
       className={['parameter', 'tone-' + tone, compact ? 'small' : '', lock ? 'disabled' : ''].join(
@@ -183,47 +200,76 @@ export function ParameterControl({
             >
               <ChevronLeft size={15} />
             </button>
-            <input
-              className="color-slider"
-              aria-label={d.label + ' slider'}
-              aria-valuetext={
-                relative
-                  ? sliderValue + ' relative trim'
-                  : mixed && sliding === null
-                    ? 'Mixed values; move to set all'
-                    : sliderValue + ' ' + d.unit
-              }
-              type="range"
-              min={min}
-              max={max}
-              step={d.step}
-              disabled={lock}
-              value={sliderValue}
-              style={
-                {
-                  '--slider-fill': (100 * (sliderValue - min)) / (max - min) + '%',
-                } as CSSProperties
-              }
-              onPointerDown={(e) => {
-                e.currentTarget.setPointerCapture(e.pointerId)
-                gesture.current = crypto.randomUUID()
-              }}
-              onChange={(e) => {
-                const value = Number(e.target.value)
-                setSliding(value)
-                gesture.current ??= crypto.randomUUID()
-                send(
-                  relative ? value - delta.current : value,
-                  relative ? 'relative' : 'absolute',
-                  gesture.current,
-                )
-                delta.current = value
-              }}
-              onPointerUp={finish}
-              onPointerCancel={finish}
-              onKeyUp={finish}
-              onBlur={finish}
-            />
+            <div className={`slider-track ${positions ? 'has-member-ticks' : ''}`}>
+              {positions && (
+                <div className="member-ticks" aria-hidden="true">
+                  {members.map((member) => (
+                    <span
+                      key={member.id}
+                      className="member-tick"
+                      data-member={member.id}
+                      style={{
+                        left: `${100 * Math.max(0, Math.min(1, (member.value - min) / (max - min)))}%`,
+                      }}
+                    />
+                  ))}
+                </div>
+              )}
+              <input
+                className="color-slider"
+                aria-label={d.label + ' slider'}
+                title={
+                  positions
+                    ? 'Ticks show member positions. Drag to trim all members together.'
+                    : undefined
+                }
+                aria-valuetext={
+                  relative
+                    ? (positions
+                        ? sliding === null
+                          ? 0
+                          : sliderValue - (origin.current ?? reference)
+                        : sliderValue
+                      ).toFixed(d.precision) + ' relative trim'
+                    : mixed && sliding === null
+                      ? 'Mixed values; move to set all'
+                      : sliderValue + ' ' + d.unit
+                }
+                type="range"
+                min={min}
+                max={max}
+                step={d.step}
+                disabled={lock}
+                value={sliderValue}
+                style={
+                  {
+                    '--slider-fill': (100 * (sliderValue - min)) / (max - min) + '%',
+                  } as CSSProperties
+                }
+                onPointerDown={(e) => {
+                  e.currentTarget.setPointerCapture(e.pointerId)
+                  if (positions) origin.current = reference
+                  gesture.current = crypto.randomUUID()
+                }}
+                onChange={(e) => {
+                  const value = Number(e.target.value)
+                  if (positions) origin.current ??= reference
+                  const trim = positions ? value - origin.current! : value
+                  setSliding(value)
+                  gesture.current ??= crypto.randomUUID()
+                  send(
+                    relative ? trim - delta.current : value,
+                    relative ? 'relative' : 'absolute',
+                    gesture.current,
+                  )
+                  delta.current = trim
+                }}
+                onPointerUp={finish}
+                onPointerCancel={finish}
+                onKeyUp={finish}
+                onBlur={finish}
+              />
+            </div>
             <button
               aria-label={'Increase ' + d.label}
               title={
@@ -243,11 +289,8 @@ export function ParameterControl({
                 {!compatible
                   ? 'Not supported by every member'
                   : relative
-                    ? mixed && values.length
-                      ? 'Members: ' +
-                        Math.min(...values).toFixed(d.precision) +
-                        ' … ' +
-                        Math.max(...values).toFixed(d.precision)
+                    ? positions
+                      ? `${members.length} members`
                       : 'Members: ' + formatValue(current, d)
                     : d.min + ' — ' + d.max}
               </span>

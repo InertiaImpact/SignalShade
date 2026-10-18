@@ -2834,6 +2834,42 @@ button {
   );
   border-radius: 5px;
 }
+.slider-track {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  height: 30px;
+  display: flex;
+  align-items: center;
+}
+.app .slider-track .color-slider {
+  width: 100%;
+}
+.member-ticks {
+  position: absolute;
+  inset: 0 6px;
+  z-index: 0;
+  pointer-events: none;
+}
+.app .has-member-ticks .color-slider {
+  position: relative;
+  z-index: 1;
+}
+.member-tick {
+  position: absolute;
+  top: 50%;
+  width: 2px;
+  height: 22px;
+  transform: translate(-50%, -50%);
+  border-radius: 1px;
+  background: var(--text-primary);
+  box-shadow: 0 0 0 1px var(--surface-field);
+}
+.app .has-member-ticks .color-slider::-moz-range-thumb {
+  box-sizing: border-box;
+  width: 12px;
+  height: 18px;
+}
 .app .color-slider::-webkit-slider-thumb {
   height: 15px;
   width: 10px;
