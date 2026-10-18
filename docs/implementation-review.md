@@ -1,5 +1,9 @@
 # Recorder implementation and code review
 
+## Tick alignment and visibility — 0.4.4
+
+Off, Mixed and On reserve identical tick-row space so labels align, even when a segment has no members. Slider member ticks begin at the track center and extend downward below the grip; the grip stays in front and tick positions/commands are unchanged. Isolated browser geometry checks verify label alignment and tick bounds alongside wide/narrow and compact-card previews.
+
 ## Stage state controls — 0.4.3
 
 Proc amp and RGB enable dropdowns are now segmented On/Off controls, including native boolean enums. Multi-member targets add a read-only Mixed position and show a tick for each member under its current Off or On setting. Unknown values remain uncounted and show an unavailable indicator when a real On/Off mix is not established. Button actions always send explicit absolute On/Off values; Mixed sends no command, selecting the existing uniform state is a no-op, and counts do not move until readbacks update. Non-boolean enums retain their native dropdowns. Compact cards give stage controls a full row, and tick rows reserve stable space as members change state.
