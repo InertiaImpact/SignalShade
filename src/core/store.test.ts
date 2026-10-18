@@ -3,6 +3,7 @@ import { DeskStore } from './store'
 import { demoWorkspace } from './demo'
 import { AjaAdapter } from '../adapters/aja'
 import type { ProbeResult, Workspace } from './types'
+import { subscribeStageAdjustments } from './stages'
 vi.mock('./persistence', async (importOriginal) => ({
   ...(await importOriginal<object>()),
   loadWorkspace: vi.fn(async () => undefined),
@@ -57,6 +58,40 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('announces bypassed members on mixed adjustments without excluding their stored values', async () => {
+    const off = store.getSnapshot().workspace.channels[0]
+    const on = store.getSnapshot().workspace.channels[1]
+    store.adjust([off.id], 'procEnabled', 0, 'absolute')
+    await settle()
+    const notice = vi.fn(),
+      unsubscribe = subscribeStageAdjustments(notice)
+    try {
+      store.adjust([off.id, on.id], 'gain', 0.1, 'relative')
+      expect(notice).toHaveBeenCalledWith({
+        stage: 'procEnabled',
+        bypassedIds: [off.id],
+        kind: 'mixed',
+      })
+      await settle()
+      expect(value(off.id)).toBeCloseTo(off.values.gain! + 0.1)
+      expect(value(on.id)).toBeCloseTo(on.values.gain! + 0.1)
+      expect(
+        store.getSnapshot().workspace.channels.find((c) => c.id === off.id)?.values.procEnabled,
+      ).toBe(0)
+      notice.mockClear()
+      store.adjust([on.id], 'gain', 0.01, 'relative')
+      expect(notice).not.toHaveBeenCalled()
+      await settle()
+      store.reset([off.id, on.id], 'Proc amp')
+      expect(notice).toHaveBeenCalledWith({
+        stage: 'procEnabled',
+        bypassedIds: [off.id],
+        kind: 'mixed',
+      })
+    } finally {
+      unsubscribe()
+    }
+  })
   it('keeps processor identity and settings while reading native values after routing changes', async () => {
     const { channel, adapter } = hardwareFixture()
     store.updateChannel(channel.id, { label: 'Wide camera' })

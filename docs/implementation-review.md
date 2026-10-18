@@ -1,5 +1,13 @@
 # Recorder implementation and code review
 
+## Relative trim feedback and bypass indication — 0.4.5
+
+The relative entry shows a signed live gesture offset while dragging and “Trim” when idle. Manual Enter/blur entry remains available; finishing a gesture cannot replay its displayed offset. Disabling a field cancels its draft and gesture. Numeric controls gray and disable when all targets have a known Off state for that stage, including individual channels, gang cards and expanded controls. Enable controls remain usable, and unrelated stages are unaffected. Attempting a pointer adjustment on a bypassed field pulses its corresponding Off toggle without sending a command; pinning presentation controls remains independent. Missing optional stage metadata is not treated as Off.
+
+Accepted adjustment batches identify the affected stages and bypassed target IDs. Matching Mixed indicators pulse no more than once per 700 ms, including adjustments, resets, preset recalls and undo. The read-only status node stays stable and only a decorative child animates; reduced-motion mode uses a static indication. Both kinds of hint are removed after 700 ms, including when global reduced-motion rules suppress all CSS animation. Mixed targets still receive stored values for all members, including bypassed ones; their pictures remain bypassed. No enable commands are injected and no off members are silently removed from the target.
+
+Tests cover signed display/manual entry without replay, single/group bypass locks, independent RGB state, optional metadata, single/group Off hints without writes, targeted/throttled pings and stored-value changes for bypassed members. Isolated browser checks confirm live trim and Mixed feedback during pointer drag, all-Off field disabling, enable-button availability, reduced motion, and wide/narrow/card layouts.
+
 ## Tick alignment and visibility — 0.4.4
 
 Off, Mixed and On reserve identical tick-row space so labels align, even when a segment has no members. Slider member ticks begin at the track center and extend downward below the grip; the grip stays in front and tick positions/commands are unchanged. Isolated browser geometry checks verify label alignment and tick bounds alongside wide/narrow and compact-card previews.

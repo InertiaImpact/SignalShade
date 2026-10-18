@@ -4,6 +4,7 @@ import { commonValue, formatValue, isCompatible, quantize } from '../core/color'
 import { desk } from '../core/store'
 import type { Channel, ParameterDescriptor } from '../core/types'
 import { ToggleControl } from './ToggleControl'
+import { requestStageEnable, stageIsOff } from '../core/stages'
 
 export function ParameterControl({
   descriptor: d,
@@ -38,24 +39,25 @@ export function ParameterControl({
   const cancelled = useRef(false)
   useEffect(() => {
     if (!focused.current)
-      setDraft(relative ? '0' : current === undefined ? '' : current.toFixed(d.precision))
+      setDraft(relative ? '' : current === undefined ? '' : current.toFixed(d.precision))
   }, [relative, current, d.precision])
-  const send = (value: number, mode: 'relative' | 'absolute', id?: string) =>
-    desk.adjust(ids, d.id, value, mode, id)
+  const send = (value: number, mode: 'relative' | 'absolute', id?: string) => {
+    if (!lock) desk.adjust(ids, d.id, value, mode, id)
+  }
   const commit = () => {
     focused.current = false
     if (cancelled.current) {
       cancelled.current = false
-      setDraft(relative ? '0' : (current?.toFixed(d.precision) ?? ''))
+      setDraft(relative ? '' : (current?.toFixed(d.precision) ?? ''))
       return
     }
     if (!draft.trim() || !Number.isFinite(Number(draft))) {
-      setDraft(relative ? '0' : (current?.toFixed(d.precision) ?? ''))
+      setDraft(relative ? '' : (current?.toFixed(d.precision) ?? ''))
       return
     }
     const value = Number(draft)
     if (relative ? value !== 0 : value !== current) send(value, relative ? 'relative' : 'absolute')
-    if (relative) setDraft('0')
+    if (relative) setDraft('')
   }
   const finish = () => {
     gesture.current = undefined
@@ -92,7 +94,16 @@ export function ParameterControl({
     : d.neutral
   const reference = quantize(center, { ...d, min: valueMin, max: valueMax })
   const mixed = current === undefined
-  const lock = disabled || !compatible
+  const bypassed = stageIsOff(channels, d)
+  const lock = disabled || !compatible || bypassed
+  useEffect(() => {
+    if (lock) {
+      finish()
+      focused.current = false
+      cancelled.current = false
+      setDraft(relative ? '' : (current?.toFixed(d.precision) ?? ''))
+    }
+  }, [lock])
   // An absolute group needs a common starting value before an arrow can step it.
   const arrowLock = lock || (!relative && channels.length > 1 && mixed)
   const tone = d.id.startsWith('red')
@@ -114,6 +125,15 @@ export function ParameterControl({
   const sliderValue = sliding ?? (positions ? reference : relative ? 0 : (current ?? d.neutral))
   const min = positions ? valueMin : relative ? -rangeSpan : d.min,
     max = positions ? valueMax : relative ? rangeSpan : d.max
+  const trim = positions
+    ? sliding === null
+      ? 0
+      : sliderValue - (origin.current ?? reference)
+    : sliderValue
+  const liveDraft =
+    relative && sliding !== null && !focused.current
+      ? `${trim > 0 ? '+' : ''}${trim.toFixed(d.precision)}`
+      : draft
   return (
     <div
       className={[
@@ -122,7 +142,23 @@ export function ParameterControl({
         compact ? 'small' : '',
         toggle ? 'is-toggle' : '',
         lock ? 'disabled' : '',
+        bypassed ? 'bypassed' : '',
       ].join(' ')}
+      title={
+        bypassed ? `${d.section} is Off for every member. Enable the stage to adjust.` : undefined
+      }
+      onPointerDownCapture={(e) => {
+        if (!bypassed || disabled || !compatible) return
+        if (
+          (e.target as HTMLElement).closest(
+            'button[aria-label^="Pin "], button[aria-label^="Unpin "]',
+          )
+        )
+          return
+        e.preventDefault()
+        e.stopPropagation()
+        requestStageEnable(channels, d)
+      }}
     >
       <div className="parameter-heading">
         {toggle ? (
@@ -170,11 +206,17 @@ export function ParameterControl({
               aria-label={d.label + (relative ? ' trim' : ' value')}
               inputMode="decimal"
               type="text"
-              placeholder={mixed ? 'Mixed' : '—'}
-              value={draft}
+              placeholder={relative ? 'Trim' : mixed ? 'Mixed' : '—'}
+              value={liveDraft}
+              title={
+                relative
+                  ? 'Type a positive or negative offset and press Enter. Shows the live trim while dragging.'
+                  : undefined
+              }
               disabled={lock}
               onFocus={() => {
                 focused.current = true
+                if (relative) setDraft('')
               }}
               onChange={(e) => setDraft(e.target.value)}
               onBlur={commit}
@@ -251,12 +293,7 @@ export function ParameterControl({
                 }
                 aria-valuetext={
                   relative
-                    ? (positions
-                        ? sliding === null
-                          ? 0
-                          : sliderValue - (origin.current ?? reference)
-                        : sliderValue
-                      ).toFixed(d.precision) + ' relative trim'
+                    ? trim.toFixed(d.precision) + ' relative trim'
                     : mixed && sliding === null
                       ? 'Mixed values; move to set all'
                       : sliderValue + ' ' + d.unit

@@ -4417,6 +4417,7 @@ button {
 }
 .state-toggle > button,
 .state-mixed {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4442,6 +4443,36 @@ button {
 .state-mixed {
   cursor: default;
   color: var(--text-faint);
+}
+.state-ping {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--accent);
+  border-radius: inherit;
+  pointer-events: none;
+  animation: stage-ping 700ms ease-out both;
+}
+@keyframes stage-ping {
+  from {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--accent);
+  }
+  to {
+    opacity: 0;
+    box-shadow: 0 0 0 7px var(--accent);
+  }
+}
+.app .parameter.bypassed {
+  --control-color: var(--text-faint);
+}
+.parameter.bypassed .slider-track,
+.parameter.bypassed .function-tag {
+  opacity: 0.5;
+}
+.parameter.bypassed input,
+.parameter.bypassed .slider-control > button,
+.parameter.bypassed .parameter-actions button[aria-label^='Reset '] {
+  pointer-events: none;
 }
 .state-ticks {
   display: grid;

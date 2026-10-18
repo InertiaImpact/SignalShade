@@ -5,6 +5,7 @@ import { afterEach, beforeEach, expect, it, vi } from 'vitest'
 import { demoWorkspace } from '../core/demo'
 import type { Channel } from '../core/types'
 import { ParameterControl } from './ParameterControl'
+import { notifyStageAdjustment } from '../core/stages'
 
 const adjust = vi.hoisted(() => vi.fn())
 vi.mock('../core/store', () => ({ desk: { adjust } }))
@@ -220,4 +221,164 @@ it('retains native dropdowns for controls with more than two settings', async ()
   )
   expect(host.querySelector('select')?.options).toHaveLength(4) // Three native settings and Mixed.
   expect(host.querySelector('.state-toggle')).toBeNull()
+})
+it('uses the relative entry as a live signed trim readout without replaying the gesture', async () => {
+  await render()
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="Gain trim"]')!
+  expect(input.placeholder).toBe('Trim')
+  expect(input.value).toBe('')
+  await move('1')
+  expect(input.value).toBe('+0.20')
+  await act(async () =>
+    slider().dispatchEvent(new KeyboardEvent('keyup', { key: 'ArrowRight', bubbles: true })),
+  )
+  expect(input.value).toBe('')
+  await act(async () => {
+    input.focus()
+    input.blur()
+  })
+  expect(adjust).toHaveBeenCalledTimes(1)
+  await act(async () => {
+    input.focus()
+    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, '-0.05')
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  await act(async () =>
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })),
+  )
+  expect(adjust.mock.calls[1].slice(1, 4)).toEqual(['gain', -0.05, 'relative'])
+  expect(input.value).toBe('')
+})
+it.each([1, 3])(
+  'disables bypassed Proc amp controls for %i members while RGB and enable remain available',
+  async (count) => {
+    channels = channels
+      .slice(0, count)
+      .map((c) => ({ ...c, values: { ...c.values, procEnabled: 0, rgbEnabled: 1 } }))
+    await act(async () =>
+      root.render(
+        <>
+          {(['procEnabled', 'gain', 'redGain'] as const).map((id) => (
+            <ParameterControl
+              key={id}
+              descriptor={channels[0].descriptors.find((d) => d.id === id)!}
+              channels={channels}
+              relative
+              disabled={false}
+              multiplier={1}
+            />
+          ))}
+        </>,
+      ),
+    )
+    expect(host.querySelector<HTMLInputElement>('input[aria-label="Gain slider"]')!.disabled).toBe(
+      true,
+    )
+    expect(host.querySelector<HTMLInputElement>('input[aria-label="Gain trim"]')!.disabled).toBe(
+      true,
+    )
+    expect(host.querySelector<HTMLButtonElement>('button[aria-label="Reset Gain"]')!.disabled).toBe(
+      true,
+    )
+    expect(
+      host.querySelector<HTMLInputElement>('input[aria-label="Red gain slider"]')!.disabled,
+    ).toBe(false)
+    expect(stateButton('On').disabled).toBe(false)
+    await act(async () => stateButton('On').click())
+    expect(adjust.mock.calls[0].slice(1, 4)).toEqual(['procEnabled', 1, 'absolute'])
+  },
+)
+it.each([1, 3])(
+  'points %i bypassed targets to their Off toggle without changing values',
+  async (count) => {
+    vi.useFakeTimers()
+    try {
+      channels = channels
+        .slice(0, count)
+        .map((c) => ({ ...c, values: { ...c.values, procEnabled: 0 } }))
+      await act(async () =>
+        root.render(
+          <>
+            {(['procEnabled', 'gain'] as const).map((id) => (
+              <ParameterControl
+                key={id}
+                descriptor={channels[0].descriptors.find((d) => d.id === id)!}
+                channels={channels}
+                relative
+                disabled={false}
+                multiplier={1}
+              />
+            ))}
+          </>,
+        ),
+      )
+      const disabledTrack = host.querySelector<HTMLElement>('.bypassed .slider-track')!
+      await act(async () =>
+        disabledTrack.dispatchEvent(
+          new PointerEvent('pointerdown', { bubbles: true, pointerType: 'mouse' }),
+        ),
+      )
+      expect(stateButton('Off').querySelector('.state-ping')?.getAttribute('data-target')).toBe(
+        'off',
+      )
+      expect(stateButton('On').querySelector('.state-ping')).toBeNull()
+      expect(adjust).not.toHaveBeenCalled()
+      await act(async () => vi.advanceTimersByTimeAsync(701))
+      expect(host.querySelector('.state-ping')).toBeNull()
+      expect(stateButton('Off').getAttribute('aria-pressed')).toBe('true')
+    } finally {
+      vi.useRealTimers()
+    }
+  },
+)
+it('keeps mixed stage controls active and does not mistake missing enable data for Off', async () => {
+  channels[0].values.procEnabled = 0
+  await render()
+  expect(slider().disabled).toBe(false)
+  channels = channels.map((c) => ({ ...c, values: { ...c.values, procEnabled: undefined } }))
+  await render()
+  expect(slider().disabled).toBe(false)
+})
+it('ends the trim when a stage is bypassed mid-gesture and does not replay it after enabling', async () => {
+  await render()
+  await move('1')
+  channels = channels.map((c) => ({ ...c, values: { ...c.values, procEnabled: 0 } }))
+  await render()
+  expect(slider().disabled).toBe(true)
+  const input = host.querySelector<HTMLInputElement>('input[aria-label="Gain trim"]')!
+  expect(input.value).toBe('')
+  channels = channels.map((c) => ({ ...c, values: { ...c.values, procEnabled: 1 } }))
+  await render()
+  await act(async () => {
+    input.focus()
+    input.blur()
+  })
+  expect(adjust).toHaveBeenCalledTimes(1)
+})
+it('pings the relevant Mixed indicator at most once per 700ms and preserves its status node', async () => {
+  vi.useFakeTimers()
+  try {
+    channels[0].values.procEnabled = 0
+    await renderToggle()
+    const status = host.querySelector('[role=status]')
+    await act(async () => notifyStageAdjustment(channels, 'rgbEnabled'))
+    expect(host.querySelector('.state-ping')).toBeNull()
+    await act(async () => notifyStageAdjustment(channels.slice(1), 'procEnabled'))
+    expect(host.querySelector('.state-ping')).toBeNull()
+    await act(async () => notifyStageAdjustment(channels, 'procEnabled'))
+    expect(host.querySelector('.state-ping')?.getAttribute('data-ping')).toBe('1')
+    await act(async () => notifyStageAdjustment(channels, 'procEnabled'))
+    expect(host.querySelector('.state-ping')?.getAttribute('data-ping')).toBe('1')
+    await vi.advanceTimersByTimeAsync(701)
+    await act(async () => notifyStageAdjustment(channels, 'procEnabled'))
+    expect(host.querySelector('.state-ping')?.getAttribute('data-ping')).toBe('2')
+    expect(host.querySelector('[role=status]')).toBe(status)
+    channels = channels.map((c) => ({ ...c, values: { ...c.values, procEnabled: 1 } }))
+    await renderToggle()
+    channels[0].values.procEnabled = 0
+    await renderToggle()
+    expect(host.querySelector('.state-ping')).toBeNull() // Returning to Mixed alone does not replay a warning.
+  } finally {
+    vi.useRealTimers()
+  }
 })

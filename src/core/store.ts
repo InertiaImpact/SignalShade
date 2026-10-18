@@ -5,6 +5,7 @@ import { loadWorkspace, saveWorkspace, validateWorkspace } from './persistence'
 import { RecorderStore } from '../recorders/store'
 import type { RecorderConfig } from '../recorders/types'
 import { isVisibleControl } from './layout'
+import { correctionStage, notifyStageAdjustment, type StageId } from './stages'
 import type {
   Activity,
   Change,
@@ -376,20 +377,22 @@ export class DeskStore {
       return
     }
     const operationId = gestureId ?? crypto.randomUUID()
-    for (const channel of channels)
-      this.enqueue({
-        channelId: channel.id,
-        parameter,
-        value,
-        mode,
-        operationId,
-        label: `${mode === 'relative' ? 'Trim' : 'Set'} ${channel.descriptors.find((d) => d.id === parameter)!.label}`,
-        context: channel.context,
-      })
+    const operations: Job[] = channels.map((channel) => ({
+      channelId: channel.id,
+      parameter,
+      value,
+      mode,
+      operationId,
+      label: `${mode === 'relative' ? 'Trim' : 'Set'} ${channel.descriptors.find((d) => d.id === parameter)!.label}`,
+      context: channel.context,
+    }))
+    this.announceAdjustments(operations)
+    operations.forEach((job) => this.enqueue(job))
   }
   reset(ids: string[], section?: string, includeEnables = false, mask?: ParameterId[]) {
     if (!this.canEdit()) return
     const operationId = crypto.randomUUID()
+    const operations: Job[] = []
     for (const id of new Set(ids)) {
       const channel = this.state.workspace.channels.find((c) => c.id === id)
       if (!channel) continue
@@ -400,7 +403,7 @@ export class DeskStore {
           (!mask?.length || mask.includes(d.id)) &&
           (includeEnables || !['procEnabled', 'rgbEnabled'].includes(d.id))
         )
-          this.enqueue({
+          operations.push({
             channelId: id,
             parameter: d.id,
             value: d.neutral,
@@ -410,6 +413,25 @@ export class DeskStore {
             context: channel.context,
           })
     }
+    this.announceAdjustments(operations)
+    operations.forEach((job) => this.enqueue(job))
+  }
+  private announceAdjustments(operations: Pick<Job, 'channelId' | 'parameter'>[]) {
+    const targets = new Map<StageId, Set<string>>()
+    for (const operation of operations) {
+      const channel = this.state.workspace.channels.find((c) => c.id === operation.channelId)
+      const descriptor = channel?.descriptors.find((d) => d.id === operation.parameter)
+      const stage = descriptor && correctionStage(descriptor)
+      if (!stage) continue
+      const ids = targets.get(stage) ?? new Set<string>()
+      ids.add(operation.channelId)
+      targets.set(stage, ids)
+    }
+    for (const [stage, ids] of targets)
+      notifyStageAdjustment(
+        this.state.workspace.channels.filter((c) => ids.has(c.id)),
+        stage,
+      )
   }
   private enqueue(job: Job) {
     const channel = this.state.workspace.channels.find((c) => c.id === job.channelId)
@@ -578,6 +600,7 @@ export class DeskStore {
     }
     this.emit({ history: this.state.history.slice(1) })
     const operationId = crypto.randomUUID()
+    this.announceAdjustments(entry.changes)
     for (const c of entry.changes)
       this.enqueue({
         channelId: c.channelId,
@@ -668,6 +691,7 @@ export class DeskStore {
       }
     }
     if (!operations.length) throw new Error('Select at least one mapped target and color section')
+    this.announceAdjustments(operations)
     operations.forEach((o) => this.enqueue(o))
   }
   async refresh() {
