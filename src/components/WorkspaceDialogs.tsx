@@ -3,7 +3,14 @@ import { Check, Download, Layers3, Plus, Save, Trash2 } from 'lucide-react'
 import { parameters } from '../core/color'
 import { downloadJson } from '../core/persistence'
 import { desk } from '../core/store'
-import type { ColorPreset, Gang, ParameterId, Section, Workspace } from '../core/types'
+import type {
+  ColorPreset,
+  Gang,
+  ParameterId,
+  ParameterMasks,
+  Section,
+  Workspace,
+} from '../core/types'
 import { Modal } from './Modal'
 import { message } from '../adapters/aja'
 import {
@@ -492,12 +499,14 @@ export function ResetDialog({
   ids,
   section,
   mask,
+  masks,
   close,
 }: {
   workspace: Workspace
   ids: string[]
   section?: string
   mask?: ParameterId[]
+  masks?: ParameterMasks
   close: () => void
 }) {
   const [includeEnables, setIncludeEnables] = useState(false)
@@ -505,7 +514,9 @@ export function ResetDialog({
     ...new Set(
       workspace.channels
         .filter((c) => ids.includes(c.id))
-        .flatMap((c) => c.descriptors)
+        .flatMap((c) =>
+          c.descriptors.filter((d) => !masks?.[c.id]?.length || masks[c.id]!.includes(d.id)),
+        )
         .filter((d) => isVisibleControl(d) && (!mask?.length || mask.includes(d.id)))
         .map((d) => d.id),
     ),
@@ -529,7 +540,9 @@ export function ResetDialog({
             <span key={c.id}>{c.label}</span>
           ))}
       </div>
-      {!!mask?.length && <p className="muted">This gang’s parameter mask applies to the reset.</p>}
+      {(!!mask?.length || Object.values(masks ?? {}).some((m) => m?.length)) && (
+        <p className="muted">Selected gang parameter masks apply to the reset.</p>
+      )}
       <label className="check-row">
         <input
           type="checkbox"
@@ -546,7 +559,7 @@ export function ResetDialog({
           className="button warning-button"
           disabled={!resetMask.length}
           onClick={() => {
-            desk.reset(ids, section, includeEnables, resetMask)
+            desk.reset(ids, section, includeEnables, resetMask, masks)
             close()
           }}
         >

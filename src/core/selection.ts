@@ -1,3 +1,21 @@
+import type { ParameterId, ParameterMasks, Workspace } from './types'
+
+/** Tokens remain gangs or individuals; overlapping memberships expand only once. */
+export function resolveSelection(workspace: Workspace, tokens: string[]) {
+  const masks: ParameterMasks = {}
+  for (const token of new Set(tokens)) {
+    const gang = workspace.gangs.find((g) => g.id === token)
+    const members = gang?.members ?? (workspace.channels.some((c) => c.id === token) ? [token] : [])
+    for (const id of members) {
+      const mask = gang?.parameters.length ? gang.parameters : undefined
+      if (!(id in masks)) masks[id] = mask && [...mask]
+      else if (!mask || !masks[id]) masks[id] = undefined
+      else masks[id] = [...new Set([...(masks[id] as ParameterId[]), ...mask])]
+    }
+  }
+  return { channels: workspace.channels.filter((c) => c.id in masks), masks }
+}
+
 export interface SelectionRect {
   left: number
   top: number

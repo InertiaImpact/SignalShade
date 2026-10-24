@@ -82,6 +82,7 @@ export interface ColorPreset {
   }[]
 }
 export interface Workspace {
+  convergeTargetId?: string
   recorders?: RecorderConfig[]
   version: 1
   name: string
@@ -93,6 +94,7 @@ export interface Workspace {
   density: 'comfortable' | 'compact'
   hiddenSections: Section[]
 }
+export type ParameterMasks = Record<string, ParameterId[] | undefined>
 export interface Activity {
   id: string
   at: number

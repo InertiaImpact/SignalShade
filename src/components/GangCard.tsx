@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type MouseEvent } from 'react'
 import { ChevronRight, Layers3, RotateCcw, X } from 'lucide-react'
 import {
   availableRgbFamilies,
@@ -13,6 +13,7 @@ import type { Gang, Section, Workspace } from '../core/types'
 import { ParameterControl } from './ParameterControl'
 import { RgbTabs } from './RgbTabs'
 import { QuickStageControls } from './QuickStageControls'
+import { ConvergeControls } from './ConvergeControls'
 
 export function GangCard({
   gang,
@@ -22,6 +23,9 @@ export function GangCard({
   onOpen,
   onHide,
   onReset,
+  onSelect,
+  selected = false,
+  busy = false,
 }: {
   gang: Gang
   workspace: Workspace
@@ -30,6 +34,9 @@ export function GangCard({
   onOpen: () => void
   onHide: () => void
   onReset: (section?: Section) => void
+  onSelect?: (event: MouseEvent<HTMLButtonElement>) => void
+  selected?: boolean
+  busy?: boolean
 }) {
   const [relative, setRelative] = useState(true)
   const [tab, setTab] = useState<Section | 'quick'>('quick')
@@ -66,15 +73,17 @@ export function GangCard({
 
   return (
     <article
-      className="channel-card gang-card"
+      className={`channel-card gang-card ${selected ? 'selected' : ''}`}
       aria-label={`${gang.name} gang card`}
-      style={{ '--gang-color': gang.color } as CSSProperties}
+      data-selection-id={gang.id}
+      style={{ '--gang-color': gang.color, '--selection-color': gang.color } as CSSProperties}
     >
       <div className="card-heading">
         <button
           className="card-select"
           aria-label={`Open ${gang.name} gang controls`}
-          onClick={onOpen}
+          aria-pressed={selected}
+          onClick={onSelect ?? onOpen}
         >
           <span className="gang-card-icon">
             <Layers3 size={18} />
@@ -86,6 +95,38 @@ export function GangCard({
             </small>
           </span>
         </button>
+        <div
+          className="segmented gang-card-mode"
+          role="group"
+          aria-label={`${gang.name} adjustment mode`}
+        >
+          <button
+            className={relative ? 'active' : ''}
+            aria-pressed={relative}
+            aria-label="Relative trim"
+            title="Relative trim"
+            onClick={() => setRelative(true)}
+          >
+            Rel
+          </button>
+          <button
+            className={!relative ? 'active' : ''}
+            aria-pressed={!relative}
+            aria-label="Absolute set"
+            title="Absolute set"
+            onClick={() => setRelative(false)}
+          >
+            Abs
+          </button>
+        </div>
+        <ConvergeControls
+          ids={gang.members}
+          workspace={workspace}
+          masks={Object.fromEntries(gang.members.map((id) => [id, gang.parameters]))}
+          disabled={disabled}
+          busy={busy}
+          compact
+        />
         <span
           className="card-state"
           title={
@@ -93,7 +134,6 @@ export function GangCard({
           }
         >
           <span className={`status-dot ${blocked ? 'offline' : ''}`} />
-          GANG
         </span>
         <button
           className="icon-button tiny"
@@ -102,22 +142,6 @@ export function GangCard({
           onClick={onHide}
         >
           <X size={13} />
-        </button>
-      </div>
-      <div className="segmented gang-card-mode" aria-label={`${gang.name} adjustment mode`}>
-        <button
-          className={relative ? 'active' : ''}
-          aria-pressed={relative}
-          onClick={() => setRelative(true)}
-        >
-          Relative trim
-        </button>
-        <button
-          className={!relative ? 'active' : ''}
-          aria-pressed={!relative}
-          onClick={() => setRelative(false)}
-        >
-          Absolute set
         </button>
       </div>
       <div

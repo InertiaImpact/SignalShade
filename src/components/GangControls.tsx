@@ -1,7 +1,13 @@
 import { useState } from 'react'
 import { RotateCcw } from 'lucide-react'
 import { availableRgbFamilies, rgbControls, type RgbFamily } from '../core/layout'
-import type { Channel, ParameterDescriptor, ParameterId, Section } from '../core/types'
+import type {
+  Channel,
+  ParameterDescriptor,
+  ParameterId,
+  ParameterMasks,
+  Section,
+} from '../core/types'
 import { ParameterControl } from './ParameterControl'
 import { RgbTabs } from './RgbTabs'
 
@@ -15,6 +21,7 @@ export function GangControls({
   favorites,
   toggleFavorite,
   onReset,
+  masks,
 }: {
   descriptors: ParameterDescriptor[]
   sections: Section[]
@@ -25,6 +32,7 @@ export function GangControls({
   favorites: ParameterId[]
   toggleFavorite?: (id: ParameterId) => void
   onReset: (section: Section) => void
+  masks?: ParameterMasks
 }) {
   const [family, setFamily] = useState<RgbFamily>('Gain')
   const families = availableRgbFamilies(descriptors)
@@ -34,7 +42,7 @@ export function GangControls({
     <ParameterControl
       key={`${targetKey}-${d.id}-${enable ? 'enable' : relative}`}
       descriptor={d}
-      channels={channels}
+      channels={channels.filter((c) => !masks?.[c.id]?.length || masks[c.id]!.includes(d.id))}
       relative={!enable && relative && d.kind === 'number'}
       disabled={disabled}
       multiplier={multiplier}

@@ -28,7 +28,7 @@ export function useChannelSelection(
       const target = e.target as HTMLElement
       if (
         target.closest(
-          'input, select, textarea, label, summary, a, [contenteditable], [role="slider"], [role="tablist"], .gang-console, .gang-card, .card-edit, .card-parameters, .card-bottom, .add-channel-card',
+          'input, select, textarea, label, summary, a, [contenteditable], [role="slider"], [role="tablist"], .gang-console, .target-summary, .card-edit, .card-parameters, .card-bottom, .add-channel-card',
         ) ||
         (target.closest('button') && !target.closest('.card-select'))
       )
@@ -40,13 +40,13 @@ export function useChannelSelection(
         e.clientY >= bounds.top + e.currentTarget.clientHeight
       )
         return
-      const card = target.closest<HTMLElement>('[data-channel-id]')
+      const card = target.closest<HTMLElement>('[data-selection-id]')
       gesture.current = {
         x: e.clientX,
         y: e.clientY,
         base: ids,
         additive: e.ctrlKey || e.metaKey,
-        card: card?.dataset.channelId,
+        card: card?.dataset.selectionId,
         moved: false,
       }
       suppressClick.current = false
@@ -60,9 +60,9 @@ export function useChannelSelection(
       g.moved = true
       const rect = selectionRect(g.x, g.y, e.clientX, e.clientY)
       setRectangle(rect)
-      const hits = [...e.currentTarget.querySelectorAll<HTMLElement>('[data-channel-id]')]
+      const hits = [...e.currentTarget.querySelectorAll<HTMLElement>('[data-selection-id]')]
         .filter((el) => intersects(rect, el.getBoundingClientRect()))
-        .map((el) => el.dataset.channelId!)
+        .map((el) => el.dataset.selectionId!)
       g.result = combineSelection(g.base, hits, g.additive)
       setPreview(g.result)
     },

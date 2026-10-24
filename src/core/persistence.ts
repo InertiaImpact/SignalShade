@@ -36,6 +36,7 @@ const descriptor = z
     'Invalid parameter range',
   )
 const schema = z.object({
+  convergeTargetId: z.string().optional(),
   recorders: z
     .array(
       z
@@ -140,6 +141,8 @@ export function validateWorkspace(input: unknown): Workspace {
   )
   const deviceIds = new Set(parsed.devices.map((d) => d.id))
   const channelIds = new Set(parsed.channels.map((c) => c.id))
+  if (parsed.convergeTargetId && !channelIds.has(parsed.convergeTargetId))
+    parsed.convergeTargetId = undefined
   const recorders = parsed.recorders ?? []
   if (
     new Set(recorders.map((r) => r.id)).size !== recorders.length ||

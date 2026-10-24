@@ -7,6 +7,7 @@ import type { RecorderConfig } from '../recorders/types'
 import { isVisibleControl } from './layout'
 import { correctionStage, notifyStageAdjustment, type StageId } from './stages'
 import { changedDemoLabels, notifyDemoChange } from './demo-feedback'
+import { planConvergence, type ConvergeStep, type ConvergeRemainder } from './converge'
 import type {
   Activity,
   Change,
@@ -19,6 +20,7 @@ import type {
   UndoEntry,
   Workspace,
   Model,
+  ParameterMasks,
 } from './types'
 
 interface Snapshot {
@@ -29,6 +31,7 @@ interface Snapshot {
   lockedTab: boolean
   ready: boolean
   controlsLocked: boolean
+  converging: boolean
   storageError?: string
 }
 interface Job {
@@ -50,6 +53,7 @@ export class DeskStore {
     lockedTab: false,
     ready: false,
     controlsLocked: false,
+    converging: false,
   }
   private listeners = new Set<() => void>()
   private adapters = new Map<string, DeviceAdapter>()
@@ -59,6 +63,7 @@ export class DeskStore {
   private saveTimer?: ReturnType<typeof setTimeout>
   private releaseLock?: () => void
   private generation = 0
+  private convergeRemainders = new Map<string, ConvergeRemainder>()
   readonly recorders = new RecorderStore(
     () => this.state.ready && !this.state.lockedTab && !this.state.controlsLocked,
     (text, type) => this.log(text, type),
@@ -90,6 +95,11 @@ export class DeskStore {
     this.listeners.forEach((l) => l())
   }
   private workspace(workspace: Workspace) {
+    if (
+      workspace.convergeTargetId &&
+      !workspace.channels.some((c) => c.id === workspace.convergeTargetId)
+    )
+      workspace = { ...workspace, convergeTargetId: undefined }
     const demoChanges = this.state.ready ? changedDemoLabels(this.state.workspace, workspace) : []
     this.emit({ workspace })
     notifyDemoChange(demoChanges)
@@ -170,6 +180,10 @@ export class DeskStore {
     }
   }
   private canEdit() {
+    if (this.state.converging) {
+      this.log('Wait for the Converge step to finish.', 'info')
+      return false
+    }
     if (!this.state.ready || this.state.lockedTab || this.state.controlsLocked) {
       this.log(
         this.state.controlsLocked
@@ -202,6 +216,108 @@ export class DeskStore {
     patch: Partial<Pick<Workspace, 'name' | 'favorites' | 'density' | 'hiddenSections'>>,
   ) {
     if (this.canEdit()) this.workspace({ ...this.state.workspace, ...patch })
+  }
+  setConvergeTarget(id?: string) {
+    if (!this.canEdit()) return
+    if (this.state.busy) {
+      this.log('Wait for pending adjustments before changing the Converge target.', 'info')
+      return
+    }
+    if (id && !this.state.workspace.channels.some((c) => c.id === id)) return
+    this.convergeRemainders.clear()
+    this.workspace({ ...this.state.workspace, convergeTargetId: id })
+  }
+  async converge(ids: string[], step: ConvergeStep, masks: ParameterMasks = {}) {
+    if (!this.canEdit() || this.state.busy) return
+    const { workspace } = this.state
+    const channels = workspace.channels.filter((c) => ids.includes(c.id))
+    if (channels.length < 2 || !['small', 'large'].includes(step)) return
+    const reference = workspace.channels.find((c) => c.id === workspace.convergeTargetId)
+    const moving = channels.filter((c) => c.id !== reference?.id)
+    const reads = [...moving, ...(reference ? [reference] : [])]
+    const devices = [...new Set(reads.map((c) => c.deviceId))]
+    const acquired: string[] = []
+    const generation = this.generation
+    try {
+      // Validate every writable member before reading or dispatching any step.
+      moving.forEach((c) => {
+        this.available(c)
+        if (c.issue || c.pending) throw new Error(`${c.label}: refresh before Converge`)
+      })
+      for (const id of devices) {
+        if (this.running.has(id))
+          throw new Error('A device is refreshing; try Converge again shortly')
+        const device = workspace.devices.find((d) => d.id === id)
+        if (device?.status !== 'online' || (!device.simulated && !this.adapters.has(id)))
+          throw new Error('Reconnect the Converge target and selected devices first')
+      }
+      this.emit({ converging: true })
+      for (const id of devices) {
+        this.running.add(id)
+        acquired.push(id)
+      }
+      const readResults = await Promise.allSettled(
+        devices.map(async (id) => {
+          if (workspace.devices.find((d) => d.id === id)?.simulated) return
+          const adapter = this.adapters.get(id)!
+          for (const channel of reads.filter((c) => c.deviceId === id)) {
+            const readback = await adapter.read(channel)
+            if (generation !== this.generation)
+              throw new Error('Workspace changed; Converge cancelled')
+            if (readback.context !== channel.context)
+              throw new Error('Source changed; refresh before Converge')
+            this.patchChannel(channel.id, { ...readback, updatedAt: Date.now(), issue: undefined })
+          }
+        }),
+      )
+      const failed = readResults.find((result) => result.status === 'rejected')
+      if (failed?.status === 'rejected') throw failed.reason
+      if (generation !== this.generation || this.state.controlsLocked) return
+      const current = this.state.workspace.channels
+      const plan = planConvergence(
+        current.filter((c) => ids.includes(c.id)),
+        step,
+        current.find((c) => c.id === reference?.id),
+        masks,
+        this.convergeRemainders,
+      )
+      this.convergeRemainders = plan.remainders
+      const operationId = crypto.randomUUID()
+      this.announceAdjustments(plan.intents)
+      plan.changes.forEach((change) =>
+        this.enqueue({
+          channelId: change.channelId,
+          parameter: change.parameter,
+          value: change.after,
+          mode: 'absolute',
+          expected: change.before,
+          operationId,
+          label: `Converge ${step}`,
+          context: change.context,
+        }),
+      )
+      if (plan.skipped.length)
+        this.log(
+          `Converge skipped unsupported or incompatible controls: ${plan.skipped.join(', ')}`,
+          'info',
+        )
+      if (!plan.changes.length)
+        this.log(
+          plan.remainders.size
+            ? 'Converge: no native step yet; small fractions carry to the next click.'
+            : 'Converge: values are aligned within device precision or no enabled compatible controls are available.',
+          'info',
+        )
+    } catch (e) {
+      this.convergeRemainders.clear()
+      this.log(`Converge: ${message(e)}. No new step dispatched.`, 'error')
+    } finally {
+      acquired.forEach((id) => this.running.delete(id))
+      this.emit({ converging: false })
+      acquired.forEach((id) => {
+        if (this.queues.get(id)?.length) void this.drain(id)
+      })
+    }
   }
   updateChannel(id: string, patch: Partial<Pick<Channel, 'label' | 'locked'>>) {
     if (this.canEdit())
@@ -277,6 +393,7 @@ export class DeskStore {
         kind === 'demo' ? demoWorkspace() : kind === 'empty' ? emptyWorkspace() : input,
       ),
     )
+    this.convergeRemainders.clear()
     this.generation++
     this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
@@ -379,6 +496,7 @@ export class DeskStore {
       this.log('This parameter is not compatible across all selected channels', 'error')
       return
     }
+    this.convergeRemainders.clear()
     const operationId = gestureId ?? crypto.randomUUID()
     const operations: Job[] = channels.map((channel) => ({
       channelId: channel.id,
@@ -392,8 +510,15 @@ export class DeskStore {
     this.announceAdjustments(operations)
     operations.forEach((job) => this.enqueue(job))
   }
-  reset(ids: string[], section?: string, includeEnables = false, mask?: ParameterId[]) {
+  reset(
+    ids: string[],
+    section?: string,
+    includeEnables = false,
+    mask?: ParameterId[],
+    masks?: ParameterMasks,
+  ) {
     if (!this.canEdit()) return
+    this.convergeRemainders.clear()
     const operationId = crypto.randomUUID()
     const operations: Job[] = []
     for (const id of new Set(ids)) {
@@ -404,6 +529,7 @@ export class DeskStore {
           isVisibleControl(d) &&
           (!section || d.section === section) &&
           (!mask?.length || mask.includes(d.id)) &&
+          (!masks?.[id]?.length || masks[id]!.includes(d.id)) &&
           (includeEnables || !['procEnabled', 'rgbEnabled'].includes(d.id))
         )
           operations.push({
@@ -505,7 +631,9 @@ export class DeskStore {
           }
           if (before === undefined) throw new Error('No current value available')
           if (job.expected !== undefined && before !== job.expected)
-            throw new Error('Undo conflict: value changed since this operation')
+            throw new Error(
+              `${job.label.startsWith('Converge') ? 'Converge' : 'Undo'} conflict: value changed since this operation`,
+            )
           const next = quantize(job.mode === 'relative' ? before + job.value : job.value, d)
           const limited =
             job.mode === 'relative' && Math.abs(next - (before + job.value)) > d.step / 2
@@ -522,7 +650,7 @@ export class DeskStore {
             updatedAt: Date.now(),
             issue: undefined,
           })
-          if (before !== after && job.expected === undefined)
+          if (before !== after && job.label !== 'Undo')
             this.recordHistory(job, {
               channelId: channel.id,
               parameter: job.parameter,
@@ -611,6 +739,7 @@ export class DeskStore {
       }
     }
     this.emit({ history: this.state.history.slice(1) })
+    this.convergeRemainders.clear()
     const operationId = crypto.randomUUID()
     this.announceAdjustments(entry.changes)
     for (const c of entry.changes)
@@ -703,6 +832,7 @@ export class DeskStore {
       }
     }
     if (!operations.length) throw new Error('Select at least one mapped target and color section')
+    this.convergeRemainders.clear()
     this.announceAdjustments(operations)
     operations.forEach((o) => this.enqueue(o))
   }

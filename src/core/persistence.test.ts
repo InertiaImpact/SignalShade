@@ -3,6 +3,14 @@ import { demoWorkspace } from './demo'
 import { validateWorkspace } from './persistence'
 
 describe('workspace import validation', () => {
+  it('retains a valid golden target, accepts older workspaces and clears missing target references', () => {
+    const w = demoWorkspace()
+    expect(validateWorkspace(w).convergeTargetId).toBeUndefined()
+    w.convergeTargetId = w.channels[0].id
+    expect(validateWorkspace(JSON.parse(JSON.stringify(w))).convergeTargetId).toBe(w.channels[0].id)
+    w.convergeTargetId = 'removed'
+    expect(validateWorkspace(w).convergeTargetId).toBeUndefined()
+  })
   it('round-trips a demo workspace', () => {
     const w = demoWorkspace()
     expect(validateWorkspace(JSON.parse(JSON.stringify(w)))).toEqual(w)

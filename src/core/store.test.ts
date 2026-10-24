@@ -34,11 +34,11 @@ async function settle() {
 }
 const value = (id: string, param = 'gain') =>
   store.getSnapshot().workspace.channels.find((c) => c.id === id)!.values[param as 'gain']
-function hardwareFixture() {
+function hardwareFixture(address = 'http://10.0.0.2') {
   const channel = {
     ...demoWorkspace().channels[0],
-    id: 'http://10.0.0.2/vid1',
-    deviceId: 'http://10.0.0.2',
+    id: `${address}/vid1`,
+    deviceId: address,
   }
   const adapter = {
     read: vi.fn(async () => ({ values: { ...channel.values }, context: channel.context })),
@@ -59,6 +59,130 @@ function hardwareFixture() {
   return { channel, adapter }
 }
 describe('command engine', () => {
+  it('waits for every device read to settle after a failed Converge preflight', async () => {
+    const first = hardwareFixture(),
+      second = hardwareFixture('http://10.0.0.3')
+    let finishRead!: (value: { values: typeof second.channel.values; context: string }) => void
+    vi.mocked(first.adapter.read).mockRejectedValueOnce(new Error('Read failed'))
+    vi.mocked(second.adapter.read).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          finishRead = resolve
+        }),
+    )
+    const step = store.converge([first.channel.id, second.channel.id], 'large')
+    await Promise.resolve()
+    expect(store.getSnapshot().converging).toBe(true)
+    finishRead({ values: second.channel.values, context: second.channel.context })
+    await step
+    expect(store.getSnapshot().converging).toBe(false)
+    expect(first.adapter.write).not.toHaveBeenCalled()
+    expect(second.adapter.write).not.toHaveBeenCalled()
+  })
+  it('keeps the target stable during pending writes and respects per-member reset masks', async () => {
+    store.setConvergeTarget('demo-ch-3')
+    store.adjust(['demo-ch-1'], 'gain', 0.1, 'relative')
+    store.setConvergeTarget('demo-ch-1')
+    expect(store.getSnapshot().workspace.convergeTargetId).toBe('demo-ch-3')
+    await settle()
+    const gain2 = value('demo-ch-2')
+    store.reset(['demo-ch-1', 'demo-ch-2'], undefined, false, undefined, {
+      'demo-ch-1': ['gain'],
+      'demo-ch-2': ['black'],
+    })
+    await settle()
+    expect(value('demo-ch-1')).toBe(1)
+    expect(value('demo-ch-2')).toBe(gain2)
+    expect(value('demo-ch-2', 'black')).toBe(0)
+  })
+  it('reads a golden hardware camera freshly even when its write controls are locked', async () => {
+    const { channel, adapter } = hardwareFixture()
+    store.armDevice(channel.deviceId, false)
+    store.updateChannel(channel.id, { locked: true })
+    store.setConvergeTarget(channel.id)
+    vi.mocked(adapter.read).mockResolvedValue({
+      values: { ...channel.values, gain: 0.5 },
+      context: channel.context,
+    })
+    await store.converge(['demo-ch-1', 'demo-ch-2'], 'large', {
+      'demo-ch-1': ['gain'],
+      'demo-ch-2': ['gain'],
+    })
+    await settle()
+    expect(adapter.read).toHaveBeenCalledTimes(1)
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(value('demo-ch-1')).toBe(0.92) // 1.02 closes 20% of the gap to fresh 0.5.
+    expect(value(channel.id)).toBe(0.5)
+  })
+  it('converges once per click, excludes the golden target, groups Undo and clears a removed target', async () => {
+    const w = store.getSnapshot().workspace
+    const ids = w.channels.slice(0, 3).map((c) => c.id)
+    store.setConvergeTarget(ids[0])
+    const before = ids.map((id) => value(id))
+    await store.converge(
+      [...ids, ids[1]],
+      'large',
+      Object.fromEntries(ids.map((id) => [id, ['gain']])),
+    )
+    await settle()
+    expect(value(ids[0])).toBe(before[0])
+    expect(value(ids[1])).toBeCloseTo(0.99)
+    expect(store.getSnapshot().history).toHaveLength(1)
+    expect(store.getSnapshot().history[0].label).toBe('Converge large')
+    store.undo()
+    await settle()
+    expect(ids.map((id) => value(id))).toEqual(before)
+    store.removeDevice(w.channels[0].deviceId)
+    expect(store.getSnapshot().workspace.convergeTargetId).toBeUndefined()
+  })
+  it('preflights all Converge members and allows a locked reference without writing it', async () => {
+    const ids = ['demo-ch-1', 'demo-ch-2', 'demo-ch-3']
+    store.updateChannel(ids[2], { locked: true })
+    await store.converge(ids, 'large')
+    expect(store.getSnapshot().busy).toBe(0)
+    expect(store.getSnapshot().history).toHaveLength(0)
+    store.setConvergeTarget(ids[2])
+    await store.converge(ids, 'large')
+    await settle()
+    expect(store.getSnapshot().history[0].changes.every((c) => c.channelId !== ids[2])).toBe(true)
+  })
+  it('uses fresh target readbacks and cancels a conflicting write without overwriting hardware', async () => {
+    const { channel, adapter } = hardwareFixture()
+    store.setConvergeTarget('demo-ch-1')
+    vi.mocked(adapter.read).mockResolvedValueOnce({
+      values: { ...channel.values, gain: 0.5 },
+      context: channel.context,
+    })
+    vi.mocked(adapter.read).mockResolvedValue({
+      values: { ...channel.values, gain: 0.6 },
+      context: channel.context,
+    })
+    await store.converge([channel.id, 'demo-ch-1'], 'large', { [channel.id]: ['gain'] })
+    await settle()
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(store.getSnapshot().activities.some((a) => a.text.includes('Converge conflict'))).toBe(
+      true,
+    )
+  })
+  it('does not dispatch Converge after a failed read or duplicate click while reading', async () => {
+    const { channel, adapter } = hardwareFixture()
+    store.setConvergeTarget('demo-ch-1')
+    let rejectRead!: (reason: Error) => void
+    vi.mocked(adapter.read).mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          rejectRead = reject
+        }),
+    )
+    const first = store.converge([channel.id, 'demo-ch-1'], 'large')
+    expect(store.getSnapshot().converging).toBe(true)
+    await store.converge([channel.id, 'demo-ch-1'], 'large')
+    rejectRead(new Error('No target readback'))
+    await first
+    expect(adapter.write).not.toHaveBeenCalled()
+    expect(store.getSnapshot().converging).toBe(false)
+    expect(store.getSnapshot().busy).toBe(0)
+  })
   it('announces demo edits and adjustments without announcing live writes or background refresh', async () => {
     const notice = vi.fn(),
       unsubscribe = subscribeDemoChanges(notice)

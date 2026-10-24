@@ -27,6 +27,7 @@ import {
   Settings2,
   SlidersHorizontal,
   Star,
+  Target,
   Unlock,
   Upload,
   Waves,
@@ -34,7 +35,7 @@ import {
 } from 'lucide-react'
 import { desk } from './core/store'
 import { getWaitingUpdate, subscribeUpdates } from './core/updates'
-import type { Channel, Gang, ParameterId, Section } from './core/types'
+import type { Channel, Gang, ParameterId, ParameterMasks, Section } from './core/types'
 import { downloadJson, validateWorkspace } from './core/persistence'
 import { message } from './adapters/aja'
 import { ParameterControl } from './components/ParameterControl'
@@ -44,6 +45,7 @@ import { DeviceDialog } from './components/DeviceDialog'
 import { RecorderStrip } from './components/RecorderStrip'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
+import { ConvergeControls } from './components/ConvergeControls'
 import {
   ConfirmWorkspace,
   GangDialog,
@@ -65,7 +67,7 @@ import {
   type RgbFamily,
 } from './core/layout'
 import { RgbTabs } from './components/RgbTabs'
-import { toggleSelection } from './core/selection'
+import { resolveSelection, toggleSelection } from './core/selection'
 import type { CSSProperties, MouseEvent } from 'react'
 
 type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
@@ -89,6 +91,7 @@ export default function App() {
       ids: string[]
       section?: Section
       mask?: ParameterId[]
+      masks?: ParameterMasks
     }>({ ids: [] }),
     [relative, setRelative] = useState(true),
     [multiplier, setMultiplier] = useState(1)
@@ -106,15 +109,14 @@ export default function App() {
   const recorderStates = useSyncExternalStore(desk.recorders.subscribe, desk.recorders.getSnapshot)
   const recorderBusy = Object.values(recorderStates).some((s) => s.pending)
   const close = () => setDialog(null)
-  const group = w.gangs.find((g) => g.id === selected)
-  const selectedChannel = w.channels.find((c) => c.id === selected)
-  const selectedChannels = selection.length
-    ? w.channels.filter((c) => selection.includes(c.id))
-    : group
-      ? w.channels.filter((c) => group.members.includes(c.id))
-      : selectedChannel
-        ? [selectedChannel]
-        : []
+  const selectedTokens = selection.length ? selection : selected ? [selected] : []
+  const group =
+    selectedTokens.length === 1 ? w.gangs.find((g) => g.id === selectedTokens[0]) : undefined
+  const selectedChannel =
+    selectedTokens.length === 1 ? w.channels.find((c) => c.id === selectedTokens[0]) : undefined
+  const resolved = resolveSelection(w, selectedTokens)
+  const selectedChannels = resolved.channels
+  const convergeTarget = w.channels.find((c) => c.id === w.convergeTargetId)
   const targetIds = selectedChannels.map((c) => c.id)
   const batch = !!group || selectedChannels.length > 1
   const selectMany = (ids: string[]) => {
@@ -123,14 +125,18 @@ export default function App() {
     setRelative(true)
   }
   const selectChannel = (id: string, additive = false) => {
-    if (additive) selectMany(toggleSelection(targetIds, id))
+    if (additive) selectMany(toggleSelection(selectedTokens, id))
     else {
       setSelection([])
       setSelected(id)
-      setRelative(false)
+      setRelative(w.gangs.some((g) => g.id === id))
     }
   }
-  const selectionGesture = useChannelSelection(targetIds, selectMany, selectChannel)
+  const clearSelection = () => {
+    setSelected('')
+    setSelection([])
+  }
+  const selectionGesture = useChannelSelection(selectedTokens, selectMany, selectChannel)
   const { rectangle, preview, ...paneSelectionHandlers } = selectionGesture
   const currentViewGang = w.gangs.find((g) => g.id === view)
   const channels = useMemo(() => {
@@ -170,7 +176,15 @@ export default function App() {
         w.devices.find((d) => d.id === c.deviceId)?.status !== 'online' ||
         !w.devices.find((d) => d.id === c.deviceId)?.armed,
     )
-  const activeDescriptors = gangDescriptors(selectedChannels, group?.parameters)
+  const activeDescriptors = gangDescriptors(
+    selectedChannels.map((c) => ({
+      ...c,
+      descriptors: c.descriptors.filter(
+        (d) => !resolved.masks[c.id]?.length || resolved.masks[c.id]!.includes(d.id),
+      ),
+    })),
+  )
+  const previewIds = resolveSelection(w, preview ?? selectedTokens).channels.map((c) => c.id)
   const shownGangCards =
     view === 'all'
       ? w.gangs.filter((g) => g.showAsCard && g.name.toLowerCase().includes(query.toLowerCase()))
@@ -195,8 +209,10 @@ export default function App() {
       !w.channels.some((c) => c.id === selected) &&
       !w.gangs.some((g) => g.id === selected)
     )
-      setSelected(w.channels[0]?.id ?? '')
-    setSelection((ids) => ids.filter((id) => w.channels.some((c) => c.id === id)))
+      setSelected('')
+    setSelection((ids) =>
+      ids.filter((id) => w.channels.some((c) => c.id === id) || w.gangs.some((g) => g.id === id)),
+    )
     if (
       view !== 'all' &&
       view !== 'favorites' &&
@@ -216,10 +232,7 @@ export default function App() {
       if (e.key === 'Escape') {
         setMenu(false)
         setSidebar(false)
-        if (!group) {
-          setSelection([])
-          setSelected('')
-        }
+        clearSelection()
       }
       if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
         e.preventDefault()
@@ -229,7 +242,11 @@ export default function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [dialog, readOnly, group])
-  const selectView = (id: string) => {
+  const selectView = (id: string, additive = false) => {
+    if (additive && w.gangs.some((g) => g.id === id)) {
+      selectChannel(id, true)
+      return
+    }
     setView(id)
     setSidebar(false)
     if (w.gangs.some((g) => g.id === id)) {
@@ -244,8 +261,8 @@ export default function App() {
     else if (!w.favorites.includes(id) && w.favorites.length < 8)
       desk.updateWorkspace({ favorites: [...w.favorites, id] })
   }
-  const reset = (ids: string[], s?: Section, mask?: ParameterId[]) => {
-    setResetScope({ ids, section: s, mask })
+  const reset = (ids: string[], s?: Section, mask?: ParameterId[], masks?: ParameterMasks) => {
+    setResetScope({ ids, section: s, mask, masks })
     setDialog('reset')
   }
   const title =
@@ -365,7 +382,8 @@ export default function App() {
             <div className="gang-nav-row" key={g.id}>
               <button
                 className={`nav-item gang-nav ${view === g.id ? 'active' : ''}`}
-                onClick={() => selectView(g.id)}
+                aria-pressed={selectedTokens.includes(g.id)}
+                onClick={(e) => selectView(g.id, e.ctrlKey || e.metaKey)}
               >
                 <span className="group-dot" style={{ background: g.color }} />
                 <span>{g.name}</span>
@@ -453,6 +471,29 @@ export default function App() {
             {title}
             <span className="view-count">{channels.length}</span>
           </h1>
+          <div className="main-heading-actions">
+            <span
+              className={`target-summary ${convergeTarget ? 'has-target' : ''}`}
+              title={
+                convergeTarget
+                  ? 'Converge leaves this camera unchanged'
+                  : 'Converge uses the group median'
+              }
+            >
+              <Target size={14} />
+              {convergeTarget ? convergeTarget.label : 'Median target'}
+            </span>
+            <button
+              className="button small"
+              disabled={readOnly || snapshot.converging || snapshot.busy > 0 || !convergeTarget}
+              onClick={() => desk.setConvergeTarget()}
+            >
+              Clear target
+            </button>
+            <button className="button small" disabled={!targetIds.length} onClick={clearSelection}>
+              Clear selection
+            </button>
+          </div>
         </div>
         {update && (
           <div className="desk-alert" role="status">
@@ -708,19 +749,10 @@ export default function App() {
                   </button>
                 )}
                 <button
-                  className="button small"
-                  onClick={() => {
-                    setSelected('')
-                    setSelection([])
-                  }}
-                >
-                  Clear selection
-                </button>
-                <button
                   className="icon-button tiny"
                   disabled={readOnly || !targetIds.length}
                   aria-label="Reset selected colors"
-                  onClick={() => reset(targetIds, undefined, group?.parameters)}
+                  onClick={() => reset(targetIds, undefined, undefined, resolved.masks)}
                 >
                   <RotateCcw size={15} />
                 </button>
@@ -737,23 +769,32 @@ export default function App() {
               <>
                 {batch && (
                   <>
-                    <div className="segmented">
-                      <button
-                        className={relative ? 'active' : ''}
-                        aria-pressed={relative}
-                        title="Add to each member’s current value; clamp independently at device limits"
-                        onClick={() => setRelative(true)}
-                      >
-                        Relative trim
-                      </button>
-                      <button
-                        className={!relative ? 'active' : ''}
-                        aria-pressed={!relative}
-                        title="Set every compatible member to the same value"
-                        onClick={() => setRelative(false)}
-                      >
-                        Absolute set
-                      </button>
+                    <div className="batch-action-row">
+                      <div className="segmented">
+                        <button
+                          className={relative ? 'active' : ''}
+                          aria-pressed={relative}
+                          title="Add to each member’s current value; clamp independently at device limits"
+                          onClick={() => setRelative(true)}
+                        >
+                          Relative trim
+                        </button>
+                        <button
+                          className={!relative ? 'active' : ''}
+                          aria-pressed={!relative}
+                          title="Set every compatible member to the same value"
+                          onClick={() => setRelative(false)}
+                        >
+                          Absolute set
+                        </button>
+                      </div>
+                      <ConvergeControls
+                        ids={targetIds}
+                        workspace={w}
+                        masks={resolved.masks}
+                        disabled={readOnly}
+                        busy={snapshot.converging || snapshot.busy > 0}
+                      />
                     </div>
                   </>
                 )}
@@ -761,12 +802,13 @@ export default function App() {
                   descriptors={activeDescriptors}
                   sections={consoleSections}
                   channels={selectedChannels}
+                  masks={resolved.masks}
                   relative={relative}
-                  disabled={controlsDisabled}
+                  disabled={controlsDisabled || snapshot.converging}
                   multiplier={multiplier}
                   favorites={w.favorites}
                   toggleFavorite={readOnly ? undefined : toggleFavorite}
-                  onReset={(s) => reset(targetIds, s, group?.parameters)}
+                  onReset={(s) => reset(targetIds, s, undefined, resolved.masks)}
                 />
                 <div className="console-parameters console-summary">
                   {batch && (
@@ -821,13 +863,12 @@ export default function App() {
               key={`gang-${g.id}`}
               gang={g}
               workspace={w}
-              disabled={readOnly}
+              disabled={readOnly || snapshot.converging}
               multiplier={multiplier}
-              onOpen={() => {
-                setSelected(g.id)
-                setSelection([])
-                setRelative(true)
-              }}
+              selected={(preview ?? selectedTokens).includes(g.id)}
+              busy={snapshot.converging || snapshot.busy > 0}
+              onSelect={(e) => selectChannel(g.id, e.ctrlKey || e.metaKey)}
+              onOpen={() => selectChannel(g.id)}
               onHide={() => desk.showGangCard(g.id, false)}
               onReset={(section) => reset(g.members, section, g.parameters)}
             />
@@ -838,11 +879,18 @@ export default function App() {
               channel={c}
               index={index}
               workspace={w}
-              selected={(preview ?? targetIds).includes(c.id)}
-              gangSelected={!!group?.members.includes(c.id)}
+              selected={previewIds.includes(c.id)}
+              gangSelected={w.gangs.some(
+                (g) => selectedTokens.includes(g.id) && g.members.includes(c.id),
+              )}
               selectionColor={group?.color}
               edit={editLayout}
-              disabled={readOnly}
+              disabled={readOnly || snapshot.converging}
+              target={c.id === w.convergeTargetId}
+              targetBusy={snapshot.busy > 0}
+              onTarget={() =>
+                desk.setConvergeTarget(c.id === w.convergeTargetId ? undefined : c.id)
+              }
               onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
               multiplier={multiplier}
               onReset={(section) => reset([c.id], section)}
@@ -940,6 +988,7 @@ export default function App() {
           ids={resetScope.ids}
           section={resetScope.section}
           mask={resetScope.mask}
+          masks={resetScope.masks}
           close={close}
         />
       )}
@@ -960,10 +1009,17 @@ export default function App() {
             <h3>Trim together</h3>
             <p>
               Ctrl/⌘-click channel headers to toggle a selection, or drag from a header or empty
-              grid space to select multiple cards. Ctrl/⌘-drag adds to the selection; Escape clears
-              it. Open a saved gang from the sidebar or save your selection as a gang. Relative trim
+              grid space to select multiple cards. Gang headers and Ctrl/⌘-clicking sidebar gangs
+              can join the selection too; overlapping members adjust once. Ctrl/⌘-drag adds to the
+              selection; Escape clears it. Save your selection as a gang when needed. Relative trim
               adds to each member’s existing values. Absolute set gives every member the same value,
               within device limits. Single-channel edits always stay local.
+            </p>
+            <p>
+              Converge Small/Large closes 5%/20% of the gap toward each control’s median. Mark a
+              golden camera with its target icon to converge toward its settings instead, leaving it
+              unchanged. Clear target restores median convergence; Clear selection leaves the target
+              in place. Both clearing controls are beside the page heading.
             </p>
             <h3>Connect your fleet</h3>
             <p>
@@ -1026,6 +1082,9 @@ function ChannelCard({
   onSelect,
   onReset,
   multiplier,
+  target,
+  targetBusy,
+  onTarget,
 }: {
   channel: Channel
   index: number
@@ -1038,6 +1097,9 @@ function ChannelCard({
   onSelect: (event: MouseEvent<HTMLButtonElement>) => void
   multiplier: number
   onReset: (section?: Section) => void
+  target: boolean
+  targetBusy: boolean
+  onTarget: () => void
 }) {
   const device = w.devices.find((d) => d.id === c.deviceId)!
   const [label, setLabel] = useState(c.label),
@@ -1069,9 +1131,10 @@ function ChannelCard({
   const groups = w.gangs.filter((g) => g.members.includes(c.id))
   return (
     <article
-      className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''}`}
+      className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''} ${target ? 'converge-target' : ''}`}
       aria-label={`${c.label} channel`}
       data-channel-id={c.id}
+      data-selection-id={c.id}
       style={{ '--selection-color': selectionColor ?? 'var(--accent)' } as CSSProperties}
     >
       <div className="card-heading">
@@ -1110,6 +1173,20 @@ function ChannelCard({
                     ? 'READ ONLY'
                     : 'LIVE'}
         </span>
+        <button
+          className="icon-button tiny card-target"
+          disabled={disabled || targetBusy}
+          aria-pressed={target}
+          aria-label={`Use ${c.label} as Converge target`}
+          title={
+            target
+              ? 'Golden camera — Converge leaves this camera unchanged. Click to clear.'
+              : 'Use this camera as the Converge target'
+          }
+          onClick={onTarget}
+        >
+          <Target size={15} />
+        </button>
         <button
           className="icon-button tiny"
           disabled={disabled}

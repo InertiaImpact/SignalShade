@@ -4066,12 +4066,13 @@ button {
   flex-shrink: 0;
 }
 .app .gang-card-mode {
-  margin: 10px 14px;
-  width: min(270px, calc(100% - 28px));
+  margin: 0;
+  width: auto;
+  flex-shrink: 0;
 }
 .gang-card-mode > button {
-  font-size: 11px;
-  padding: 6px 8px;
+  font-size: 10px;
+  padding: 4px 5px;
 }
 .app .gang-card-mode > button.active {
   color: var(--gang-color);
@@ -4082,6 +4083,101 @@ button {
   align-items: center;
   gap: 4px;
   color: var(--text-muted);
+}
+.main-heading-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 8px;
+  min-width: 0;
+}
+.target-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--text-muted);
+  max-width: 240px;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.target-summary.has-target,
+.card-target[aria-pressed='true'] {
+  color: var(--accent);
+}
+.card-target[aria-pressed='true'] {
+  background: var(--accent-soft);
+  box-shadow: inset 0 0 0 1px var(--accent-border);
+}
+.batch-action-row {
+  grid-column: 1 / -1;
+  margin: 12px 16px;
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.converge-controls {
+  display: flex;
+  align-items: center;
+  flex: 0 0 auto;
+  gap: 6px;
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.converge-controls .segmented {
+  margin: 0;
+}
+.app .gang-console .batch-action-row > .segmented {
+  margin: 0;
+  max-width: 100%;
+}
+.app .gang-console .converge-controls .segmented {
+  margin: 0;
+  width: auto;
+  max-width: none;
+}
+.app .gang-card > .card-heading {
+  min-height: 66px;
+}
+.compact-converge {
+  flex-direction: column;
+  gap: 2px;
+  font-size: 9px;
+  line-height: 10px;
+}
+.compact-converge .segmented {
+  padding: 1px;
+}
+.compact-converge .segmented > button {
+  padding: 2px 7px;
+  font-size: 10px;
+  line-height: 12px;
+}
+.gang-card .card-heading {
+  gap: 6px;
+}
+.gang-card .card-select {
+  min-width: 0;
+}
+.gang-card .card-select strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.gang-nav[aria-pressed='true'] {
+  color: var(--accent);
+}
+@media (max-width: 800px) {
+  .app .main-heading {
+    flex-wrap: wrap;
+  }
+  .main-heading-actions {
+    flex-basis: 100%;
+  }
 }
 
 /* Recorder monitoring uses one compact row; details stay out of the shading pane. */
