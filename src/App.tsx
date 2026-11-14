@@ -469,6 +469,142 @@ export default function App() {
             {title}
             <span className="view-count">{channels.length}</span>
           </h1>
+          <div className="channel-toolbar">
+            <div className="search">
+              <Search size={15} />
+              <input
+                id="channel-search"
+                aria-label="Search channels"
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search channels"
+              />
+              <kbd>/</kbd>
+            </div>
+            <button
+              className="button small"
+              aria-label="Select visible"
+              title="Select visible channels · Ctrl/⌘-click or drag headers for a partial selection"
+              onClick={() => selectMany(channels.map((c) => c.id))}
+            >
+              Select all
+            </button>
+            <div className="arrow-step">
+              <span>Step</span>
+              <div className="segmented" role="group" aria-label="Arrow adjustment step">
+                {(
+                  [
+                    ['Fine', 1],
+                    ['Normal', 5],
+                    ['Coarse', 10],
+                  ] as const
+                ).map(([label, step]) => (
+                  <button
+                    key={step}
+                    className={multiplier === step ? 'active' : ''}
+                    aria-pressed={multiplier === step}
+                    title={`${label} · ×${step}`}
+                    onClick={() => setMultiplier(step)}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="toolbar-right">
+              <button
+                className={`icon-button ${editLayout ? 'selected' : ''}`}
+                disabled={readOnly}
+                aria-label="Reorder and rename channels"
+                title="Reorder and rename channels"
+                onClick={() => setEditLayout(!editLayout)}
+              >
+                <SlidersHorizontal size={17} />
+              </button>
+              <div className="menu-container">
+                <button
+                  className="icon-button"
+                  aria-label="Workspace actions"
+                  onClick={() => setMenu(!menu)}
+                >
+                  <MoreHorizontal size={20} />
+                </button>
+                {menu && (
+                  <>
+                    <button
+                      className="menu-dismiss"
+                      aria-label="Close workspace menu"
+                      onClick={() => setMenu(false)}
+                    />
+                    <div className="dropdown-menu">
+                      <label className="menu-field">
+                        Channel order
+                        <select
+                          aria-label="Sort channels"
+                          value={sort}
+                          onChange={(e) => setSort(e.target.value)}
+                        >
+                          <option value="custom">Custom order</option>
+                          <option value="name">Channel name</option>
+                          <option value="device">Device / processor</option>
+                        </select>
+                      </label>
+                      <button
+                        onClick={() => {
+                          downloadJson('signalshade-workspace.json', w)
+                          setMenu(false)
+                        }}
+                      >
+                        <Download size={15} />
+                        Export workspace
+                      </button>
+                      <button
+                        disabled={readOnly}
+                        onClick={() => {
+                          importRef.current?.click()
+                          setMenu(false)
+                        }}
+                      >
+                        <Upload size={15} />
+                        Import workspace
+                      </button>
+                      <button
+                        disabled={readOnly || snapshot.busy > 0}
+                        onClick={() => {
+                          setPendingWorkspace({ kind: 'empty' })
+                          setMenu(false)
+                        }}
+                      >
+                        <FolderOpen size={15} />
+                        Start empty workspace
+                      </button>
+                      <button
+                        disabled={readOnly || snapshot.busy > 0}
+                        onClick={() => {
+                          setPendingWorkspace({ kind: 'demo' })
+                          setMenu(false)
+                        }}
+                      >
+                        <Waves size={15} />
+                        Load demo desk
+                      </button>
+                      <hr />
+                      <button
+                        disabled={readOnly || !w.channels.length}
+                        onClick={() => {
+                          reset(w.channels.map((c) => c.id))
+                          setMenu(false)
+                        }}
+                      >
+                        <RotateCcw size={15} />
+                        Reset all channel colors
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            </div>
+          </div>
           <div className="main-heading-actions">
             <span
               className={`target-summary ${convergeTarget ? 'has-target' : ''}`}
@@ -523,132 +659,6 @@ export default function App() {
                 : snapshot.storageError}
           </div>
         )}
-        <div className="channel-toolbar">
-          <div className="search">
-            <Search size={15} />
-            <input
-              id="channel-search"
-              aria-label="Search channels"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search channels"
-            />
-            <kbd>/</kbd>
-          </div>
-          <button
-            className="button small"
-            aria-label="Select visible"
-            title="Select visible channels · Ctrl/⌘-click or drag headers for a partial selection"
-            onClick={() => selectMany(channels.map((c) => c.id))}
-          >
-            Select all
-          </button>
-          <label className="arrow-step">
-            Step
-            <select
-              aria-label="Arrow adjustment step"
-              value={multiplier}
-              onChange={(e) => setMultiplier(Number(e.target.value))}
-            >
-              <option value={1}>Fine</option>
-              <option value={5}>Normal ×5</option>
-              <option value={10}>Coarse ×10</option>
-            </select>
-          </label>
-          <div className="toolbar-right">
-            <button
-              className={`icon-button ${editLayout ? 'selected' : ''}`}
-              disabled={readOnly}
-              aria-label="Reorder and rename channels"
-              title="Reorder and rename channels"
-              onClick={() => setEditLayout(!editLayout)}
-            >
-              <SlidersHorizontal size={17} />
-            </button>
-            <div className="menu-container">
-              <button
-                className="icon-button"
-                aria-label="Workspace actions"
-                onClick={() => setMenu(!menu)}
-              >
-                <MoreHorizontal size={20} />
-              </button>
-              {menu && (
-                <>
-                  <button
-                    className="menu-dismiss"
-                    aria-label="Close workspace menu"
-                    onClick={() => setMenu(false)}
-                  />
-                  <div className="dropdown-menu">
-                    <label className="menu-field">
-                      Channel order
-                      <select
-                        aria-label="Sort channels"
-                        value={sort}
-                        onChange={(e) => setSort(e.target.value)}
-                      >
-                        <option value="custom">Custom order</option>
-                        <option value="name">Channel name</option>
-                        <option value="device">Device / processor</option>
-                      </select>
-                    </label>
-                    <button
-                      onClick={() => {
-                        downloadJson('signalshade-workspace.json', w)
-                        setMenu(false)
-                      }}
-                    >
-                      <Download size={15} />
-                      Export workspace
-                    </button>
-                    <button
-                      disabled={readOnly}
-                      onClick={() => {
-                        importRef.current?.click()
-                        setMenu(false)
-                      }}
-                    >
-                      <Upload size={15} />
-                      Import workspace
-                    </button>
-                    <button
-                      disabled={readOnly || snapshot.busy > 0}
-                      onClick={() => {
-                        setPendingWorkspace({ kind: 'empty' })
-                        setMenu(false)
-                      }}
-                    >
-                      <FolderOpen size={15} />
-                      Start empty workspace
-                    </button>
-                    <button
-                      disabled={readOnly || snapshot.busy > 0}
-                      onClick={() => {
-                        setPendingWorkspace({ kind: 'demo' })
-                        setMenu(false)
-                      }}
-                    >
-                      <Waves size={15} />
-                      Load demo desk
-                    </button>
-                    <hr />
-                    <button
-                      disabled={readOnly || !w.channels.length}
-                      onClick={() => {
-                        reset(w.channels.map((c) => c.id))
-                        setMenu(false)
-                      }}
-                    >
-                      <RotateCcw size={15} />
-                      Reset all channel colors
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
-        </div>
         <input
           hidden
           type="file"

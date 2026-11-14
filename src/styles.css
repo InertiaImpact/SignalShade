@@ -3113,10 +3113,6 @@ button {
   color: var(--text-muted);
   white-space: nowrap;
 }
-.arrow-step select {
-  padding-block: 6px;
-  font-size: 10px;
-}
 .card-readback {
   display: flex;
   justify-content: space-between;
@@ -3501,18 +3497,29 @@ button {
   padding: 18px 22px 24px;
 }
 .app .main-heading {
+  position: sticky;
+  top: 0;
+  z-index: 4;
   display: flex;
-  gap: 10px;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+  gap: 7px 12px;
   align-items: center;
   margin-bottom: 12px;
+  padding-block: 2px 6px;
+  background: var(--surface-canvas);
 }
 .main-heading > h1 {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex: 0 0 auto;
+  max-width: 100%;
+  margin: 0;
   font-size: 22px;
   font-weight: 550;
   letter-spacing: -0.4px;
+  overflow-wrap: anywhere;
 }
 .view-count {
   font: 12px var(--mono);
@@ -3526,19 +3533,15 @@ button {
   margin: 0;
 }
 .app .channel-toolbar {
-  position: sticky;
-  top: 0;
-  z-index: 4;
-  background: var(--surface-canvas);
-  margin-bottom: 14px;
-  padding: 8px 0 12px;
-  gap: 10px;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
+  gap: 7px;
 }
 .app .search {
-  flex: 1;
-  min-width: 130px;
-  max-width: 330px;
-  height: 38px;
+  flex: 1 0 135px;
+  max-width: 280px;
+  height: 34px;
 }
 .app .search input {
   font-size: 13px;
@@ -3546,22 +3549,30 @@ button {
 .app .search kbd {
   display: none;
 }
-.app .channel-toolbar .button {
+.app .main-heading .button {
   font-size: 12px;
-  min-height: 36px;
-  padding: 7px 10px;
+  min-height: 34px;
+  padding: 6px 8px;
 }
 .app .arrow-step {
   font-size: 12px;
   gap: 7px;
 }
-.app .arrow-step select {
-  font-size: 12px;
-  height: 36px;
-  padding-block: 5px;
+.arrow-step .segmented {
+  margin: 0;
+  padding: 2px;
+}
+.arrow-step .segmented > button {
+  min-height: 28px;
+  padding: 3px 7px;
+  font-size: 11px;
+}
+.arrow-step .segmented > button:hover {
+  color: var(--text-primary);
 }
 .app .toolbar-right {
   gap: 5px;
+  margin-left: 0;
 }
 .menu-field {
   display: flex;
@@ -3839,9 +3850,8 @@ button {
   .app .main {
     padding: 14px 12px 20px;
   }
-  .app .channel-toolbar {
+  .app .main-heading {
     top: 64px;
-    gap: 7px;
   }
   .app .search {
     max-width: none;
@@ -4177,12 +4187,13 @@ button {
 .gang-nav[aria-pressed='true'] {
   color: var(--accent);
 }
-@media (max-width: 800px) {
-  .app .main-heading {
-    flex-wrap: wrap;
+@media (max-width: 560px) {
+  .app .channel-toolbar {
+    flex-basis: 100%;
   }
   .main-heading-actions {
     flex-basis: 100%;
+    justify-content: flex-start;
   }
 }
 
