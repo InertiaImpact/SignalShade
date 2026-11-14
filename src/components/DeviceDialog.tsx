@@ -80,6 +80,7 @@ export function DeviceDialog({
     [exporting, setExporting] = useState(false)
   const [qr, setQr] = useState<string>()
   const [preparingQr, setPreparingQr] = useState(false)
+  const [approval, setApproval] = useState<{ origin: string; url: string }>()
   const abort = useRef<AbortController | undefined>(undefined),
     scanAbort = useRef<AbortController | undefined>(undefined),
     adapters = useRef(new Set<AjaAdapter>()),
@@ -93,8 +94,15 @@ export function DeviceDialog({
   }
   useEffect(() => {
     mounted.current = true
+    const showApproval = (event: Event) =>
+      setApproval((event as CustomEvent<{ origin: string; url: string }>).detail)
+    const hideApproval = () => setApproval(undefined)
+    window.addEventListener('signalshade-approval-open', showApproval)
+    window.addEventListener('signalshade-approval-close', hideApproval)
     return () => {
       mounted.current = false
+      window.removeEventListener('signalshade-approval-open', showApproval)
+      window.removeEventListener('signalshade-approval-close', hideApproval)
       abort.current?.abort()
       scanAbort.current?.abort()
       adapters.current.forEach((a) => a.dispose())
@@ -107,9 +115,11 @@ export function DeviceDialog({
   const addDevice = async (
     ip: string,
     name = '',
-    fromScan = false,
-    hint: DeviceType = 'auto',
-    sessionPassword = password,
+    {
+      source,
+      hint = 'auto',
+      sessionPassword = '',
+    }: { source: 'manual' | 'scan' | 'reconnect'; hint?: DeviceType; sessionPassword?: string },
   ) => {
     if (abort.current || scanApproving || readOnly) return
     let origin: string
@@ -138,9 +148,11 @@ export function DeviceDialog({
       kept = false,
       scanAccess = false
     try {
+      const sessionUsername = source === 'manual' ? username : ''
       if (
+        !sessionUsername &&
         !sessionPassword &&
-        (fromScan || scanning || Object.keys(results).length) &&
+        (source === 'scan' || scanning || Object.keys(results).length) &&
         (await detectConnect(controller.signal))
       ) {
         scanAccess = !!(
@@ -163,8 +175,8 @@ export function DeviceDialog({
       }, addTimeout)
       adapter = new AjaAdapter(
         origin,
-        username || sessionPassword
-          ? `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${username}:${sessionPassword}`)))}`
+        sessionUsername || sessionPassword
+          ? `Basic ${btoa(String.fromCharCode(...new TextEncoder().encode(`${sessionUsername}:${sessionPassword}`)))}`
           : undefined,
       )
       adapters.current.add(adapter)
@@ -251,7 +263,7 @@ export function DeviceDialog({
         )
       }
       diagnostics.event({ action: 'connect-complete', origin })
-      setPassword('')
+      if (source === 'manual') clearAddForm()
     } catch (e) {
       if (!controller.signal.aborted) {
         diagnostics.event({ action: 'connect-failed', origin, error: message(e) })
@@ -403,6 +415,12 @@ export function DeviceDialog({
       <QrCode size={15} /> Diagnostic QR
     </button>
   )
+  const clearAddForm = () => {
+    setAddress('')
+    setLabel('')
+    setUsername('')
+    setPassword('')
+  }
   const addDemo = () => {
     try {
       if (type === 'auto') throw new Error('Choose a demo device type')
@@ -413,6 +431,7 @@ export function DeviceDialog({
         ])
       else desk.addDemoDevice(type, label)
       setNotice(`${type} demo added`)
+      clearAddForm()
     } catch (e) {
       setNotice(message(e))
     }
@@ -452,6 +471,18 @@ export function DeviceDialog({
           {qrButton(busy, type)}
         </div>
       )}
+      {approval && (
+        <section className="connect-approval" aria-label="Chrome device access">
+          <iframe title={`Allow ${approval.origin}`} src={approval.url} />
+          <button
+            className="button small"
+            type="button"
+            onClick={() => window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))}
+          >
+            Cancel approval
+          </button>
+        </section>
+      )}
       <div className="connections-layout">
         <nav className="connections-list" aria-label="Added devices">
           <button
@@ -482,7 +513,11 @@ export function DeviceDialog({
                   className={`connection-state ${d.status === 'online' ? 'connected' : 'offline'}`}
                 >
                   <i />
-                  {d.status === 'online' ? 'Connected' : 'Offline'}
+                  {d.status === 'online'
+                    ? 'Connected'
+                    : d.status === 'connecting'
+                      ? 'Connecting…'
+                      : 'Offline'}
                   {d.status === 'online' && !d.armed ? ' · Locked' : ''}
                 </span>
               </span>
@@ -530,13 +565,11 @@ export function DeviceDialog({
               notice={setNotice}
               remove={() => remove(selected, !!recorder)}
               reconnect={(pass) =>
-                void addDevice(
-                  (device ?? recorder)!.address,
-                  (device ?? recorder)!.label,
-                  false,
-                  (device ?? recorder)!.model,
-                  pass,
-                )
+                void addDevice((device ?? recorder)!.address, (device ?? recorder)!.label, {
+                  source: 'reconnect',
+                  hint: (device ?? recorder)!.model,
+                  sessionPassword: pass,
+                })
               }
             />
           )}
@@ -574,7 +607,12 @@ export function DeviceDialog({
                 onSubmit={(e) => {
                   e.preventDefault()
                   if (demo) addDemo()
-                  else void addDevice(address, label, false, type)
+                  else
+                    void addDevice(address, label, {
+                      source: 'manual',
+                      hint: type,
+                      sessionPassword: password,
+                    })
                 }}
               >
                 <div className="form-inline">
@@ -733,13 +771,12 @@ export function DeviceDialog({
                       className="button small"
                       disabled={added(r.address) || !!busy || scanApproving || readOnly}
                       onClick={() =>
-                        void addDevice(
-                          r.address,
-                          r.name ?? '',
-                          true,
-                          detectRecorderModel(`${r.title ?? ''} ${r.model ?? ''}`) ??
+                        void addDevice(r.address, r.name ?? '', {
+                          source: 'scan',
+                          hint:
+                            detectRecorderModel(`${r.title ?? ''} ${r.model ?? ''}`) ??
                             (fsModels.includes(r.model as Model) ? (r.model as Model) : 'auto'),
-                        )
+                        })
                       }
                     >
                       {added(r.address) ? 'Added' : busy === r.address ? 'Adding…' : 'Add'}

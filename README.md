@@ -22,7 +22,7 @@ For devices blocked by browser CORS, use the optional **[SignalShade Connect ext
 - Unified device manager, direct-IP connections, bounded IPv4 scanning, model-specific demos, and combined debug ZIP export.
 - Simulated FS4/FS2 fleet. Demo devices never issue network requests.
 - Offline application shell after a successful first production load; operator-controlled updates.
-- Optional recorder strip for HELO, HELO Plus and Ki Pro: transport status, clip/observed duration, reported media metrics, explicit Record/Stop, and simulation. Hardware qualification is pending.
+- Compact top-bar monitoring for HELO, HELO Plus and Ki Pro, with recording duration, storage details, Record/Stop, and simulation. Hardware qualification is pending.
 
 ## Run locally
 
@@ -51,7 +51,8 @@ Authentication supports an optional session-only Basic Authorization header, sub
 
 ## Operator notes
 
-- **Recorders:** open **Manage connections** for processors and recorders. Choose a model/address or use Auto detect; **Demo device** lets you choose a simulated model. Enable control per recorder after connecting. The strip shows recording status, duration and storage; its details arrow opens the same manager with compact destination/slot rows. Stop requires a second click within four seconds. Reconnect and reload never resume recording commands. Removing a real recorder from the dashboard does not stop it.
+- **Frame syncs** reconnect automatically on reload. Explicitly enabled writes can resume in the same tab after fresh readback and matching model, firmware and control definitions. New connections start read-only. Locks and unconfirmed writes prevent automatic write enablement. Devices that require session credentials may need a manual reconnect.
+- **Recorders** appear in the top bar with recording state, duration and an attention indicator. Select a recorder to see available storage destinations and transport controls in Devices. Narrow windows show a recorder summary that opens Devices. Enable control per recorder after connecting. Stop requires a second click within four seconds. Reconnect and reload never resume recording commands. Removing a recorder leaves its physical transport running.
 - **Recorder compatibility:** the browser adapter uses the selected recorder family’s state and Record/Stop command descriptors. Missing optional identity/firmware data or differing English enum labels do not disable control. Actual missing commands or incompatible numeric limits are reported. Media fields come from device descriptors; only known units are normalized, and missing metrics show as unavailable. Clip duration may reset when files segment; `~` duration estimates an observed start. See the [implementation review](docs/implementation-review.md).
 - **Recorder authentication:** an optional password uses AJA session-cookie login, retained only for the connection. AJA CORS and the browser's cross-origin cookie policy must allow this. Authentication expiry requires reconnecting; transport commands are never automatically retried.
 

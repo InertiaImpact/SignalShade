@@ -88,16 +88,46 @@ it('skips all approval UI for previously allowed devices', async () => {
   await ensureDeviceAccess('http://10.1.1.1')
   expect(w.postMessage.mock.calls.map(([m]) => m.type)).toEqual(['hello', 'status'])
 })
+it('resumes after the native Chrome prompt and respects a denial', async () => {
+  let approved = false
+  let granted = false
+  const w = extension((type) => {
+    if (type === 'hello') return { ok: true, data: { version: '0.4.3', protocol: 1 } }
+    if (type === 'status') return { ok: true, data: { allowed: granted } }
+    if (type === 'request-host-access') {
+      granted = approved
+      return { ok: true, data: { approved } }
+    }
+    throw new Error(`Unexpected bridge request: ${type}`)
+  })
+  const open = vi.fn()
+  w.addEventListener('signalshade-approval-open', open)
+  await expect(ensureDeviceAccess('http://10.1.1.1')).rejects.toThrow('not granted')
+  approved = true
+  await ensureDeviceAccess('http://10.1.1.1')
+  expect(open).not.toHaveBeenCalled()
+  expect(w.postMessage.mock.calls.map(([m]) => m.type)).toEqual([
+    'hello',
+    'status',
+    'request-host-access',
+    'hello',
+    'status',
+    'request-host-access',
+    'status',
+  ])
+})
 it('returns the embedded approval and resumes automatically after a verified grant', async () => {
   let granted = false
   const w = extension((type) => ({
     ok: true,
     data:
       type === 'hello'
-        ? { version: '0.3.0', protocol: 1 }
+        ? { version: '0.4.3', protocol: 1 }
         : type === 'status'
           ? { allowed: granted }
-          : { approvalUrl: 'chrome-extension://test/approve.html?token=test-token' },
+          : type === 'request-host-access'
+            ? { fallback: true }
+            : { approvalUrl: 'chrome-extension://test/approve.html?token=test-token' },
   }))
   const open = vi.fn(() => {
     granted = true
@@ -116,6 +146,7 @@ it('returns the embedded approval and resumes automatically after a verified gra
   expect(w.postMessage.mock.calls.map(([m]) => m.type)).toEqual([
     'hello',
     'status',
+    'request-host-access',
     'permission',
     'status',
   ])

@@ -1,9 +1,10 @@
 import { useState } from 'react'
-import { RefreshCw, Trash2 } from 'lucide-react'
+import { Lock, RefreshCw, Trash2, Unlock } from 'lucide-react'
 import { desk } from '../core/store'
 import type { Device, Workspace } from '../core/types'
 import { disconnected, type RecorderConfig, type RecorderSnapshot } from '../recorders/types'
 import { RecorderStatus } from './RecorderStatus'
+import { RecorderTransport } from './RecorderTransport'
 export function DeviceDetails({
   workspace,
   device,
@@ -27,6 +28,7 @@ export function DeviceDetails({
 }) {
   const [password, setPassword] = useState('')
   const item = device ?? recorder!
+  const connecting = device?.status === 'connecting'
   const saveRecorder = (patch: Partial<RecorderConfig>) =>
     desk.saveRecorders(
       (workspace.recorders ?? []).map((c) => (c.id === item.id ? { ...c, ...patch } : c)),
@@ -38,6 +40,16 @@ export function DeviceDetails({
       notice(e instanceof Error ? e.message : String(e))
     }
   }
+  const controlEnabled = device ? device.armed : !!snapshot?.enabled
+  const controlDisabled =
+    readOnly ||
+    busy ||
+    (device
+      ? device.status !== 'online' ||
+        !workspace.channels.some(
+          (channel) => channel.deviceId === device.id && channel.descriptors.length,
+        )
+      : !snapshot?.canControl || !!snapshot.pending || snapshot.state === 'offline')
   return (
     <section className="connection-details" aria-label="Device settings">
       <div className="connection-details-heading">
@@ -68,15 +80,31 @@ export function DeviceDetails({
             </a>
           )}
         </div>
-        <button
-          className="icon-button"
-          disabled={readOnly || busy || !!snapshot?.pending}
-          aria-label={`Remove ${item.label}`}
-          title="Remove from dashboard"
-          onClick={remove}
-        >
-          <Trash2 size={18} />
-        </button>
+        <div className="connection-heading-actions">
+          <button
+            className={`button device-control-action ${controlEnabled ? 'lock-control' : 'enable-control'}`}
+            disabled={controlDisabled}
+            onClick={() =>
+              act(() =>
+                device
+                  ? desk.armDevice(device.id, !controlEnabled)
+                  : desk.recorders.enable(item.id, !controlEnabled),
+              )
+            }
+          >
+            {controlEnabled ? <Lock size={15} /> : <Unlock size={15} />}
+            {controlEnabled ? 'Lock' : 'Enable'} {device ? 'writes' : 'control'}
+          </button>
+          <button
+            className="icon-button"
+            disabled={readOnly || busy || !!snapshot?.pending}
+            aria-label={`Remove ${item.label}`}
+            title="Remove from dashboard"
+            onClick={remove}
+          >
+            <Trash2 size={18} />
+          </button>
+        </div>
       </div>
       {device && (
         <>
@@ -86,6 +114,7 @@ export function DeviceDetails({
               ? 'processor'
               : 'processors'}
           </p>
+          {device.issue && <p className="text-warning">{device.issue}</p>}
           <div className="processor-label-list">
             {workspace.channels
               .filter((c) => c.deviceId === device.id)
@@ -116,48 +145,24 @@ export function DeviceDetails({
       )}
       {recorder && <RecorderStatus config={recorder} snapshot={snapshot ?? disconnected()} />}
       <div className="button-row">
+        {recorder && (
+          <RecorderTransport
+            config={recorder}
+            snapshot={snapshot ?? disconnected()}
+            readOnly={readOnly || busy}
+          />
+        )}
         {!item.simulated && (
           <button
             className="button"
-            disabled={readOnly || busy || !!snapshot?.pending}
+            disabled={readOnly || busy || connecting || !!snapshot?.pending}
             onClick={() => {
               reconnect(password)
               setPassword('')
             }}
           >
             <RefreshCw size={15} />
-            {busy ? 'Connecting…' : 'Reconnect'}
-          </button>
-        )}
-        {device && (
-          <button
-            className="button"
-            disabled={
-              readOnly ||
-              busy ||
-              device.status !== 'online' ||
-              !workspace.channels.some(
-                (channel) => channel.deviceId === device.id && channel.descriptors.length,
-              )
-            }
-            onClick={() => act(() => desk.armDevice(device.id, !device.armed))}
-          >
-            {device.armed ? 'Lock writes' : 'Enable writes'}
-          </button>
-        )}
-        {recorder && (
-          <button
-            className="button"
-            disabled={
-              readOnly ||
-              busy ||
-              !snapshot?.canControl ||
-              !!snapshot?.pending ||
-              snapshot.state === 'offline'
-            }
-            onClick={() => act(() => desk.recorders.enable(recorder.id, !snapshot?.enabled))}
-          >
-            {snapshot?.enabled ? 'Lock control' : 'Enable control'}
+            {busy || connecting ? 'Connecting…' : 'Reconnect'}
           </button>
         )}
       </div>

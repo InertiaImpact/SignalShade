@@ -1,5 +1,7 @@
 SignalShade Connect preview connects SignalShade to approved local AJA devices without a separate bridge server.
 
+Version 0.4.3 uses the Add device click to request Chrome access to the entered IP. Connection testing resumes after approval. Devices shows an inline Allow connection button when Chrome needs a fresh click. The existing host permissions and read-only discovery paths still apply.
+
 Version 0.4.2 adds the read-only FS-HDR input map endpoint and validates exact mapped Proc Amp and RGB parameter IDs against device ranges. Repeated descriptors no longer prevent returning the table; conflicting definitions for an actual write still block it. No new permissions. Update Connect and SignalShade together for the FS-HDR 4.3.3.3 mapping fix.
 
 Version 0.4.1 reads each identified AJA device’s configured system name during scanning. Results show the name, model and IP address; Add uses that name as the initial device label. Existing custom labels are preserved, and missing or unreadable names do not hide devices. Only identified AJA units receive these optional, time-bounded reads.
@@ -12,7 +14,7 @@ The dashboard now has one Devices manager for FS processors and HELO/Ki Pro reco
 
 Install this extension update and reload the dashboard together. FS1 readbacks were replayed from supplied reports, and native ranges were checked against AJA firmware metadata. Physical write/readback testing is still needed; automated tests do not operate your equipment.
 
-Download **signalshade-connect.zip**, extract it to a permanent folder, open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select the folder containing `manifest.json`. Reload SignalShade and connect the device, then approve access through its embedded SignalShade Connect panel. See the bundled README for details.
+Download **signalshade-connect.zip**, extract it to a permanent folder, open `chrome://extensions`, enable Developer mode, click **Load unpacked**, and select the folder containing `manifest.json`. Reload SignalShade, add the device, and approve Chrome access when prompted. See the bundled README for details.
 
 This is a manually installed preview, not a Chrome Web Store release. No browser security flags are required. Managed computers may require IT approval. Real-hardware qualification remains pending; verify on non-critical equipment before production use. The extension does not automatically start recording or replay uncertain commands.
 

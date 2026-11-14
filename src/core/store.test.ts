@@ -2,6 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeskStore } from './store'
 import { demoWorkspace } from './demo'
 import { AjaAdapter } from '../adapters/aja'
+import { loadWorkspace } from './persistence'
 import type { ProbeResult, Workspace } from './types'
 import { subscribeStageAdjustments } from './stages'
 import { subscribeDemoChanges } from './demo-feedback'
@@ -13,6 +14,12 @@ vi.mock('./persistence', async (importOriginal) => ({
 let store: DeskStore
 beforeEach(async () => {
   vi.useFakeTimers()
+  const session = new Map<string, string>()
+  vi.stubGlobal('sessionStorage', {
+    getItem: (key: string) => session.get(key) ?? null,
+    setItem: (key: string, value: string) => session.set(key, value),
+    removeItem: (key: string) => session.delete(key),
+  })
   vi.stubGlobal('navigator', {
     locks: {
       request: (_name: string, _options: unknown, callback: (lock: object) => Promise<void>) => {
@@ -28,6 +35,7 @@ afterEach(() => {
   store.dispose()
   vi.useRealTimers()
   vi.unstubAllGlobals()
+  vi.restoreAllMocks()
 })
 async function settle() {
   await vi.advanceTimersByTimeAsync(5000)
@@ -59,6 +67,84 @@ function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   return { channel, adapter, result }
 }
 describe('command engine', () => {
+  it('restores saved processors independently after reload and restores writes only on a fresh match', async () => {
+    const first = hardwareFixture()
+    const changed = hardwareFixture('http://10.0.0.3')
+    const offline = hardwareFixture('http://10.0.0.4')
+    const locked = hardwareFixture('http://10.0.0.5', false)
+    store.updateChannel(first.channel.id, { label: 'Camera 6', locked: true })
+    const saved = store.getSnapshot().workspace
+    const devices = [first, changed, offline, locked]
+    const probe = vi.spyOn(AjaAdapter.prototype, 'probe').mockImplementation(async function (
+      this: AjaAdapter,
+    ) {
+      const fixture = devices.find((d) => d.result.address === this.address)!
+      if (fixture === offline) throw new Error('Unit offline')
+      return {
+        ...fixture.result,
+        firmware: fixture === changed ? 'changed' : fixture.result.firmware,
+        channels: [
+          {
+            ...fixture.channel,
+            updatedAt: Date.now(),
+            context: 'input-2',
+            values: { ...fixture.channel.values, gain: 1.3 },
+          },
+        ],
+      }
+    })
+    const write = vi.spyOn(AjaAdapter.prototype, 'write')
+    vi.mocked(loadWorkspace).mockResolvedValueOnce(saved)
+    store.dispose()
+    store = new DeskStore()
+    await store.initialize()
+
+    const restored = store.getSnapshot().workspace
+    expect(probe).toHaveBeenCalledTimes(4)
+    expect(write).not.toHaveBeenCalled()
+    expect(restored.devices.slice(-4).map((d) => [d.status, d.armed])).toEqual([
+      ['online', true],
+      ['online', false],
+      ['offline', false],
+      ['online', false],
+    ])
+    expect(restored.channels.map((channel) => channel.id)).toEqual(
+      saved.channels.map((channel) => channel.id),
+    )
+    expect(restored.channels.find((channel) => channel.id === first.channel.id)).toMatchObject({
+      label: 'Camera 6',
+      locked: true,
+      context: 'input-2',
+      values: { gain: 1.3 },
+    })
+  })
+
+  it('restores a desk lock and leaves a write interrupted by reload disarmed', async () => {
+    const { channel, result, adapter } = hardwareFixture()
+    const saved = store.getSnapshot().workspace
+    vi.mocked(adapter.write).mockImplementationOnce(() => new Promise(() => {}))
+    expect(store.adjust([channel.id], 'gain', 1.2, 'absolute')).toBe(true)
+    await settle()
+    expect(adapter.write).toHaveBeenCalledOnce()
+    store.setControlsLocked(true)
+    vi.mocked(loadWorkspace).mockResolvedValueOnce(saved)
+    vi.spyOn(AjaAdapter.prototype, 'probe').mockResolvedValue({
+      ...result,
+      channels: [{ ...channel, updatedAt: Date.now() }],
+    })
+    const write = vi.spyOn(AjaAdapter.prototype, 'write')
+    store.dispose()
+    store = new DeskStore()
+    await store.initialize()
+    expect(store.getSnapshot().controlsLocked).toBe(true)
+    expect(store.getSnapshot().busy).toBe(0)
+    expect(store.getSnapshot().workspace.devices.at(-1)).toMatchObject({
+      status: 'online',
+      armed: false,
+    })
+    expect(write).not.toHaveBeenCalled()
+  })
+
   it('connects and reconnects hardware without enabling writes', async () => {
     const { channel, adapter, result } = hardwareFixture(undefined, false)
     const device = () =>

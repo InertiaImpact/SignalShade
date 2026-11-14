@@ -9,7 +9,7 @@ Connects the hosted SignalShade dashboard to AJA devices whose REST endpoints ar
 3. Open `chrome://extensions` in Chrome. Enable **Developer mode**.
 4. Click **Load unpacked** and choose the extracted folder containing `manifest.json`.
 5. Reload [SignalShade](https://inertiaimpact.github.io/SignalShade/). Open Devices and connect your device.
-6. For a new device, approve its address in the embedded SignalShade Connect panel and Chrome's permission prompt. Testing continues automatically; no separate popup or second Connect click is needed. Already approved devices skip this step.
+6. For a new device, click **Add device** and approve its address in Chrome's permission prompt. Connection testing continues automatically. If Chrome requires a separate click, use **Allow connection** at the top of Devices to open the prompt. Already approved devices skip this step.
 
 Recorder control initially requires the Enable control button. That choice survives temporary network loss and reloads in the same tab, but is effective only after fresh verified status. Uncertain command failures clear it. Configured recorders resume monitoring after reload; turn off **Reconnect on load** in their settings to opt out. Passwords are not saved; devices requiring a new login may need a password on reconnect. Approval does not start or stop recording. The extension can only reach devices on your computer's network/VPN. Some managed browsers prohibit unpacked extensions; contact your IT administrator rather than disabling browser security.
 

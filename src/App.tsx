@@ -270,9 +270,7 @@ export default function App() {
     w.devices.find((d) => d.id === view)?.label ??
     (view === 'favorites' ? 'Pinned controls' : 'All channels')
   return (
-    <div
-      className={`app ${w.density === 'compact' ? 'compact' : ''} ${w.recorders?.length ? 'has-recorders' : ''}`}
-    >
+    <div className={`app ${w.density === 'compact' ? 'compact' : ''}`}>
       <div className="header-area">
         <header className="topbar">
           <div className="brand">
@@ -292,6 +290,7 @@ export default function App() {
             <span>{w.name}</span>
             <ChevronDown size={15} />
           </button>
+          <RecorderStrip configs={w.recorders ?? []} readOnly={readOnly} manage={openDevices} />
           <div className="topbar-right">
             <button
               className="connection-summary"
@@ -333,7 +332,6 @@ export default function App() {
             </button>
           </div>
         </header>
-        <RecorderStrip configs={w.recorders ?? []} readOnly={readOnly} manage={openDevices} />
       </div>
       <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top">

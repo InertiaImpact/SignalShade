@@ -26,7 +26,7 @@ export function Modal({
       if (e.key === 'Escape') closeRef.current()
       if (e.key === 'Tab') {
         const elements = ref.current?.querySelectorAll<HTMLElement>(
-          'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,[tabindex="0"]',
+          'button:not(:disabled),input:not(:disabled),select:not(:disabled),textarea:not(:disabled),a[href],summary,iframe,[tabindex="0"]',
         )
         if (!elements?.length) return
         const first = elements[0],

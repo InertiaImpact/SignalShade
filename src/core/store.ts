@@ -13,6 +13,7 @@ import type {
   Change,
   Channel,
   ColorPreset,
+  Device,
   DeviceAdapter,
   Gang,
   ParameterId,
@@ -44,6 +45,44 @@ interface Job {
   expected?: number
   context: string
 }
+const deskLockKey = 'signalshade-desk-locked'
+const processorControlKey = (device: Device) =>
+  `signalshade-processor-control:${device.id}:${device.address}`
+function sessionPreference(key: string, value?: string | null) {
+  try {
+    if (value === undefined) return sessionStorage.getItem(key)
+    if (value === null) sessionStorage.removeItem(key)
+    else sessionStorage.setItem(key, value)
+  } catch {
+    // A tab without session storage can still connect and arm manually.
+  }
+}
+function processorControlSignature(model: Model, firmware: string, channels: Channel[]) {
+  return JSON.stringify([
+    model,
+    firmware,
+    [...channels]
+      .sort((a, b) => a.processor - b.processor)
+      .map((channel) => [
+        channel.processor,
+        [...channel.descriptors]
+          .sort((a, b) => a.id.localeCompare(b.id))
+          .map((d) => [
+            d.id,
+            d.nativeId,
+            d.kind,
+            d.unit,
+            d.min,
+            d.max,
+            d.step,
+            d.neutral,
+            d.scale,
+            d.offset,
+            d.choices?.map((choice) => choice.value),
+          ]),
+      ]),
+  ])
+}
 export class DeskStore {
   private state: Snapshot = {
     workspace: demoWorkspace(),
@@ -57,6 +96,7 @@ export class DeskStore {
   }
   private listeners = new Set<() => void>()
   private adapters = new Map<string, DeviceAdapter>()
+  private restoring = new Map<string, AbortController>()
   private queues = new Map<string, Job[]>()
   private running = new Set<string>()
   private historyIds = new Map<string, UndoEntry>()
@@ -74,7 +114,18 @@ export class DeskStore {
     },
   )
   setControlsLocked(controlsLocked: boolean) {
+    sessionPreference(deskLockKey, controlsLocked ? 'true' : null)
     this.emit({ controlsLocked })
+    if (!controlsLocked && this.state.ready && !this.state.lockedTab)
+      this.recorders.sync(this.state.workspace.recorders ?? [])
+  }
+  private rememberProcessorControl(device: Device, armed: boolean) {
+    if (device.simulated) return
+    const channels = this.state.workspace.channels.filter((c) => c.deviceId === device.id)
+    sessionPreference(
+      processorControlKey(device),
+      armed ? processorControlSignature(device.model, device.firmware, channels) : null,
+    )
   }
   saveRecorders(recorders: RecorderConfig[]) {
     if (!this.canEdit()) return
@@ -147,12 +198,14 @@ export class DeskStore {
         storageError: `Could not restore local workspace: ${message(e)}. Export a backup before closing.`,
       })
     }
-    this.emit({ ready: true })
+    this.emit({ ready: true, controlsLocked: sessionPreference(deskLockKey) === 'true' })
     if (!this.state.lockedTab) this.recorders.sync(this.state.workspace.recorders ?? [])
     this.log('Desk ready. Demo devices never send network commands.')
+    if (!this.state.lockedTab) await this.restoreProcessors()
   }
   dispose() {
     this.generation++
+    this.restoring.forEach((controller) => controller.abort())
     this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
     this.releaseLock?.()
@@ -394,7 +447,10 @@ export class DeskStore {
       ),
     )
     this.convergeRemainders.clear()
+    this.state.workspace.devices.forEach((d) => this.rememberProcessorControl(d, false))
     this.generation++
+    this.restoring.forEach((controller) => controller.abort())
+    this.restoring.clear()
     this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
     this.adapters.clear()
@@ -406,52 +462,153 @@ export class DeskStore {
   }
   connect(adapter: AjaAdapter, result: ProbeResult, label: string) {
     if (!this.canEdit()) return
-    if (!result.model || !result.channels.length || result.checks.some((c) => c.status === 'fail'))
-      throw new Error('Resolve failed connection checks before adding this device')
     if (this.state.busy)
       throw new Error('Wait for pending commands before replacing a device connection')
-    const workspace = this.state.workspace
-    const old = workspace.devices.find((d) => d.id === result.address)
-    let deviceNumber = 1
-    while (
-      workspace.devices.some((d) => d.id !== result.address && d.label === `FS${deviceNumber}`)
+    const saved = this.state.workspace.devices.find(
+      (device) => !device.simulated && device.address === result.address,
     )
+    this.installProcessor(adapter, result, label, saved)
+    if (saved) this.rememberProcessorControl(saved, false)
+  }
+  private installProcessor(
+    adapter: AjaAdapter,
+    result: ProbeResult,
+    label: string,
+    saved?: Device,
+    restoreControl = false,
+  ) {
+    if (!result.model || !result.channels.length || result.checks.some((c) => c.status === 'fail'))
+      throw new Error(
+        result.checks.find((check) => check.status === 'fail')?.detail ??
+          'Resolve failed connection checks before adding this device',
+      )
+    const workspace = this.state.workspace
+    const id = saved?.id ?? result.address
+    let deviceNumber = 1
+    while (workspace.devices.some((d) => d.id !== id && d.label === `FS${deviceNumber}`))
       deviceNumber++
-    const deviceLabel = label.trim() || old?.label || `FS${deviceNumber}`
-    const others = workspace.channels.filter((c) => c.deviceId !== result.address)
+    const deviceLabel = label.trim() || saved?.label || `FS${deviceNumber}`
+    const others = workspace.channels.filter((c) => c.deviceId !== id)
     if (others.length + result.channels.length > 32)
       throw new Error(
         'This workspace supports up to 32 channels. Remove demo devices or start an empty workspace first.',
       )
-    this.adapters.get(result.address)?.dispose()
-    this.adapters.set(result.address, adapter)
-    const channels = result.channels.map((c) => ({
-      ...c,
-      locked: workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.locked ?? false,
-      label:
-        workspace.channels.find((oldChannel) => oldChannel.id === c.id)?.label ??
-        `${deviceLabel} - Input ${c.processor}`,
-    }))
-    const ids = new Set([...others, ...channels].map((c) => c.id))
+    this.restoring.get(id)?.abort()
+    this.adapters.get(id)?.dispose()
+    this.adapters.set(id, adapter)
+    const prior = new Map(workspace.channels.map((c) => [c.id, c]))
+    const channels = new Map(
+      result.channels.map((channel) => {
+        const old = prior.get(channel.id)
+        const c = {
+          ...channel,
+          deviceId: id,
+          locked: old?.locked ?? false,
+          label: old?.label ?? `${deviceLabel} - Input ${channel.processor}`,
+        }
+        return [c.id, c]
+      }),
+    )
+    const ordered = workspace.channels.flatMap((c) => {
+      if (c.deviceId !== id) return [c]
+      const updated = channels.get(c.id)
+      channels.delete(c.id)
+      return updated ? [updated] : []
+    })
+    ordered.push(...channels.values())
+    const ids = new Set(ordered.map((c) => c.id))
+    const firmware = result.firmware ?? 'Unknown'
+    const armed =
+      restoreControl &&
+      !!saved &&
+      result.channels.some((c) => c.descriptors.length > 0) &&
+      result.channels.every(
+        (c) => !!c.updatedAt && Date.now() - c.updatedAt <= 15000 && !c.issue,
+      ) &&
+      sessionPreference(processorControlKey(saved)) ===
+        processorControlSignature(result.model, firmware, result.channels)
+    const device: Device = {
+      id,
+      label: deviceLabel,
+      model: result.model,
+      firmware,
+      address: result.address,
+      simulated: false,
+      status: 'online',
+      armed,
+    }
     this.workspace({
       ...workspace,
-      devices: [
-        ...workspace.devices.filter((d) => d.id !== result.address),
-        {
-          id: result.address,
-          label: deviceLabel,
-          model: result.model,
-          firmware: result.firmware ?? 'Unknown',
-          address: result.address,
-          simulated: false,
-          status: 'online',
-          armed: false,
-        },
-      ],
-      channels: [...others, ...channels],
+      devices: saved
+        ? workspace.devices.map((d) => (d.id === id ? device : d))
+        : [...workspace.devices, device],
+      channels: ordered,
       gangs: workspace.gangs.map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) })),
     })
-    this.log(`Connected ${deviceLabel} in read-only mode`, 'success')
+    if (restoreControl && !armed) this.rememberProcessorControl(device, false)
+    this.log(
+      armed
+        ? `Reconnected ${deviceLabel} with writes enabled`
+        : `Connected ${deviceLabel} in read-only mode`,
+      'success',
+    )
+  }
+  private async restoreProcessors() {
+    const devices = this.state.workspace.devices.filter((device) => !device.simulated)
+    if (!devices.length) return
+    const generation = this.generation
+    this.emit({
+      workspace: {
+        ...this.state.workspace,
+        devices: this.state.workspace.devices.map((device) =>
+          device.simulated ? device : { ...device, status: 'connecting' },
+        ),
+      },
+    })
+    const restore = async () => {
+      while (devices.length && generation === this.generation) {
+        const saved = devices.shift()!
+        if (
+          !this.state.workspace.devices.some((d) => d.id === saved.id && d.status === 'connecting')
+        )
+          continue
+        const controller = new AbortController()
+        this.restoring.set(saved.id, controller)
+        const timer = setTimeout(() => controller.abort(), 75_000)
+        let adapter: AjaAdapter | undefined
+        try {
+          adapter = new AjaAdapter(saved.address)
+          const result = await adapter.probe(controller.signal, saved.model)
+          controller.signal.throwIfAborted()
+          const current = this.state.workspace.devices.find((d) => d.id === saved.id)
+          if (generation === this.generation && current?.status === 'connecting') {
+            this.restoring.delete(saved.id)
+            this.installProcessor(adapter, result, '', current, true)
+            adapter = undefined
+          }
+        } catch (e) {
+          if (generation !== this.generation) return
+          const current = this.state.workspace.devices.find((d) => d.id === saved.id)
+          if (current?.status !== 'connecting') continue
+          this.rememberProcessorControl(current, false)
+          const issue = controller.signal.aborted ? 'Reconnect timed out' : message(e)
+          this.emit({
+            workspace: {
+              ...this.state.workspace,
+              devices: this.state.workspace.devices.map((d) =>
+                d.id === saved.id ? { ...d, status: 'offline', issue } : d,
+              ),
+            },
+          })
+          this.log(`${current.label}: ${issue}`, 'error')
+        } finally {
+          if (this.restoring.get(saved.id) === controller) this.restoring.delete(saved.id)
+          clearTimeout(timer)
+          adapter?.dispose()
+        }
+      }
+    }
+    await Promise.all(Array.from({ length: Math.min(3, devices.length) }, restore))
   }
   armDevice(id: string, armed: boolean) {
     if (!this.canEdit()) return
@@ -466,6 +623,7 @@ export class DeskStore {
       )
     )
       throw new Error('No mapped color controls; this device is available for monitoring only')
+    if (device && (!armed || !this.running.has(id))) this.rememberProcessorControl(device, armed)
     this.workspace({
       ...this.state.workspace,
       devices: this.state.workspace.devices.map((d) => (d.id === id ? { ...d, armed } : d)),
@@ -475,6 +633,9 @@ export class DeskStore {
   removeDevice(id: string) {
     if (!this.canEdit()) return
     if (this.state.busy) throw new Error('Wait for pending commands before removing a device')
+    const device = this.state.workspace.devices.find((d) => d.id === id)
+    if (device) this.rememberProcessorControl(device, false)
+    this.restoring.get(id)?.abort()
     this.adapters.get(id)?.dispose()
     this.adapters.delete(id)
     const channels = this.state.workspace.channels.filter((c) => c.deviceId !== id),
@@ -658,9 +819,13 @@ export class DeskStore {
             job.mode === 'relative' && Math.abs(next - (before + job.value)) > d.step / 2
           const current = this.state.workspace.channels.find((c) => c.id === channel.id)!
           this.available(current)
+          if (!device.simulated) this.rememberProcessorControl(device, false)
           const after = device.simulated
             ? await new Promise<number>((r) => setTimeout(() => r(next), 25))
             : await adapter!.write(current, d, next)
+          const connected = this.state.workspace.devices.find((d) => d.id === deviceId)
+          if (connected?.armed && !connected.simulated)
+            this.rememberProcessorControl(connected, true)
           this.patchChannel(channel.id, {
             values: {
               ...this.state.workspace.channels.find((c) => c.id === channel.id)!.values,
@@ -694,6 +859,8 @@ export class DeskStore {
             ) &&
             !this.state.workspace.devices.find((d) => d.id === deviceId)?.simulated
           ) {
+            const failedDevice = this.state.workspace.devices.find((d) => d.id === deviceId)
+            if (failedDevice) this.rememberProcessorControl(failedDevice, false)
             const dropped = queue.splice(0).length
             this.emit({ busy: this.state.busy - dropped })
             this.workspace({
@@ -879,6 +1046,7 @@ export class DeskStore {
         }
       } catch (e) {
         if (generation !== this.generation || this.adapters.get(device.id) !== adapter) return
+        this.rememberProcessorControl(device, false)
         this.workspace({
           ...this.state.workspace,
           devices: this.state.workspace.devices.map((d) =>

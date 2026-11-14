@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   bridgeMessage,
   connectInstructions,
@@ -10,8 +10,6 @@ export function ConnectHelp() {
   const [version, setVersion] = useState<string>()
   const [expanded, setExpanded] = useState(false)
   const [shortcutStatus, setShortcutStatus] = useState('')
-  const [approval, setApproval] = useState<{ origin: string; url: string }>()
-  const panel = useRef<HTMLDetailsElement>(null)
   useEffect(() => {
     let alive = true
     const detect = () =>
@@ -22,24 +20,12 @@ export function ConnectHelp() {
       setExpanded(true)
     }
     detect()
-    const open = (e: Event) => {
-      setApproval((e as CustomEvent<{ origin: string; url: string }>).detail)
-      setExpanded(true)
-      requestAnimationFrame(() =>
-        panel.current?.scrollIntoView({ behavior: 'smooth', block: 'center' }),
-      )
-    }
-    const close = () => setApproval(undefined)
-    window.addEventListener('signalshade-approval-open', open)
-    window.addEventListener('signalshade-approval-close', close)
     window.addEventListener('focus', detect)
     window.addEventListener('signalshade-connection-help', help)
     return () => {
       alive = false
       window.removeEventListener('focus', detect)
       window.removeEventListener('signalshade-connection-help', help)
-      window.removeEventListener('signalshade-approval-open', open)
-      window.removeEventListener('signalshade-approval-close', close)
       window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))
     }
   }, [])
@@ -82,7 +68,6 @@ export function ConnectHelp() {
         </p>
       )}
       <details
-        ref={panel}
         className="connect-help"
         open={expanded}
         onToggle={(e) => setExpanded(e.currentTarget.open)}
@@ -91,8 +76,8 @@ export function ConnectHelp() {
         {version ? (
           <>
             <p>
-              Connections use the extension. Approve a new device here; connection testing resumes
-              automatically. Reload after an extension update.
+              Approve a new address when prompted. Connection testing continues automatically.
+              Reload SignalShade after updating the extension.
             </p>
           </>
         ) : (
@@ -118,18 +103,6 @@ export function ConnectHelp() {
               extension.
             </p>
           </>
-        )}
-        {approval && (
-          <div className="connect-approval">
-            <iframe title={`Allow ${approval.origin}`} src={approval.url} />
-            <button
-              className="button"
-              type="button"
-              onClick={() => window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))}
-            >
-              Cancel approval
-            </button>
-          </div>
         )}
       </details>
     </section>

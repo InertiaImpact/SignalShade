@@ -15,7 +15,10 @@
       return
     active++
     try {
-      const reply = await chrome.runtime.sendMessage(m)
+      const reply =
+        m.type === 'request-host-access' && !navigator.userActivation.isActive
+          ? { ok: true, data: { fallback: true } }
+          : await chrome.runtime.sendMessage(m)
       window.postMessage(
         { source: 'signalshade-connect', protocol: 1, id: m.id, ...reply },
         location.origin,

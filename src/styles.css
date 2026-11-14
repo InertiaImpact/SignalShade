@@ -3586,7 +3586,7 @@ button {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 370px), 1fr));
 }
 .app .card-heading {
-  padding: 13px 14px;
+  padding: 7px 14px;
   gap: 9px;
 }
 .app .card-select strong {
@@ -3619,11 +3619,17 @@ button {
 }
 .app .card-control-tabs > button[role='tab'] {
   font-size: 12px;
-  padding: 10px 0;
+  padding: 6px 0;
 }
 .app .channel-card .card-parameters {
-  gap: 12px 20px;
-  padding: 13px 14px;
+  gap: 6px 20px;
+  padding: 7px 14px;
+}
+.app .card-parameters .parameter-heading {
+  height: 30px;
+}
+.app .card-parameters .slider-control {
+  margin-top: 0;
 }
 .app .parameter-heading {
   height: 34px;
@@ -3690,14 +3696,14 @@ button {
   padding: 6px 15px;
 }
 .app .channel-card > .rgb-tabs {
-  margin: 10px 14px 0;
+  margin: 4px 14px 0;
 }
 .app .channel-card .card-parameters.rgb-parameters {
-  gap: 10px;
+  gap: 5px;
 }
 .app .card-bottom {
-  padding: 8px 14px;
-  min-height: 34px;
+  padding: 2px 14px;
+  min-height: 32px;
 }
 .app .group-tags button {
   font-size: 10px;
@@ -4141,7 +4147,7 @@ button {
   max-width: none;
 }
 .app .gang-card > .card-heading {
-  min-height: 66px;
+  min-height: 46px;
 }
 .compact-converge {
   flex-direction: column;
@@ -4180,7 +4186,6 @@ button {
   }
 }
 
-/* Recorder monitoring uses one compact row; details stay out of the shading pane. */
 .header-area {
   grid-column: 1 / -1;
   grid-row: 1;
@@ -4190,61 +4195,93 @@ button {
 .header-area .topbar {
   height: 64px;
 }
-.app.has-recorders {
-  grid-template-rows: 154px minmax(0, 1fr) 35px;
-}
 .recorder-strip {
-  height: 90px;
   display: flex;
-  border-bottom: 1px solid var(--border-subtle);
+  flex: 0 1 auto;
+  align-items: center;
+  gap: 6px;
   min-width: 0;
-  background: var(--surface-base);
+  margin: 0 10px 0 auto;
+}
+.recorder-strip + .topbar-right {
+  margin-left: 0;
+  flex-shrink: 0;
 }
 .recorder-overview {
-  flex: 0 0 112px;
   display: flex;
-  flex-direction: column;
-  justify-content: center;
+  align-items: center;
+  flex: 0 0 auto;
   gap: 6px;
-  text-align: left;
-  padding: 12px;
-  border-right: 1px solid var(--border-subtle);
+  min-height: 30px;
+  padding: 0 6px;
+  font: 10px var(--mono);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
+  white-space: nowrap;
 }
-.recorder-overview strong {
-  font: 12px var(--mono);
-}
-.recorder-overview small {
-  color: var(--text-muted);
+.recorder-overview.single {
+  display: none;
 }
 .recorder-scroll {
   display: flex;
+  align-items: center;
+  gap: 4px;
   overflow-x: auto;
+  scrollbar-width: thin;
   min-width: 0;
-  flex: 1;
+  padding: 2px;
 }
 .recorder-capsule {
-  flex: 0 0 430px;
-  min-width: 0;
-  padding: 12px 14px;
-  border-right: 1px solid var(--border-subtle);
-}
-.recorder-line {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
-  gap: 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 5px;
 }
-.recorder-line > strong {
+.recorder-glance {
+  display: grid;
+  align-content: center;
+  gap: 1px;
+  min-width: 80px;
+  max-width: 148px;
+  padding: 3px 7px;
+  min-height: 32px;
+  border-radius: 4px 0 0 4px;
+  text-align: left;
+}
+.recorder-glance:hover,
+.recorder-overview:hover {
+  background: var(--surface-hover);
+}
+.recorder-glance-label,
+.recorder-state {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  white-space: nowrap;
+}
+.recorder-glance-label {
+  font-size: 10px;
+  line-height: 12px;
+}
+.recorder-glance-label strong {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap;
-  flex: 1;
-  min-width: 40px;
+}
+.recorder-glance-label small {
+  color: var(--accent);
+  font-size: 8px;
+}
+.recorder-glance-label svg {
+  flex-shrink: 0;
 }
 .recorder-state {
-  font-size: 11px;
-  color: var(--text-secondary);
-  white-space: nowrap;
+  font-size: 10px;
+  line-height: 12px;
+  color: var(--text-muted);
 }
+.recorder-overview.recording,
 .recorder-state.recording {
   color: var(--danger, #f08080);
   font-weight: 700;
@@ -4253,40 +4290,21 @@ button {
   content: '● ';
 }
 .recorder-duration {
-  font: 12px var(--mono);
-  white-space: nowrap;
+  font: 10px var(--mono);
+  color: var(--text-secondary);
 }
-.recorder-demo {
-  color: var(--accent);
-  font-size: 9px;
-}
-.button.recorder-transport {
-  font-size: 12px;
-  padding: 6px 8px;
-  min-height: 32px;
+.button.recorder-transport.compact-transport {
+  min-height: 28px;
+  min-width: 28px;
+  margin-right: 2px;
+  justify-content: center;
+  font-size: 10px;
+  padding: 3px 5px;
   white-space: nowrap;
 }
 .recorder-transport.danger {
   border-color: var(--danger, #f08080);
   color: var(--danger, #f08080);
-}
-.recorder-media-line {
-  display: flex;
-  width: 100%;
-  gap: 10px;
-  justify-content: space-between;
-  text-align: left;
-  font-size: 11px;
-  color: var(--text-muted);
-  margin-top: 7px;
-  padding: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.recorder-media-line > span {
-  flex-shrink: 0;
-  color: var(--text-secondary);
 }
 .recorder-media-details {
   display: grid;
@@ -4340,17 +4358,21 @@ button {
   .app .workspace-switch {
     max-width: 150px;
   }
-  .header-recorders {
-    font-size: 11px;
-    padding: 6px;
-  }
-}
-@media (max-width: 800px) {
-  .app.has-recorders .sidebar {
-    top: 154px;
-  }
 }
 @media (max-width: 560px) {
+  .topbar:has(.recorder-strip) .brand {
+    padding-left: 8px;
+    gap: 3px;
+  }
+  .recorder-strip {
+    margin-right: 5px;
+  }
+  .recorder-overview.single {
+    display: flex;
+  }
+  .recorder-scroll {
+    display: none;
+  }
   .app .header-area {
     position: fixed;
     inset: 0 0 auto;
@@ -4359,35 +4381,12 @@ button {
   .app .header-area .topbar {
     position: static;
   }
-  .app.has-recorders {
-    padding-top: 154px;
-  }
-  .app.has-recorders .channel-toolbar {
-    top: 154px;
-  }
   .app .topbar .mode-pill {
     display: none;
   }
   .app .topbar .mode-pill.demo {
     display: flex;
     flex-shrink: 0;
-  }
-  .recorder-overview {
-    flex-basis: 78px;
-    padding: 8px;
-  }
-  .recorder-overview strong {
-    font-size: 10px;
-  }
-  .recorder-overview small {
-    font-size: 10px;
-  }
-  .recorder-capsule {
-    flex-basis: 350px;
-    padding-inline: 10px;
-  }
-  .recorder-demo {
-    display: none;
   }
 }
 /* Connection assistance stays inside device settings, outside the live desk. */
@@ -4416,12 +4415,15 @@ button {
   cursor: pointer;
   font-weight: 600;
 }
+.connect-approval {
+  margin-bottom: 12px;
+}
 .connect-approval iframe {
+  display: block;
   width: 100%;
-  height: 300px;
+  height: 255px;
   border: 0;
-  border-radius: 6px;
-  margin: 8px 0;
+  margin-bottom: 4px;
 }
 .devices-toolbar {
   display: flex;
@@ -4786,9 +4788,39 @@ button {
   gap: 16px;
   margin: 0 0 18px;
 }
-.connection-details-heading > div {
+.connection-details-heading > div:first-child {
   min-width: 0;
   flex: 1;
+}
+.connection-heading-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.button.device-control-action {
+  color: #101418;
+  background: var(--device-control-color);
+  border-color: var(--device-control-color);
+  font-weight: 700;
+  white-space: nowrap;
+}
+.device-control-action.enable-control {
+  --device-control-color: #59e482;
+}
+.device-control-action.lock-control {
+  --device-control-color: #6ab8ff;
+}
+.button.device-control-action:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--device-control-color) 80%, white);
+}
+@media (max-width: 480px) {
+  .connection-details-heading {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .connection-details-heading > div:first-child {
+    flex-basis: 100%;
+  }
 }
 .device-name-input {
   display: block;

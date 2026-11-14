@@ -123,6 +123,21 @@ export async function ensureDeviceAccess(
     throw new Error('Finish the current device approval first')
   }
   const promise = (async () => {
+    const verify = async () => {
+      const verified = (await bridgeMessage(statusType, payload, signal)) as { allowed: boolean }
+      if (!verified.allowed) throw new Error('Device permission was not saved')
+    }
+    if (!scan && version.localeCompare('0.4.3', undefined, { numeric: true }) >= 0) {
+      const native = (await bridgeMessage('request-host-access', payload, signal, 120000)) as {
+        approved?: boolean
+        fallback?: boolean
+      }
+      if (!native.fallback) {
+        if (!native.approved) throw new Error('Device access was not granted')
+        await verify()
+        return
+      }
+    }
     const reply = (await bridgeMessage(
       scan ? 'scan-permission' : 'permission',
       payload,
@@ -160,7 +175,7 @@ export async function ensureDeviceAccess(
         finish(e.data.approved === true ? undefined : new Error('Device access was not granted'))
       }
       const timer = setTimeout(
-        () => finish(new Error('Device approval expired. Click Connect to try again.')),
+        () => finish(new Error('Device approval expired. Try adding the device again.')),
         120000,
       )
       window.addEventListener('message', receive)
@@ -172,8 +187,7 @@ export async function ensureDeviceAccess(
         }),
       )
     })
-    const verified = (await bridgeMessage(statusType, payload, signal)) as { allowed: boolean }
-    if (!verified.allowed) throw new Error('Device permission was not saved')
+    await verify()
   })()
   pendingApproval = { origin, promise }
   try {

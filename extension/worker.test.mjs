@@ -5,7 +5,8 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
   const originalChrome = globalThis.chrome,
     originalFetch = globalThis.fetch
   let listener,
-    permitted = true
+    permitted = true,
+    approvalOutcome = false
   const storage = (initial) => {
     const data = { ...initial }
     return {
@@ -19,6 +20,7 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
   const origin = 'http://10.1.1.1'
   const calls = []
   const tabs = []
+  const permissions = []
   globalThis.chrome = {
     runtime: {
       id: 'test',
@@ -27,7 +29,14 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
       onMessage: { addListener: (fn) => (listener = fn) },
     },
     storage: { local: storage({ origins: [origin] }), session: storage({}) },
-    permissions: { contains: async () => permitted },
+    permissions: {
+      contains: async () => permitted,
+      request: ({ origins }) => {
+        permissions.push(origins)
+        if (approvalOutcome instanceof Error) throw approvalOutcome
+        return Promise.resolve(approvalOutcome)
+      },
+    },
     tabs: { create: async (options) => tabs.push(options), onRemoved: { addListener: () => {} } },
   }
   const list = [
@@ -77,6 +86,23 @@ test('worker enforces sender, grants, discovery, duplicate suppression, and writ
       false,
     )
     assert.equal(tabs.length, 0)
+    const fresh = { type: 'request-host-access', origin: 'http://10.1.1.5:8080' }
+    assert.equal((await send(fresh, { ...sender, url: 'https://evil.example/' })).ok, false)
+    assert.equal((await send({ ...fresh, deadline: 0 })).ok, false)
+    assert.equal((await send({ ...fresh, origin: 'https://example.org' })).ok, false)
+    assert.equal(permissions.length, 0)
+    const denial = send(fresh)
+    assert.deepEqual(permissions, [['http://10.1.1.5/*']])
+    assert.deepEqual((await denial).data, { approved: false })
+    assert.deepEqual((await send({ ...fresh, type: 'status' })).data, { allowed: false })
+    approvalOutcome = new Error('User gesture required')
+    assert.deepEqual((await send(fresh)).data, { fallback: true })
+    approvalOutcome = true
+    assert.deepEqual((await send(fresh)).data, { approved: true })
+    assert.deepEqual((await send({ ...fresh, type: 'status' })).data, { allowed: true })
+    assert.deepEqual((await send({ type: 'status', origin: 'http://10.1.1.5:8081' })).data, {
+      allowed: false,
+    })
     assert.equal(
       (await send({ type: 'openExtensions', origin: undefined, url: 'https://evil.example/' })).data
         .opened,

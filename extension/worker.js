@@ -144,6 +144,24 @@ async function handle(m, sender) {
   }
   const origin = deviceOrigin(m.origin)
   const hostPattern = `${new URL(origin).protocol}//${new URL(origin).hostname}/*`
+  const saveGrant = () =>
+    serialized('grants', async () => {
+      const previous = (await chrome.storage.local.get('origins')).origins ?? []
+      await chrome.storage.local.set({ origins: [...new Set([...previous, origin])] })
+    })
+  if (m.type === 'request-host-access') {
+    if (!Number.isFinite(m.deadline) || m.deadline <= Date.now())
+      throw new Error('Device approval expired. Click Add device to try again.')
+    // Chrome checks the message's user gesture before the worker yields.
+    let approved
+    try {
+      approved = await chrome.permissions.request({ origins: [hostPattern] })
+    } catch {
+      return { fallback: true }
+    }
+    if (approved) await saveGrant()
+    return { approved }
+  }
   if (m.type === 'permission') {
     const key = `approval:${sender.tab.id}`
     const token = crypto.randomUUID()
@@ -172,7 +190,7 @@ async function handle(m, sender) {
       legacyReads.get(`${sender.tab.id}:${sender.documentId}:${origin}`)?.size !== fs1ReadIds.length
     )
       throw new Error('Read the FS1 status and ProcAmp controls before adding')
-    await chrome.storage.local.set({ origins: [...new Set([...grants, origin])] })
+    await saveGrant()
     return { allowed: true }
   }
   if (!allowed && !scanAllowed)

@@ -252,6 +252,40 @@ it('adds a selectable demo model and offers one combined debug download', async 
   expect(mocks.debug).toHaveBeenCalledOnce()
   expect(mocks.access).not.toHaveBeenCalled()
 })
+it('keeps manual add fields through a failure and clears them after a successful add', async () => {
+  const section = host.querySelector('section[aria-label="Add by IP"]')!
+  const select = section.querySelector('select')!
+  const fields = [...section.querySelectorAll('input')]
+  const values = ['Camera truck', '10.0.0.10', 'operator', 'test-password']
+  const submit = () =>
+    act(async () => {
+      section
+        .querySelector('form')!
+        .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }))
+    })
+  await act(async () => {
+    select.value = 'FS2'
+    select.dispatchEvent(new Event('change', { bubbles: true }))
+    fields.forEach((field, i) => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(
+        field,
+        values[i],
+      )
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+  })
+  mocks.access.mockRejectedValueOnce(new Error('Device access was not granted'))
+  await submit()
+  expect(fields.map((field) => field.value)).toEqual(values)
+  expect(mocks.probe).not.toHaveBeenCalled()
+
+  await submit()
+  expect(mocks.access).toHaveBeenLastCalledWith(report.address, undefined, expect.any(AbortSignal))
+  await act(async () => finishProbe(report))
+  expect(mocks.connect).toHaveBeenCalledWith(expect.anything(), report, 'Camera truck')
+  expect(fields.map((field) => field.value)).toEqual(['', '', '', ''])
+  expect(host.querySelector('.connection-add')?.classList.contains('selected')).toBe(true)
+})
 it('retains an added device custom label when a scan reports a different system name', async () => {
   const workspace = emptyWorkspace()
   workspace.devices = [
