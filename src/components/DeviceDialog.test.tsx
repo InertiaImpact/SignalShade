@@ -40,6 +40,7 @@ vi.mock('../adapters/discovery', () => ({ scanDevices: mocks.scan }))
 vi.mock('../adapters/transport', () => ({
   detectConnect: async () => '0.3.3',
   ensureDeviceAccess: mocks.access,
+  requestAddDeviceAccess: mocks.access,
   bridgeMessage: mocks.bridge,
 }))
 vi.mock('./ConnectHelp', () => ({ ConnectHelp: () => null }))
@@ -280,7 +281,7 @@ it('keeps manual add fields through a failure and clears them after a successful
   expect(mocks.probe).not.toHaveBeenCalled()
 
   await submit()
-  expect(mocks.access).toHaveBeenLastCalledWith(report.address, undefined, expect.any(AbortSignal))
+  expect(mocks.access).toHaveBeenLastCalledWith(report.address, expect.any(AbortSignal))
   await act(async () => finishProbe(report))
   expect(mocks.connect).toHaveBeenCalledWith(expect.anything(), report, 'Camera truck')
   expect(fields.map((field) => field.value)).toEqual(['', '', '', ''])

@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { Download, Plus, Search, Server, Circle, QrCode } from 'lucide-react'
 import { AjaAdapter, ipv4Range, message, normalizeAddress } from '../adapters/aja'
-import { bridgeMessage, detectConnect, ensureDeviceAccess } from '../adapters/transport'
+import {
+  bridgeMessage,
+  detectConnect,
+  ensureDeviceAccess,
+  requestAddDeviceAccess,
+} from '../adapters/transport'
 import { scanDevices, type DiscoveryResult } from '../adapters/discovery'
 import { desk } from '../core/store'
 import { diagnostics, downloadDebugPackage } from '../core/diagnostics'
@@ -150,6 +155,7 @@ export function DeviceDialog({
     try {
       const sessionUsername = source === 'manual' ? username : ''
       if (
+        source !== 'manual' &&
         !sessionUsername &&
         !sessionPassword &&
         (source === 'scan' || scanning || Object.keys(results).length) &&
@@ -165,7 +171,8 @@ export function DeviceDialog({
           }
         ).allowed
       }
-      if (!scanAccess) await ensureDeviceAccess(origin, undefined, controller.signal)
+      if (source === 'manual') await requestAddDeviceAccess(origin, controller.signal)
+      else if (!scanAccess) await ensureDeviceAccess(origin, undefined, controller.signal)
       if (controller.signal.aborted) return
       timer = setTimeout(() => {
         const error = `Add timed out while ${stage.toLowerCase()}. Use Diagnostic QR to share where it stopped.`

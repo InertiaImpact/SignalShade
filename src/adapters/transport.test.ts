@@ -1,5 +1,5 @@
 import { afterEach, expect, it, vi } from 'vitest'
-import { AjaTransport, ensureDeviceAccess } from './transport'
+import { AjaTransport, ensureDeviceAccess, requestAddDeviceAccess } from './transport'
 
 afterEach(() => vi.unstubAllGlobals())
 function extension(reply: (type: string) => { ok: boolean; data?: unknown; error?: string }) {
@@ -115,6 +115,25 @@ it('resumes after the native Chrome prompt and respects a denial', async () => {
     'request-host-access',
     'status',
   ])
+})
+it('dispatches manual Add approval before probing and never opens the embedded prompt', async () => {
+  let outcome: { fallback?: boolean; approved?: boolean } = { fallback: true }
+  const w = extension((type) => {
+    if (type === 'request-host-access') return { ok: true, data: outcome }
+    if (type === 'hello') return { ok: true, data: { version: '0.4.3', protocol: 1 } }
+    if (type === 'status') return { ok: true, data: { allowed: true } }
+    throw new Error(`Unexpected bridge request: ${type}`)
+  })
+  const open = vi.fn()
+  w.addEventListener('signalshade-approval-open', open)
+  const controller = new AbortController()
+  const first = requestAddDeviceAccess('http://10.1.1.1', controller.signal)
+  expect(w.postMessage.mock.calls.map(([m]) => m.type)).toEqual(['request-host-access', 'hello'])
+  await expect(first).rejects.toThrow('Click Add device to try again')
+  outcome = { approved: true }
+  await requestAddDeviceAccess('http://10.1.1.1', controller.signal)
+  expect(open).not.toHaveBeenCalled()
+  expect(w.postMessage.mock.calls.at(-1)?.[0].type).toBe('status')
 })
 it('returns the embedded approval and resumes automatically after a verified grant', async () => {
   let granted = false

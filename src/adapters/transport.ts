@@ -92,6 +92,39 @@ function notify(origin: string) {
     window.dispatchEvent(new CustomEvent('signalshade-connection-help', { detail: origin }))
 }
 
+/** Start the native request in the Add device click, before awaiting bridge checks. */
+export async function requestAddDeviceAccess(origin: string, signal: AbortSignal): Promise<void> {
+  const controller = new AbortController()
+  const combined = AbortSignal.any([signal, controller.signal])
+  const payload = { origin }
+  const native = bridgeMessage('request-host-access', payload, combined, 120000).then(
+    (reply) => ({ reply: reply as { approved?: boolean; fallback?: boolean } }),
+    (error: unknown) => ({ error }),
+  )
+  try {
+    const version = await detectConnect(combined)
+    signal.throwIfAborted()
+    if (!version) return
+    if (version.localeCompare('0.4.3', undefined, { numeric: true }) < 0) {
+      const status = (await bridgeMessage('status', payload, signal)) as { allowed: boolean }
+      if (status.allowed) return
+      throw new Error(
+        'Update SignalShade Connect to v0.4.3 or later, reload it, then reload SignalShade.',
+      )
+    }
+    const result = await native
+    signal.throwIfAborted()
+    if ('error' in result) throw result.error
+    if (result.reply.fallback)
+      throw new Error('Chrome could not open its permission prompt. Click Add device to try again.')
+    if (!result.reply.approved) throw new Error('Device access was not granted')
+    const verified = (await bridgeMessage('status', payload, signal)) as { allowed: boolean }
+    if (!verified.allowed) throw new Error('Device permission was not saved')
+  } finally {
+    controller.abort()
+  }
+}
+
 let pendingApproval: { origin: string; promise: Promise<void> } | undefined
 /** Called only by explicit Connect actions. Polls never open approval UI. */
 export async function ensureDeviceAccess(
