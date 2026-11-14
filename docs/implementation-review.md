@@ -1,5 +1,9 @@
 # Recorder implementation and code review
 
+## Device Add progress and cancellation — 0.5.3
+
+Devices shows the current Add phase and a Cancel button at the top of the manager. The read-only probe has a 75-second budget after browser approval and can cancel an in-flight context or color read. FS-HDR reuses its initial source context and still rechecks it after readback. The diagnostic QR includes the most recent Add phase and any current REST endpoint even when the report is incomplete. Connect 0.4.2 is unchanged.
+
 ## FS-HDR identity fallback — 0.5.2
 
 A live report showed a readable descriptor table but no model identity and an unreachable device homepage. The probe now recognizes the firmware's HDR descriptor signature and tries the canonical REST identity queries even when they are absent from the table. Explicitly selecting FS-HDR also reaches its probe when FS shading descriptors are present. Both paths still require an operating-mode read, a usable input map, and verified shading readbacks. A confirmed different model is never overridden. Connect 0.4.2 is unchanged.

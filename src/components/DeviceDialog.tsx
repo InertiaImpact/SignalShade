@@ -24,6 +24,20 @@ const fsModels: Model[] = ['FS4', 'FS2', 'FS1-X', 'FS1', 'FS-HDR']
 type DeviceType = Model | RecorderModel | 'auto'
 const isRecorder = (type: DeviceType): type is RecorderModel =>
   recorderModels.includes(type as RecorderModel)
+const addTimeout = 75_000
+async function untilAborted<T>(work: Promise<T>, signal: AbortSignal): Promise<T> {
+  let onAbort: () => void = () => {}
+  const cancelled = new Promise<never>((_, reject) => {
+    onAbort = () => reject(signal.reason)
+    if (signal.aborted) onAbort()
+    else signal.addEventListener('abort', onAbort, { once: true })
+  })
+  try {
+    return await Promise.race([work, cancelled])
+  } finally {
+    signal.removeEventListener('abort', onAbort)
+  }
+}
 function conciseError(text: string) {
   if (/CORS|Browser could not read|local.network restrictions/i.test(text))
     return 'Browser access blocked. Check Connect and device access.'
@@ -58,6 +72,7 @@ export function DeviceDialog({
     [scanning, setScanning] = useState(false),
     [scanApproving, setScanApproving] = useState(false),
     [scanState, setScanState] = useState('Not started')
+  const [addStage, setAddStage] = useState('')
   const [results, setResults] = useState<Record<string, DiscoveryResult>>({}),
     [errors, setErrors] = useState<Record<string, string>>({})
   const [notice, setNotice] = useState(''),
@@ -70,6 +85,9 @@ export function DeviceDialog({
     adapters = useRef(new Set<AjaAdapter>()),
     mounted = useRef(true)
   const cancel = () => {
+    if (!abort.current) return
+    diagnostics.event({ action: 'connect-cancelled', origin: busy })
+    setNotice('Connection cancelled. Diagnostic QR can show the last step.')
     abort.current?.abort()
     window.dispatchEvent(new CustomEvent('signalshade-approval-cancel'))
   }
@@ -107,6 +125,15 @@ export function DeviceDialog({
     setBusy(origin)
     setNotice('')
     setErrors((prev) => ({ ...prev, [origin]: '' }))
+    let stage = ''
+    const progress = (next: string) => {
+      if (controller.signal.aborted || next === stage) return
+      stage = next
+      diagnostics.event({ action: 'add-stage', origin, stage })
+      if (mounted.current) setAddStage(stage)
+    }
+    let timer: ReturnType<typeof setTimeout> | undefined
+    progress('Checking device access')
     let adapter: AjaAdapter | undefined,
       kept = false,
       scanAccess = false
@@ -114,16 +141,26 @@ export function DeviceDialog({
       if (
         !sessionPassword &&
         (fromScan || scanning || Object.keys(results).length) &&
-        (await detectConnect())
+        (await detectConnect(controller.signal))
       ) {
         scanAccess = !!(
-          (await bridgeMessage('scan-status', { start: origin, end: origin })) as {
+          (await bridgeMessage(
+            'scan-status',
+            { start: origin, end: origin },
+            controller.signal,
+          )) as {
             allowed: boolean
           }
         ).allowed
       }
-      if (!scanAccess) await ensureDeviceAccess(origin)
+      if (!scanAccess) await ensureDeviceAccess(origin, undefined, controller.signal)
       if (controller.signal.aborted) return
+      timer = setTimeout(() => {
+        const error = `Add timed out while ${stage.toLowerCase()}. Use Diagnostic QR to share where it stopped.`
+        diagnostics.event({ action: 'connect-failed', origin, error })
+        controller.abort()
+        if (mounted.current) setErrors((prev) => ({ ...prev, [origin]: error }))
+      }, addTimeout)
       adapter = new AjaAdapter(
         origin,
         username || sessionPassword
@@ -133,6 +170,7 @@ export function DeviceDialog({
       adapters.current.add(adapter)
       let model: DeviceType = hint
       if (model === 'auto') {
+        progress('Checking device web identity')
         const info = (await adapter.request('device-info', controller.signal).catch((error) => {
           diagnostics.event({ action: 'identity-page-unavailable', origin, error: message(error) })
           return {}
@@ -146,7 +184,9 @@ export function DeviceDialog({
         if (info.aja && info.model)
           diagnostics.event({ action: 'device-identity', origin, model: info.model })
       }
+      if (controller.signal.aborted) return
       if (isRecorder(model)) {
+        progress('Reading recorder status')
         const old = recordersRef.current.find((c) => !c.simulated && c.address === origin)
         const config: RecorderConfig = old
           ? { ...old, label: name.trim() || old.label }
@@ -163,7 +203,7 @@ export function DeviceDialog({
         const cancelRecorder = () => desk.recorders.disconnect(config.id)
         controller.signal.addEventListener('abort', cancelRecorder, { once: true })
         try {
-          await desk.recorders.connect(config, sessionPassword)
+          await untilAborted(desk.recorders.connect(config, sessionPassword), controller.signal)
         } finally {
           controller.signal.removeEventListener('abort', cancelRecorder)
         }
@@ -174,13 +214,17 @@ export function DeviceDialog({
         if (controller.signal.aborted) {
           return
         }
-        if (scanAccess) await bridgeMessage('adopt', { origin })
+        if (scanAccess) await bridgeMessage('adopt', { origin }, controller.signal)
+        if (controller.signal.aborted) return
         diagnostics.event({ action: 'recorder-connected', origin, model })
         setNotice(`${config.label} connected`)
       } else {
-        const report = await adapter.probe(controller.signal, model === 'auto' ? undefined : model)
-        diagnostics.report(origin, report)
+        const report = await untilAborted(
+          adapter.probe(controller.signal, model === 'auto' ? undefined : model, progress),
+          controller.signal,
+        )
         if (!mounted.current || controller.signal.aborted) return
+        diagnostics.report(origin, report)
         if (
           !report.model ||
           !report.channels.length ||
@@ -192,24 +236,31 @@ export function DeviceDialog({
               .map((c) => c.detail)
               .join(' ') || 'No supported controls found',
           )
-        if (scanAccess) await bridgeMessage('adopt', { origin })
+        progress('Saving device connection')
+        if (scanAccess) await bridgeMessage('adopt', { origin }, controller.signal)
         if (controller.signal.aborted) return
         desk.connect(adapter, report, name)
         kept = true
         setNotice(`${name || report.model} added · ${origin}`)
       }
+      diagnostics.event({ action: 'connect-complete', origin })
       setPassword('')
     } catch (e) {
-      diagnostics.event({ action: 'connect-failed', origin, error: message(e) })
-      if (mounted.current && !controller.signal.aborted)
-        setErrors((prev) => ({ ...prev, [origin]: conciseError(message(e)) }))
+      if (!controller.signal.aborted) {
+        diagnostics.event({ action: 'connect-failed', origin, error: message(e) })
+        if (mounted.current) setErrors((prev) => ({ ...prev, [origin]: conciseError(message(e)) }))
+      }
     } finally {
+      clearTimeout(timer)
       if (adapter) {
         adapters.current.delete(adapter)
         if (!kept) adapter.dispose()
       }
       if (abort.current === controller) abort.current = undefined
-      if (mounted.current) setBusy(undefined)
+      if (mounted.current) {
+        setBusy(undefined)
+        setAddStage('')
+      }
     }
   }
   const runScan = async () => {
@@ -385,6 +436,15 @@ export function DeviceDialog({
           </button>
         </div>
       </div>
+      {busy && (
+        <div className="connection-progress">
+          <p role="status">{addStage}…</p>
+          <button type="button" className="button small" onClick={cancel}>
+            Cancel connection
+          </button>
+          {qrButton(busy, type)}
+        </div>
+      )}
       <div className="connections-layout">
         <nav className="connections-list" aria-label="Added devices">
           <button
@@ -694,11 +754,6 @@ export function DeviceDialog({
                 }}
               >
                 Stop scan
-              </button>
-            )}
-            {busy && (
-              <button className="button" onClick={cancel}>
-                Cancel connection
               </button>
             )}
           </div>

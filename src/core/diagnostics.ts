@@ -28,6 +28,15 @@ class Diagnostics {
   private reports = new Map<string, unknown>()
   private scans: unknown[] = []
   private events: unknown[] = []
+  private pending = new Map<number, { origin: string; path: string }>()
+  private requestId = 0
+  startRequest(origin: string, path: string) {
+    const id = ++this.requestId
+    this.pending.set(id, { origin, path })
+    return () => {
+      this.pending.delete(id)
+    }
+  }
   report(address: string, report: unknown) {
     this.reports.set(address, redactDiagnostics(report))
     if (this.reports.size > 64) this.reports.delete(this.reports.keys().next().value!)
@@ -45,7 +54,12 @@ class Diagnostics {
     if (this.events.length > 1000) this.events.shift()
   }
   snapshot() {
-    return { reports: Object.fromEntries(this.reports), scans: this.scans, events: this.events }
+    return {
+      reports: Object.fromEntries(this.reports),
+      scans: this.scans,
+      events: this.events,
+      pending: redactDiagnostics([...this.pending.values()]) as unknown[],
+    }
   }
 }
 export const diagnostics = new Diagnostics()

@@ -157,10 +157,32 @@ it('cancels a device connection without stopping the scan', async () => {
   await click('Cancel connection')
   expect(probeSignal.aborted).toBe(true)
   expect(scanSignal.aborted).toBe(false)
+  expect(button('Add').disabled).toBe(false)
   await act(async () => finishProbe(report))
   expect(mocks.connect).not.toHaveBeenCalled()
   expect(button('Stop scan')).toBeDefined()
   await act(async () => finishScan())
+})
+
+it('shows the current Add step and releases the form after a stalled probe', async () => {
+  vi.useFakeTimers()
+  try {
+    await startScan()
+    await click('Add')
+    const progress = mocks.probe.mock.calls.at(-1)![2]
+    await act(async () => progress('Reading FS-HDR input map'))
+    expect(host.textContent).toContain('Reading FS-HDR input map…')
+    await act(async () => vi.advanceTimersByTimeAsync(75_000))
+    expect(probeSignal.aborted).toBe(true)
+    expect(button('Add').disabled).toBe(false)
+    expect(host.textContent).toContain('Add timed out while reading fs-hdr input map')
+    await act(async () => finishProbe(report))
+    expect(mocks.connect).not.toHaveBeenCalled()
+    expect(scanSignal.aborted).toBe(false)
+    await act(async () => finishScan())
+  } finally {
+    vi.useRealTimers()
+  }
 })
 it('routes a discovered HELO Plus to the recorder adapter in the same manager', async () => {
   mocks.scan.mockImplementationOnce((_ips, signal, onResult, onProgress) => {

@@ -76,9 +76,9 @@ export function bridgeMessage(
     )
   })
 }
-export async function detectConnect(): Promise<string | undefined> {
+export async function detectConnect(signal?: AbortSignal): Promise<string | undefined> {
   try {
-    const reply = (await bridgeMessage('hello', {}, undefined, 1000)) as {
+    const reply = (await bridgeMessage('hello', {}, signal, 1000)) as {
       version: string
       protocol: number
     }
@@ -97,8 +97,10 @@ let pendingApproval: { origin: string; promise: Promise<void> } | undefined
 export async function ensureDeviceAccess(
   origin: string,
   scan?: { start: string; end: string },
+  signal?: AbortSignal,
 ): Promise<void> {
-  const version = await detectConnect()
+  const version = await detectConnect(signal)
+  signal?.throwIfAborted()
   if (!version) {
     if (scan)
       throw new Error('Install SignalShade Connect to scan the network with one range approval.')
@@ -114,16 +116,21 @@ export async function ensureDeviceAccess(
     )
   const payload = scan ?? { origin }
   const statusType = scan ? 'scan-status' : 'status'
-  const status = (await bridgeMessage(statusType, payload)) as { allowed: boolean }
+  const status = (await bridgeMessage(statusType, payload, signal)) as { allowed: boolean }
   if (status.allowed) return
   if (pendingApproval) {
     if (pendingApproval.origin === origin) return pendingApproval.promise
     throw new Error('Finish the current device approval first')
   }
   const promise = (async () => {
-    const reply = (await bridgeMessage(scan ? 'scan-permission' : 'permission', payload)) as {
+    const reply = (await bridgeMessage(
+      scan ? 'scan-permission' : 'permission',
+      payload,
+      signal,
+    )) as {
       approvalUrl?: string
     }
+    signal?.throwIfAborted()
     if (!reply.approvalUrl)
       throw new Error(
         'Update SignalShade Connect to v0.2.0 or newer, reload it, and reload SignalShade.',
@@ -137,6 +144,7 @@ export async function ensureDeviceAccess(
         clearTimeout(timer)
         window.removeEventListener('message', receive)
         window.removeEventListener('signalshade-approval-cancel', cancel)
+        signal?.removeEventListener('abort', cancel)
         window.dispatchEvent(new CustomEvent('signalshade-approval-close'))
         if (error) reject(error)
         else resolve()
@@ -157,13 +165,14 @@ export async function ensureDeviceAccess(
       )
       window.addEventListener('message', receive)
       window.addEventListener('signalshade-approval-cancel', cancel)
+      signal?.addEventListener('abort', cancel, { once: true })
       window.dispatchEvent(
         new CustomEvent('signalshade-approval-open', {
           detail: { origin, url: reply.approvalUrl },
         }),
       )
     })
-    const verified = (await bridgeMessage(statusType, payload)) as { allowed: boolean }
+    const verified = (await bridgeMessage(statusType, payload, signal)) as { allowed: boolean }
     if (!verified.allowed) throw new Error('Device permission was not saved')
   })()
   pendingApproval = { origin, promise }
@@ -179,6 +188,7 @@ export class AjaTransport {
   private route?: Promise<boolean>
   async fetch(origin: string, path: string, options: RequestInit): Promise<Response> {
     const started = Date.now()
+    const end = diagnostics.startRequest(origin, path)
     try {
       const response = await this.perform(origin, path, options)
       let value: unknown
@@ -205,6 +215,8 @@ export class AjaTransport {
         error: error instanceof Error ? error.message : String(error),
       })
       throw error
+    } finally {
+      end()
     }
   }
   private async perform(origin: string, path: string, options: RequestInit): Promise<Response> {

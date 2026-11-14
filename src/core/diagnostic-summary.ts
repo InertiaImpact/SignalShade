@@ -1,13 +1,22 @@
 import { version } from '../../package.json'
 
 type Row = Record<string, unknown>
-type Capture = { reports: Record<string, unknown>; events: unknown[] }
+type Capture = { reports: Record<string, unknown>; events: unknown[]; pending?: unknown[] }
 const row = (v: unknown): Row => (v && typeof v === 'object' ? (v as Row) : {})
 const text = (v: unknown) => (typeof v === 'string' ? v : '')
 const models =
   /\b(?:FS\s*\|\s*HDR|FS-?HDR|FS1-X|FS[124]|HELO(?: Plus)?|Ki Pro(?: Ultra(?: Plus| 12G)?| Rack| Mini| GO2?)?)\b/i
 const nativeIds = (value: string) => value.match(/\beParamID_[A-Za-z0-9_]{1,80}\b/g) ?? []
 const shortId = (id: string) => id.replace('eParamID_', '')
+const stepName =
+  /^(?:Checking device access|Checking device web identity|Reading device descriptors|Identifying device|Reading FS-HDR operating mode|Reading FS-HDR input map|Checking color controls for VID[0-4]|Reading recorder status|Saving device connection)$/
+function endpointName(path: string) {
+  const id = nativeIds(path)[0]
+  return (
+    /^(desc\.json|map\.json|descriptors\?|device-info)/.exec(path)?.[0] ??
+    (id ? shortId(id) : undefined)
+  )?.slice(0, 60)
+}
 
 function reason(value: string) {
   if (/did not report an AJA FS model/i.test(value)) return 'model ID not reported'
@@ -55,6 +64,9 @@ export function diagnosticSummary(
   const errorEvent = [...events].reverse().find((e) => e.action === 'connect-failed')
   const failure = failed[0] ?? row(errorEvent)
   const failureText = text(failure.detail) || text(failure.error)
+  const lastStage = text([...events].reverse().find((e) => e.action === 'add-stage')?.stage)
+  const completed = events.some((e) => e.action === 'connect-complete')
+  const cancelled = events.some((e) => e.action === 'connect-cancelled')
   const failureName = text(failure.name)
   const stage =
     /^(?:Readable API|Device identity|Ambiguous mapping|FS-HDR mapping|Operating mode|Color readback|Original FS1 interface|VID[0-4]|Processor [1-4])$/.test(
@@ -77,6 +89,14 @@ export function diagnosticSummary(
     `Device: ${model ?? 'unknown'}${firmware ? ' SW ' + firmware : ''}${mode ? ' ' + mode : ''}`,
     `Descriptors: ${count} | Processors: ${Array.isArray(report.channels) ? report.channels.length : '-'}`,
   ]
+  if (stepName.test(lastStage) && (!completed || failureText)) lines.push(`Add step: ${lastStage}`)
+  if (cancelled) lines.push('Connection cancelled')
+  const pending = [...(capture.pending ?? [])]
+    .reverse()
+    .map(row)
+    .find((e) => !!origin && e.origin === origin)
+  const waiting = endpointName(text(pending?.path))
+  if (!failureText && waiting) lines.push(`Waiting: ${waiting}`)
   if (failureText)
     lines.push(
       `${stage}: ${reason(failureText)}${semantic ? ' ' + semantic : ''}${failureIds.length ? ' ' + failureIds.join('/') : ''}`,
@@ -87,12 +107,9 @@ export function diagnosticSummary(
   ]
   for (const e of new Set(selectedEvents)) {
     const path = text(e.path)
-    const id = nativeIds(path)[0]
-    const endpoint =
-      /^(desc\.json|map\.json|descriptors\?|device-info)/.exec(path)?.[0] ??
-      (id ? shortId(id) : undefined)
+    const endpoint = endpointName(path)
     if (!endpoint) continue
-    const line = `${endpoint.slice(0, 60)}: ${e.error ? reason(text(e.error)) : Number.isInteger(e.status) ? e.status : 'read'}`
+    const line = `${endpoint}: ${e.error ? reason(text(e.error)) : Number.isInteger(e.status) ? e.status : 'read'}`
     if (lines.join('\n').length + line.length < 410) lines.push(line)
   }
   if (!failureText && count === '-' && !events.length)

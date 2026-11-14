@@ -274,9 +274,10 @@ export class AjaAdapter implements DeviceAdapter {
       signal?.removeEventListener('abort', abort)
     }
   }
-  async readParameter(id: string) {
+  async readParameter(id: string, signal?: AbortSignal) {
     return this.request(
       `${this.legacyJson ? 'json' : 'config'}?${new URLSearchParams({ action: 'get', paramid: id, ...(this.legacyDescriptors || this.legacyJson ? { configid: '0', alt: 'json' } : {}) })}`,
+      signal,
     )
   }
   async readDescriptors(signal?: AbortSignal): Promise<unknown> {
@@ -290,16 +291,23 @@ export class AjaAdapter implements DeviceAdapter {
     }
   }
   async read(channel: Channel): ReturnType<DeviceAdapter['read']> {
+    return this.readChannel(channel)
+  }
+  private async readChannel(
+    channel: Channel,
+    signal?: AbortSignal,
+    initialContext?: string,
+  ): ReturnType<DeviceAdapter['read']> {
     const values: Values = {}
-    const context = await this.readContext(channel.id)
+    const context = initialContext ?? (await this.readContext(channel.id, signal))
     for (const d of channel.descriptors) {
       const native = this.nativeFor(d, context)
-      const value = readValue(await this.readParameter(native), native)
+      const value = readValue(await this.readParameter(native, signal), native)
       if (value < d.min || value > d.max)
         throw new Error(`${d.label} returned an out-of-range value`)
       values[d.id] = value
     }
-    if (context !== (await this.readContext(channel.id)))
+    if (context !== (await this.readContext(channel.id, signal)))
       throw new Error('Source context changed while reading; refresh again')
     const contextValues = new Map(
       context.split('|').map((part) => {
@@ -323,12 +331,12 @@ export class AjaAdapter implements DeviceAdapter {
         : 'Format not reported',
     }
   }
-  private async readContext(id: string) {
+  private async readContext(id: string, signal?: AbortSignal) {
     const parameters = this.contextParameters.get(id)
     if (!parameters?.length) return ''
     const parts: string[] = []
     for (const p of parameters) {
-      const response = await this.readParameter(p.id)
+      const response = await this.readParameter(p.id, signal)
       const value = stringValue(response)
       if (p.id === fsModeId && this.hdrMode !== undefined && Number(value) !== this.hdrMode)
         throw new Error('FS-HDR operating mode changed; reconnect to refresh the processor list')
@@ -359,8 +367,14 @@ export class AjaAdapter implements DeviceAdapter {
       throw new Error(`FS-HDR input memory changed range for ${base}; reconnect`)
     return id
   }
-  private async probeHdr(raw: Raw[], result: ProbeResult, signal?: AbortSignal) {
+  private async probeHdr(
+    raw: Raw[],
+    result: ProbeResult,
+    signal?: AbortSignal,
+    progress?: (stage: string) => void,
+  ) {
     try {
+      progress?.('Reading FS-HDR operating mode')
       const modeResponse = await this.request(`config?action=get&paramid=${fsModeId}`, signal)
       const mode = readValue(modeResponse, fsModeId)
       if (![0, 1, 2].includes(mode)) throw new Error('Unrecognized FS-HDR operating mode')
@@ -374,6 +388,7 @@ export class AjaAdapter implements DeviceAdapter {
       })
       let map: unknown
       try {
+        progress?.('Reading FS-HDR input map')
         map = await this.request('map.json', signal)
         if (!map || typeof map !== 'object' || !('forward_maps' in map))
           throw new Error('Invalid FS-HDR parameter map')
@@ -386,6 +401,8 @@ export class AjaAdapter implements DeviceAdapter {
       }
       const processors = mode === 2 ? [0] : [1, 2, 3, 4]
       for (const n of processors) {
+        signal?.throwIfAborted()
+        progress?.(`Checking color controls for VID${n}`)
         const processor = n || 1,
           prefix = `eParamID_Vid${n}`
         // Keep single-channel VID0 distinct from VID1 across a mode change.
@@ -414,7 +431,7 @@ export class AjaAdapter implements DeviceAdapter {
         this.contextParameters.set(id, context)
         try {
           if (signal?.aborted) throw new Error('Probe cancelled')
-          const fingerprint = await this.readContext(id)
+          const fingerprint = await this.readContext(id, signal)
           const descriptors: ParameterDescriptor[] = []
           for (const base of bases) {
             const semantic = hdrSemantic(base)
@@ -451,7 +468,7 @@ export class AjaAdapter implements DeviceAdapter {
             locked: false,
             pending: false,
           }
-          const state = await this.read(channel)
+          const state = await this.readChannel(channel, signal, fingerprint)
           if (state.context !== fingerprint)
             throw new Error('Source context changed while probing; reconnect')
           result.channels.push({ ...channel, ...state, updatedAt: Date.now() })
@@ -496,7 +513,11 @@ export class AjaAdapter implements DeviceAdapter {
     this.controllers.forEach((c) => c.abort())
     this.controllers.clear()
   }
-  async probe(signal?: AbortSignal, modelHint?: Model): Promise<ProbeResult> {
+  async probe(
+    signal?: AbortSignal,
+    modelHint?: Model,
+    progress?: (stage: string) => void,
+  ): Promise<ProbeResult> {
     const result: ProbeResult = {
       address: this.address,
       descriptors: [],
@@ -506,6 +527,7 @@ export class AjaAdapter implements DeviceAdapter {
     }
     let raw: Raw[] = []
     try {
+      progress?.('Reading device descriptors')
       const response = await this.readDescriptors(signal)
       const extracted = extractDescriptors(response)
       result.rawDescriptorCount = extracted.length
@@ -579,6 +601,7 @@ export class AjaAdapter implements DeviceAdapter {
         return result
       }
     }
+    progress?.('Identifying device')
     const identity = [
       ...new Map(
         raw
@@ -606,7 +629,7 @@ export class AjaAdapter implements DeviceAdapter {
     for (const r of identity) {
       try {
         const id = String(r.param_id)
-        const response = selectedResponse(await this.readParameter(id), id)
+        const response = selectedResponse(await this.readParameter(id, signal), id)
         const value = stringValue(response)
         identification += ` ${value}`
         if (id === 'eParamID_ProductID' && !modelName(value)) {
@@ -685,7 +708,7 @@ export class AjaAdapter implements DeviceAdapter {
         : 'Device did not report an AJA FS model. Model identification is needed to add it.',
     })
     if (result.model === 'FS-HDR') {
-      await this.probeHdr(raw, result, signal)
+      await this.probeHdr(raw, result, signal, progress)
       return result
     }
     if (!result.model) return result
@@ -714,6 +737,7 @@ export class AjaAdapter implements DeviceAdapter {
     }
     for (const [processor, descriptors] of groups) {
       if (signal?.aborted) throw new Error('Probe cancelled')
+      progress?.(`Checking color controls for VID${processor}`)
       const id = `${this.address}/vid${processor}`
       const context = raw
         .filter(
@@ -746,7 +770,7 @@ export class AjaAdapter implements DeviceAdapter {
         pending: false,
       }
       try {
-        const state = await this.read(channel)
+        const state = await this.readChannel(channel, signal)
         Object.assign(channel, state, { updatedAt: Date.now() })
         result.channels.push(channel)
       } catch (e) {

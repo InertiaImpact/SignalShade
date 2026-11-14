@@ -2,6 +2,29 @@ import { expect, it } from 'vitest'
 import qrcode from 'qrcode-generator'
 import { diagnosticFragment, diagnosticLink, diagnosticSummary } from './diagnostic-summary'
 
+it('reports the current step and pending request before the probe returns', () => {
+  const origin = 'http://10.215.20.20'
+  const summary = diagnosticSummary(
+    {
+      reports: {},
+      events: [
+        { action: 'device-attempt', origin },
+        { action: 'add-stage', origin, stage: 'Reading FS-HDR input map' },
+      ],
+      pending: [
+        { origin, path: 'map.json?token=secret' },
+        { origin: 'http://10.215.20.21', path: 'device-info' },
+      ],
+    },
+    origin,
+    '0.4.2',
+    'FS-HDR',
+  )
+  expect(summary).toContain('Add step: Reading FS-HDR input map')
+  expect(summary).toContain('Waiting: map.json')
+  expect(summary).not.toMatch(/10\.215|secret|device-info/)
+})
+
 it('keeps one bounded, scannable summary of the selected attempt without copying raw data', () => {
   const origin = 'http://10.215.20.123',
     other = 'http://10.215.20.124'
