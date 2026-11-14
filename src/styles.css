@@ -3355,7 +3355,8 @@ button {
   padding: 6px 8px;
 }
 .app .main {
-  padding: 12px 12px 16px;
+  --desk-inset: 12px;
+  padding: 0 var(--desk-inset) 16px;
 }
 .app .main-heading {
   position: sticky;
@@ -3366,9 +3367,10 @@ button {
   flex-wrap: wrap;
   gap: 7px 12px;
   align-items: center;
-  margin-bottom: 12px;
-  padding-block: 2px 6px;
-  background: var(--surface-canvas);
+  margin: 0 calc(-1 * var(--desk-inset)) 12px;
+  padding: 6px var(--desk-inset);
+  background: var(--surface-base);
+  border-bottom: 1px solid var(--border-subtle);
 }
 .main-heading > h1 {
   display: flex;
@@ -3716,7 +3718,7 @@ button {
     padding: 5px;
   }
   .app .main {
-    padding: 14px 12px 20px;
+    padding-bottom: 20px;
   }
   .app .main-heading {
     top: 64px;
