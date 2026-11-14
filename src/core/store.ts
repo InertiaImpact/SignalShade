@@ -498,12 +498,35 @@ export class DeskStore {
       this.workspace({ ...next, ...pruneViewCards(next) })
     }
   }
-  showGangCard(id: string, showAsCard: boolean) {
-    if (this.canEdit())
+  showGangCard(id: string, showAsCard: boolean, view = 'all') {
+    if (!this.canEdit()) return
+    const workspace = this.state.workspace
+    if (!workspace.gangs.some((g) => g.id === id)) return
+    if (view === 'all') {
       this.workspace({
-        ...this.state.workspace,
-        gangs: this.state.workspace.gangs.map((g) => (g.id === id ? { ...g, showAsCard } : g)),
+        ...workspace,
+        gangs: workspace.gangs.map((g) => (g.id === id ? { ...g, showAsCard } : g)),
       })
+      return
+    }
+    const custom = workspace.views?.find((item) => customViewKey(item.id) === view)
+    if (custom) {
+      const cards = showAsCard
+        ? [...new Set([...custom.cards, id])]
+        : custom.cards.filter((card) => card !== id)
+      this.workspace({
+        ...workspace,
+        views: workspace.views?.map((item) => (item.id === custom.id ? { ...item, cards } : item)),
+      })
+      return
+    }
+    this.workspace({
+      ...workspace,
+      gangCardVisibility: {
+        ...workspace.gangCardVisibility,
+        [view]: { ...workspace.gangCardVisibility?.[view], [id]: showAsCard },
+      },
+    })
   }
   private requireWorkspaceChange() {
     if (!this.canEdit()) throw new Error('Unlock the desk before changing workspaces')

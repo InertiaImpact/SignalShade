@@ -55,6 +55,7 @@ const schema = z.object({
     .max(100)
     .optional(),
   cardOrders: z.record(z.string(), z.array(z.string()).max(132)).optional(),
+  gangCardVisibility: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
   recorders: z
     .array(
       z

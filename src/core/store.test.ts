@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeskStore } from './store'
 import { demoWorkspace } from './demo'
 import { AjaAdapter } from '../adapters/aja'
-import { loadWorkspace, originalWorkspaceId, saveWorkspace } from './persistence'
+import { loadWorkspace, originalWorkspaceId, saveWorkspace, validateWorkspace } from './persistence'
 import { cardsInView, customViewKey, gangViewKey } from './views'
 import type { ProbeResult, Workspace } from './types'
 import { subscribeStageAdjustments } from './stages'
@@ -532,6 +532,32 @@ describe('command engine', () => {
     expect(store.getSnapshot().workspace.gangs.find((g) => g.id === gang.id)?.showAsCard).toBe(
       false,
     )
+  })
+  it('keeps gang card membership independent across views and workspace exports', () => {
+    const { gangs, channels } = store.getSnapshot().workspace
+    const [gang, other] = gangs
+    const custom = customViewKey('custom')
+    const ownView = gangViewKey(gang.id)
+    store.saveView({ id: 'custom', name: 'Custom', cards: [channels[0].id, other.id] })
+    const cards = (view: string) => cardsInView(store.getSnapshot().workspace, view)
+
+    expect(cards(ownView)[0]).toBe(gang.id)
+    store.showGangCard(gang.id, true, custom)
+    store.showGangCard(other.id, false, custom)
+    store.showGangCard(gang.id, false, ownView)
+    store.showGangCard(other.id, true)
+    expect(cards(custom)).toEqual([channels[0].id, gang.id])
+    expect(cards(ownView)).not.toContain(gang.id)
+    expect(cards('all')).toContain(other.id)
+    expect(cards('all')).not.toContain(gang.id)
+    expect(cards('favorites')).not.toContain(other.id)
+
+    const restored = validateWorkspace(JSON.parse(JSON.stringify(store.getSnapshot().workspace)))
+    expect(cardsInView(restored, ownView)).toEqual(cards(ownView))
+    expect(cardsInView(restored, custom)).toEqual(cards(custom))
+    store.deleteGang(gang.id)
+    expect(cards(custom)).toEqual([channels[0].id])
+    expect(store.getSnapshot().workspace.gangCardVisibility?.[ownView]).toBeUndefined()
   })
   it('applies one relative adjustment per unique member and preserves offsets', async () => {
     store.adjust(['demo-ch-1', 'demo-ch-2', 'demo-ch-1'], 'gain', 0.02, 'relative')

@@ -9,12 +9,22 @@ export function cardsInView(workspace: Workspace, view: string): string[] {
   if (custom) return [...custom.cards]
   const gang = workspace.gangs.find((item) => gangViewKey(item.id) === view)
   const device = workspace.devices.find((item) => deviceViewKey(item.id) === view)
-  const defaults = gang
-    ? [gang.id, ...workspace.channels.filter((c) => gang.members.includes(c.id)).map((c) => c.id)]
-    : [
-        ...(view === 'all' ? workspace.gangs.filter((g) => g.showAsCard).map((g) => g.id) : []),
-        ...workspace.channels.filter((c) => !device || c.deviceId === device.id).map((c) => c.id),
-      ]
+  const visibility = workspace.gangCardVisibility?.[view]
+  const includedGangs = workspace.gangs.filter((item) =>
+    view === 'all' ? item.showAsCard : (visibility?.[item.id] ?? item.id === gang?.id),
+  )
+  const defaults = [
+    ...includedGangs.map((item) => item.id),
+    ...workspace.channels
+      .filter(
+        (c) => (!gang || gang.members.includes(c.id)) && (!device || c.deviceId === device.id),
+      )
+      .map((c) => c.id),
+  ]
+  if (gang && includedGangs.some((item) => item.id === gang.id)) {
+    defaults.splice(defaults.indexOf(gang.id), 1)
+    defaults.unshift(gang.id)
+  }
   const available = new Set(defaults)
   return [
     ...new Set([
@@ -32,6 +42,7 @@ export function pruneViewCards(workspace: Workspace) {
     ...workspace.gangs.map((g) => gangViewKey(g.id)),
     ...workspace.devices.map((d) => deviceViewKey(d.id)),
   ])
+  const gangIds = new Set(workspace.gangs.map((g) => g.id))
   return {
     views: workspace.views?.map((view) => ({
       ...view,
@@ -43,6 +54,16 @@ export function pruneViewCards(workspace: Workspace) {
         Object.entries(workspace.cardOrders)
           .filter(([key]) => keys.has(key))
           .map(([key, order]) => [key, [...new Set(order.filter((id) => ids.has(id)))]]),
+      ),
+    gangCardVisibility:
+      workspace.gangCardVisibility &&
+      Object.fromEntries(
+        Object.entries(workspace.gangCardVisibility)
+          .filter(([key]) => key !== 'all' && keys.has(key))
+          .map(([key, visibility]) => [
+            key,
+            Object.fromEntries(Object.entries(visibility).filter(([id]) => gangIds.has(id))),
+          ]),
       ),
   }
 }

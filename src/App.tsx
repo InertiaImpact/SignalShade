@@ -338,6 +338,11 @@ export default function App() {
     currentCustomView?.name ??
     currentDevice?.label ??
     (view === 'favorites' ? 'Pinned controls' : 'All channels')
+  const showGangCard = (id: string, show: boolean) => {
+    desk.showGangCard(id, show, view)
+    if (!show && selectedTokens.includes(id))
+      selectMany(selectedTokens.filter((token) => token !== id))
+  }
   return (
     <div
       className={`app ${w.density === 'compact' ? 'compact' : ''} ${collapsed ? 'sidebar-collapsed' : ''}`}
@@ -574,12 +579,12 @@ export default function App() {
               <button
                 className="gang-card-toggle"
                 role="switch"
-                aria-checked={!!g.showAsCard}
-                aria-label={`Show ${g.name} as a card in All channels`}
-                title={`Show ${g.name} as a card in All channels`}
-                disabled={readOnly}
+                aria-checked={cardOrder.includes(g.id)}
+                aria-label={`Show ${g.name} as a card in ${title}`}
+                title={`Show ${g.name} as a card in ${title}`}
+                disabled={readOnly || snapshot.converging}
                 style={{ '--gang-color': g.color } as CSSProperties}
-                onClick={() => desk.showGangCard(g.id, !g.showAsCard)}
+                onClick={() => showGangCard(g.id, !cardOrder.includes(g.id))}
               >
                 <span />
               </button>
@@ -1034,7 +1039,7 @@ export default function App() {
                   onOpen={
                     currentViewGang?.id === g.id ? undefined : () => selectView(gangViewKey(g.id))
                   }
-                  onHide={view === 'all' ? () => desk.showGangCard(g.id, false) : undefined}
+                  onHide={() => showGangCard(g.id, false)}
                   onReset={(section) => reset(g.members, section, g.parameters)}
                 />
               )

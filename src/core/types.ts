@@ -91,6 +91,7 @@ export interface Workspace {
   recorders?: RecorderConfig[]
   views?: DeskView[]
   cardOrders?: Record<string, string[]>
+  gangCardVisibility?: Record<string, Record<string, boolean>>
   version: 1
   name: string
   devices: Device[]
