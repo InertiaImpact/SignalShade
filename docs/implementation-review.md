@@ -1,5 +1,9 @@
 # Recorder implementation and code review
 
+## FS-HDR identity fallback — 0.5.2
+
+A live report showed a readable descriptor table but no model identity and an unreachable device homepage. The probe now recognizes the firmware's HDR descriptor signature and tries the canonical REST identity queries even when they are absent from the table. Explicitly selecting FS-HDR also reaches its probe when FS shading descriptors are present. Both paths still require an operating-mode read, a usable input map, and verified shading readbacks. A confirmed different model is never overridden. Connect 0.4.2 is unchanged.
+
 ## FS-HDR input memories and single-code diagnostics — 0.5.1 / Connect 0.4.2
 
 The web UI in AJA’s [FS-HDR 4.3.3.3 firmware archive](https://www.aja.com/support/item/10516) uses the read-only `map.json` table to select an input-specific parameter. The adapter now groups only conventional shading IDs, resolves the active input bank through that map, and uses VID0 in single-channel mode or VID1–4 in four-channel mode. Mode and routing readbacks remain in the write context. The bridge returns the raw descriptor table and validates the selected native ID and bounds; unrelated duplicate records no longer fail the entire table. Fixtures cover both modes, duplicate labels, source changes, and conflicting active descriptors. Live hardware has not yet been tested.

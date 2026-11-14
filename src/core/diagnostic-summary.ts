@@ -10,6 +10,7 @@ const nativeIds = (value: string) => value.match(/\beParamID_[A-Za-z0-9_]{1,80}\
 const shortId = (id: string) => id.replace('eParamID_', '')
 
 function reason(value: string) {
+  if (/did not report an AJA FS model/i.test(value)) return 'model ID not reported'
   if (/multiple descriptors|conflicting descriptors|incompatible ranges/i.test(value))
     return 'duplicate descriptors'
   if (/update SignalShade Connect|unsupported AJA endpoint/i.test(value))

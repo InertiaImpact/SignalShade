@@ -496,7 +496,7 @@ export class AjaAdapter implements DeviceAdapter {
     this.controllers.forEach((c) => c.abort())
     this.controllers.clear()
   }
-  async probe(signal?: AbortSignal): Promise<ProbeResult> {
+  async probe(signal?: AbortSignal, modelHint?: Model): Promise<ProbeResult> {
     const result: ProbeResult = {
       address: this.address,
       descriptors: [],
@@ -592,7 +592,17 @@ export class AjaAdapter implements DeviceAdapter {
           .map((r) => [r.param_id, r]),
       ).values(),
     ]
+    const ids = new Set(raw.map((d) => String(d.param_id)))
+    const fsShading = [...ids].some((id) => fsHdrColorBase(id))
+    const hdrSignature =
+      fsShading &&
+      [0, 1, 2, 3, 4].some(
+        (n) =>
+          ids.has(`eParamID_Vid${n}ColorHDRTransform`) && ids.has(`eParamID_Vid${n}ColorfrontMode`),
+      )
+    const hdrCandidate = hdrSignature || (modelHint === 'FS-HDR' && fsShading)
     let identification = ''
+    let identitySource = ''
     for (const r of identity) {
       try {
         const id = String(r.param_id)
@@ -608,7 +618,34 @@ export class AjaAdapter implements DeviceAdapter {
       }
     }
     result.model ??= modelName(identification)
-    if (!result.model) {
+    if (!result.model && hdrCandidate && !signal?.aborted) {
+      // Some firmware serves a large shading table without usable identity entries.
+      // Try the firmware's canonical REST queries even when omitted from desc.json.
+      for (const id of ['eParamID_ProductID', 'eParamID_SoftwareVersion']) {
+        if (
+          signal?.aborted ||
+          (id.endsWith('SoftwareVersion') && /\b\d+\.\d+\.\d+\b/.test(identification))
+        )
+          continue
+        try {
+          const response = selectedResponse(
+            await this.request(`config?action=get&paramid=${id}&alt=json`, signal),
+            id,
+          )
+          const value = stringValue(response)
+          if (id === 'eParamID_ProductID') {
+            const name =
+              response && typeof response === 'object' ? (response as Raw).value_name : ''
+            result.model = modelName(value) ?? modelName(typeof name === 'string' ? name : '')
+            if (result.model) identitySource = 'canonical REST identity'
+          }
+          if (value) identification += ` ${value}`
+        } catch {
+          // Model-specific probing can continue with corroborating descriptors.
+        }
+      }
+    }
+    if (!result.model && !hdrCandidate) {
       try {
         result.webIdentity = (await this.request(
           'device-info',
@@ -624,6 +661,12 @@ export class AjaAdapter implements DeviceAdapter {
         /* Retain the API identity failure below. */
       }
     }
+    if (!result.model && hdrCandidate && !signal?.aborted) {
+      result.model = 'FS-HDR'
+      identitySource = hdrSignature
+        ? 'FS-HDR descriptor signature'
+        : 'selected FS-HDR with matching FS descriptors'
+    }
     if (result.model && !['FS4', 'FS2', 'FS1-X', 'FS1', 'FS-HDR'].includes(result.model))
       result.model = undefined
     result.firmware ??= identification.trim() || 'Unidentified'
@@ -638,13 +681,14 @@ export class AjaAdapter implements DeviceAdapter {
       name: 'Device identity',
       status: result.model ? 'pass' : 'fail',
       detail: result.model
-        ? `${result.model} · ${result.firmware}`
+        ? `${result.model} · ${result.firmware}${identitySource ? ' · ' + identitySource : ''}`
         : 'Device did not report an AJA FS model. Model identification is needed to add it.',
     })
     if (result.model === 'FS-HDR') {
       await this.probeHdr(raw, result, signal)
       return result
     }
+    if (!result.model) return result
     try {
       raw = activeFsDescriptors(raw)
     } catch (error) {

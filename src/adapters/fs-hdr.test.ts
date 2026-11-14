@@ -4,7 +4,7 @@ import { AjaAdapter } from './aja'
 const modeId = 'eParamID_FS4Mode'
 const native = (n: number, control: string, suffix = '') => `eParamID_Vid${n}${control}${suffix}`
 
-function fixture(mode: number, conflict = false) {
+function fixture(mode: number, conflict = false, identity = 'normal') {
   const input = (n: number) => native(n, 'VideoInput')
   const controls = {
     YUVProcAmpEnable: 'ProcAmp Enable',
@@ -52,11 +52,25 @@ function fixture(mode: number, conflict = false) {
     }
   }
   const writes: string[] = []
+  if (identity !== 'normal') {
+    descriptors.splice(0, 2)
+    values.delete('eParamID_ProductID')
+    if (identity !== 'manual') {
+      descriptors.push(
+        { param_id: 'eParamID_Vid0ColorHDRTransform' },
+        { param_id: 'eParamID_Vid0ColorfrontMode' },
+      )
+    }
+    if (identity === 'canonical') values.set('eParamID_ProductID', '123')
+    if (identity === 'wrong-model') values.set('eParamID_ProductID', 'FS4')
+  }
   const read = vi.fn(async (url: string) => {
     const u = new URL(url),
       id = u.searchParams.get('paramid') ?? ''
     if (u.pathname === '/desc.json') return Response.json(descriptors)
     if (u.pathname === '/map.json') return Response.json({ forward_maps })
+    if (id === 'eParamID_ProductID' && identity === 'canonical')
+      return Response.json({ name: id, value: '123', value_name: 'FS | HDR' })
     if (!values.has(id)) return new Response('', { status: 404 })
     if (u.searchParams.get('action') === 'set') {
       writes.push(id)
@@ -112,5 +126,40 @@ it('reports a genuine conflict in the selected bank, with its exact ID', async (
     ),
   ).toBe(true)
   expect(f.writes).toEqual([])
+  adapter.dispose()
+})
+
+it.each(['canonical', 'signature', 'manual'])(
+  'reaches FS-HDR mapping without identity descriptors or a reachable home page (%s)',
+  async (identity) => {
+    const f = fixture(2, false, identity),
+      adapter = new AjaAdapter('10.0.0.2')
+    const report = await adapter.probe(undefined, identity === 'manual' ? 'FS-HDR' : undefined)
+    expect(report.model).toBe('FS-HDR')
+    expect(report.firmware).toContain('4.3.3.3')
+    expect(report.checks.filter((c) => c.status === 'fail')).toEqual([])
+    expect(report.channels).toHaveLength(1)
+    expect(f.read.mock.calls.map(([url]) => new URL(url).pathname)).toContain('/map.json')
+    expect(f.writes).toEqual([])
+    adapter.dispose()
+  },
+)
+
+it('does not assign a model to generic FS descriptors without an HDR signature or explicit choice', async () => {
+  const f = fixture(2, false, 'manual'),
+    adapter = new AjaAdapter('10.0.0.2')
+  const report = await adapter.probe()
+  expect(report.model).toBeUndefined()
+  expect(report.channels).toHaveLength(0)
+  expect(f.read.mock.calls.map(([url]) => new URL(url).pathname)).not.toContain('/map.json')
+  adapter.dispose()
+})
+
+it('does not override a confirmed different model with an FS-HDR hint', async () => {
+  const f = fixture(2, false, 'wrong-model'),
+    adapter = new AjaAdapter('10.0.0.2')
+  const report = await adapter.probe(undefined, 'FS-HDR')
+  expect(report.model).toBe('FS4')
+  expect(f.read.mock.calls.map(([url]) => new URL(url).pathname)).not.toContain('/map.json')
   adapter.dispose()
 })

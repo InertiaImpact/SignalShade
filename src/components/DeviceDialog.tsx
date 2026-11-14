@@ -178,7 +178,7 @@ export function DeviceDialog({
         diagnostics.event({ action: 'recorder-connected', origin, model })
         setNotice(`${config.label} connected`)
       } else {
-        const report = await adapter.probe(controller.signal)
+        const report = await adapter.probe(controller.signal, model === 'auto' ? undefined : model)
         diagnostics.report(origin, report)
         if (!mounted.current || controller.signal.aborted) return
         if (
