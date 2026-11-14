@@ -1,5 +1,7 @@
 SignalShade Connect preview connects SignalShade to approved local AJA devices without a separate bridge server.
 
+Version 0.4.2 adds the read-only FS-HDR input map endpoint and validates exact mapped Proc Amp and RGB parameter IDs against device ranges. Repeated descriptors no longer prevent returning the table; conflicting definitions for an actual write still block it. No new permissions. Update Connect and SignalShade together for the FS-HDR 4.3.3.3 mapping fix.
+
 Version 0.4.1 reads each identified AJA device’s configured system name during scanning. Results show the name, model and IP address; Add uses that name as the initial device label. Existing custom labels are preserved, and missing or unreadable names do not hide devices. Only identified AJA units receive these optional, time-bounded reads.
 
 For original FS1, Connect now permits the read-only `eParamID_SysName` query on its legacy endpoint. This does not add any writable parameters or Chrome permissions. Update the unpacked extension and reload SignalShade to get legacy FS1 names.

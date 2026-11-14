@@ -4,16 +4,25 @@ import App from './App'
 import { publishUpdate } from './core/updates'
 import { applyBroadcastTheme } from './theme'
 import './styles.css'
+import { diagnosticFragment } from './core/diagnostic-summary'
+import { DiagnosticSummaryPage } from './components/DiagnosticQr'
 
 applyBroadcastTheme(document.documentElement)
 
+const diagnostic = location.hash.startsWith(diagnosticFragment)
+let summary = 'Invalid diagnostic link.'
+if (diagnostic) {
+  try {
+    summary = decodeURIComponent(location.hash.slice(diagnosticFragment.length, 2200)).slice(0, 450)
+  } catch {
+    /* Keep malformed input out of the dashboard. */
+  }
+}
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <App />
-  </StrictMode>,
+  <StrictMode>{diagnostic ? <DiagnosticSummaryPage summary={summary} /> : <App />}</StrictMode>,
 )
 
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+if (!diagnostic && 'serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker
       .register(`${import.meta.env.BASE_URL}sw.js`, { updateViaCache: 'none' })

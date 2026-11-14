@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, useSyncExternalStore } from 'react'
-import { Download, Plus, Search, Server, Circle } from 'lucide-react'
+import { Download, Plus, Search, Server, Circle, QrCode } from 'lucide-react'
 import { AjaAdapter, ipv4Range, message, normalizeAddress } from '../adapters/aja'
 import { bridgeMessage, detectConnect, ensureDeviceAccess } from '../adapters/transport'
 import { scanDevices, type DiscoveryResult } from '../adapters/discovery'
 import { desk } from '../core/store'
 import { diagnostics, downloadDebugPackage } from '../core/diagnostics'
+import { diagnosticSummary } from '../core/diagnostic-summary'
 import type { Model, Workspace } from '../core/types'
 import {
   recorderModels,
@@ -16,6 +17,7 @@ import { demoRecorder } from '../recorders/demo'
 import { Modal } from './Modal'
 import { ConnectHelp } from './ConnectHelp'
 import { DeviceDetails } from './DeviceDetails'
+import { DiagnosticQr } from './DiagnosticQr'
 import { recorderStateLabel } from './RecorderStatus'
 
 const fsModels: Model[] = ['FS4', 'FS2', 'FS1-X', 'FS1', 'FS-HDR']
@@ -61,6 +63,8 @@ export function DeviceDialog({
   const [notice, setNotice] = useState(''),
     [scanError, setScanError] = useState(''),
     [exporting, setExporting] = useState(false)
+  const [qr, setQr] = useState<string>()
+  const [preparingQr, setPreparingQr] = useState(false)
   const abort = useRef<AbortController | undefined>(undefined),
     scanAbort = useRef<AbortController | undefined>(undefined),
     adapters = useRef(new Set<AjaAdapter>()),
@@ -98,6 +102,7 @@ export function DeviceDialog({
       return
     }
     const controller = new AbortController()
+    diagnostics.beginDeviceAttempt(origin)
     abort.current = controller
     setBusy(origin)
     setNotice('')
@@ -138,6 +143,8 @@ export function DeviceDialog({
         }
         if (info.aja)
           model = detectRecorderModel(`${info.title ?? ''} ${info.model ?? ''}`) ?? 'auto'
+        if (info.aja && info.model)
+          diagnostics.event({ action: 'device-identity', origin, model: info.model })
       }
       if (isRecorder(model)) {
         const old = recordersRef.current.find((c) => !c.simulated && c.address === origin)
@@ -301,6 +308,43 @@ export function DeviceDialog({
   const added = (origin: string) =>
     workspace.devices.some((d) => !d.simulated && d.address === origin) ||
     configs.some((c) => !c.simulated && c.address === origin)
+  const showQr = async (origin?: string, modelHint?: string) => {
+    setPreparingQr(true)
+    try {
+      const extension = await detectConnect()
+      const capture = diagnostics.snapshot()
+      const latest = [...capture.events].reverse().find((event) => {
+        const e = event as { action?: string }
+        return e.action === 'device-attempt' || e.action === 'connect-failed'
+      }) as { origin?: string } | undefined
+      const chosen = origin || latest?.origin || ''
+      const known = [...capture.events].reverse().find((event) => {
+        const e = event as { action?: string; origin?: string }
+        return e.action === 'device-identity' && e.origin === chosen
+      }) as { model?: string } | undefined
+      if (mounted.current)
+        setQr(
+          diagnosticSummary(
+            capture,
+            chosen,
+            extension,
+            modelHint === 'auto' || !modelHint ? known?.model : modelHint,
+          ),
+        )
+    } finally {
+      if (mounted.current) setPreparingQr(false)
+    }
+  }
+  const qrButton = (origin?: string, hint?: string) => (
+    <button
+      type="button"
+      className="button small"
+      disabled={preparingQr}
+      onClick={() => void showQr(origin, hint)}
+    >
+      <QrCode size={15} /> Diagnostic QR
+    </button>
+  )
   const addDemo = () => {
     try {
       if (type === 'auto') throw new Error('Choose a demo device type')
@@ -315,6 +359,7 @@ export function DeviceDialog({
       setNotice(message(e))
     }
   }
+  if (qr) return <DiagnosticQr summary={qr} close={() => setQr(undefined)} />
   return (
     <Modal
       title="Devices"
@@ -325,10 +370,20 @@ export function DeviceDialog({
     >
       <div className="connections-toolbar">
         <span>{workspace.devices.length + configs.length} added</span>
-        <button className="button small" onClick={() => void downloadDebug()} disabled={exporting}>
-          <Download size={15} />
-          {exporting ? 'Packaging…' : 'Download debug ZIP'}
-        </button>
+        <div className="diagnostics-actions">
+          {qrButton(
+            device?.address || recorder?.address || currentOrigin,
+            device?.model || recorder?.model || type,
+          )}
+          <button
+            className="button small"
+            onClick={() => void downloadDebug()}
+            disabled={exporting}
+          >
+            <Download size={15} />
+            {exporting ? 'Packaging…' : 'Download debug ZIP'}
+          </button>
+        </div>
       </div>
       <div className="connections-layout">
         <nav className="connections-list" aria-label="Added devices">
@@ -548,6 +603,7 @@ export function DeviceDialog({
                   {errors[currentOrigin]}
                 </p>
               )}
+              {errors[currentOrigin] && qrButton(currentOrigin, type)}
             </section>
           )}
           {(!selected || scanning) && (
@@ -604,6 +660,7 @@ export function DeviceDialog({
                         {r.address}
                       </p>
                       {errors[r.address] && <p className="text-error">{errors[r.address]}</p>}
+                      {errors[r.address] && qrButton(r.address, r.model)}
                     </div>
                     <button
                       className="button small"

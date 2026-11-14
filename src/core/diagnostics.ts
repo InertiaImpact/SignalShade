@@ -36,6 +36,10 @@ class Diagnostics {
     this.scans.push(redactDiagnostics(result))
     if (this.scans.length > 512) this.scans.shift()
   }
+  beginDeviceAttempt(origin: string) {
+    this.reports.delete(origin)
+    this.event({ action: 'device-attempt', origin })
+  }
   event(event: Record<string, unknown>) {
     this.events.push(redactDiagnostics({ at: new Date().toISOString(), ...event }))
     if (this.events.length > 1000) this.events.shift()

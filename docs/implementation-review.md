@@ -1,5 +1,11 @@
 # Recorder implementation and code review
 
+## FS-HDR input memories and single-code diagnostics — 0.5.1 / Connect 0.4.2
+
+The web UI in AJA’s [FS-HDR 4.3.3.3 firmware archive](https://www.aja.com/support/item/10516) uses the read-only `map.json` table to select an input-specific parameter. The adapter now groups only conventional shading IDs, resolves the active input bank through that map, and uses VID0 in single-channel mode or VID1–4 in four-channel mode. Mode and routing readbacks remain in the write context. The bridge returns the raw descriptor table and validates the selected native ID and bounds; unrelated duplicate records no longer fail the entire table. Fixtures cover both modes, duplicate labels, source changes, and conflicting active descriptors. Live hardware has not yet been tested.
+
+Devices offers one QR per selected attempt. The locally generated URL carries a bounded summary in the fragment; the scan page reads it without initializing the device dashboard or making device requests. The summary includes only selected metadata and categorized errors, rather than raw error strings or readback payloads.
+
 ## Converge, golden target and combined selection — 0.5.0
 
 Converge is a discrete action alongside Relative/Absolute, with Small (5%) and Large (20%) steps. It operates on supported numeric color controls, independently per parameter, within each selected gang’s mask. With no reference it approaches the median, reducing outlier influence. A channel’s target icon marks a persistent golden reference; Converge reads its current settings and never writes it, even if selected. Missing/incompatible reference controls are skipped and reported rather than falling back to a different target. Clear target restores median behavior. Clear target and Clear selection live beside the main heading and act independently. Removing a reference channel clears the target; renaming or changing its input routing retains its processor identity.

@@ -225,7 +225,7 @@ export class AjaTransport {
                 : undefined,
           },
           options.signal ?? undefined,
-          /^(desc.json|descriptors\?)/.test(path) ? 21000 : 4000,
+          /^(desc\.json|map\.json|descriptors\?)/.test(path) ? 21000 : 4000,
         )
         return new Response(JSON.stringify(data), {
           status: 200,
@@ -251,7 +251,7 @@ export class AjaTransport {
             .trim()
             .slice(0, 180),
           model: text.match(
-            /\bFS[- ]?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
+            /\bFS(?:[- ]|\s*\|\s*)?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
           )?.[0],
           aja: /\bAJA\b/i.test(text),
           status: response.status,

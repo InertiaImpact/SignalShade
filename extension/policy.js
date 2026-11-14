@@ -1,4 +1,5 @@
 import { fs1ReadIds, fs1Descriptors } from './legacy-fs1.js'
+import { matchingDescriptor } from './fs-parameters.js'
 export const SITE = 'https://inertiaimpact.github.io'
 export function trustedPage(input) {
   try {
@@ -32,6 +33,7 @@ export function deviceOrigin(input) {
 export function operation(path) {
   if (path === 'device-info') return { kind: 'identity' }
   if (path === 'desc.json') return { kind: 'descriptors' }
+  if (path === 'map.json') return { kind: 'map' }
   if (path === 'descriptors?paramid=*') return { kind: 'descriptors' }
   if (path === 'authenticator/login') return { kind: 'login' }
   const legacy = typeof path === 'string' && path.startsWith('json?')
@@ -100,7 +102,7 @@ export function descriptors(input, depth = 0) {
   return Object.values(input).flatMap((v) => descriptors(v, depth + 1))
 }
 export function validateWrite(op, list) {
-  const d = list.find((d) => d.param_id === op.id)
+  const d = matchingDescriptor(list, op.id)
   if (!d) throw new Error('Parameter was not discovered on this device')
   if (d.class_names?.includes('readonly') || /read_only/.test(String(d.param_type)))
     throw new Error('Parameter is read-only')
@@ -126,9 +128,10 @@ export function validateWrite(op, list) {
     .replace(/\b(vid|video|processor|channel)\s*\d+\b/g, '')
     .replace(/[^a-z]/g, '')
   if (
-    !/^(procamp(gain|black|blacklevel|hue|sat|saturation|enableyuv|yuv|enable)?|colorcorrector(rgb|enable)?|color(red|green|blue)(gain|black|blacklevel|gamma))$/.test(
+    !/^(procamp(gain|black|blacklevel|hue|sat|saturation|enableyuv|yuv|enable)?|colorcorrector(rgb|enable)?|(?:color|cc)(red|green|blue)(gain|black|blacklevel|gamma))$/.test(
       name,
-    )
+    ) ||
+    op.id.endsWith('_status_page')
   )
     throw new Error('Only supported FS shading parameters may be changed')
   const min = Number(d.min_value),

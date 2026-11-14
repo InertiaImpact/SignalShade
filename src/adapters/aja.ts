@@ -1,5 +1,12 @@
 import { AjaTransport } from './transport'
-import { activeFsDescriptors, activeFsId } from '../../extension/fs-parameters.js'
+import {
+  activeFsDescriptors,
+  activeFsId,
+  fsHdrColorBase,
+  fsInputRoute,
+  fsModeId,
+  matchingDescriptor,
+} from '../../extension/fs-parameters.js'
 import {
   fs1Descriptors,
   fs1ReadIds,
@@ -22,10 +29,9 @@ const processorOf = (id: string) =>
   Number(id.match(/(?:Vid|Video|Processor|Ch)([1-4])(?=[A-Z_]|$)/i)?.[1] ?? '1')
 function modelName(value: string): Model | undefined {
   const match = value
-    .match(/\bFS[- ]?HDR(?=\b|_)|\bFS1[- ]X(?=\b|_)|\bFS[124](?=\b|_)/i)?.[0]
+    .match(/\bFS(?:[- ]|\s*\|\s*)?HDR(?=\b|_)|\bFS1[- ]X(?=\b|_)|\bFS[124](?=\b|_)/i)?.[0]
     .toUpperCase()
-    .replace(' ', '-')
-  return match === 'FSHDR' ? 'FS-HDR' : (match as Model | undefined)
+  return match?.endsWith('HDR') ? 'FS-HDR' : (match?.replace(' ', '-') as Model | undefined)
 }
 function contextLabel(name: string) {
   return name.replace(/\b(?:vid|video|processor|channel)\s*[1-4]\s*/gi, '').trim()
@@ -100,7 +106,22 @@ const semanticNames: Record<string, ParameterId> = {
 }
 const toNumber = (v: unknown) =>
   typeof v === 'number' ? v : typeof v === 'string' && v.trim() ? Number(v) : NaN
-export function mapDescriptor(raw: Raw): ParameterDescriptor | undefined {
+function hdrSemantic(base: string): ParameterId | undefined {
+  const tail = base.slice('eParamID_Vid0'.length)
+  const yuvNames: Record<string, ParameterId> = {
+    Gain: 'gain',
+    Black: 'black',
+    Hue: 'hue',
+    Sat: 'saturation',
+    Enable: 'procEnabled',
+  }
+  const yuv = tail.match(/^YUVProcAmp(Gain|Black|Hue|Sat|Enable)$/)?.[1]
+  if (yuv) return yuvNames[yuv]
+  if (tail === 'RGBProcAmpEnable') return 'rgbEnabled'
+  const rgb = tail.match(/^RGBProcAmp(Gain|Black|Gamma)(Red|Green|Blue)$/)
+  if (rgb) return (rgb[2].toLowerCase() + rgb[1]) as ParameterId
+}
+export function mapDescriptor(raw: Raw, semantic?: ParameterId): ParameterDescriptor | undefined {
   if (
     (Array.isArray(raw.class_names) && raw.class_names.includes('readonly')) ||
     /read_only/.test(String(raw.param_type))
@@ -114,6 +135,7 @@ export function mapDescriptor(raw: Raw): ParameterDescriptor | undefined {
     .replace(/\b(vid|video|processor|channel)\s*\d+\b/g, '')
     .replace(/[^a-z]/g, '')
   const id =
+    semantic ??
     semanticNames[clean] ??
     // Legalizer identifiers remain device-native to avoid pretending different clipping modes are equivalent.
     (/^(whiteclip|blackclip|chromaclip|videolegalizer|legalizermode)$/.test(clean)
@@ -209,6 +231,9 @@ export class AjaAdapter implements DeviceAdapter {
   private legacyDescriptors = false
   private legacyJson = false
   private contextNames = new Map<string, string>()
+  private hdrMode?: number
+  private hdrRoutes = new Map<string, NonNullable<ReturnType<typeof fsInputRoute>>>()
+  private hdrDescriptors: Raw[] = []
   private transport = new AjaTransport()
   readonly address: string
   private controllers = new Set<AbortController>()
@@ -227,7 +252,10 @@ export class AjaAdapter implements DeviceAdapter {
     const abort = () => controller.abort()
     signal?.addEventListener('abort', abort, { once: true })
     if (signal?.aborted) controller.abort()
-    const timeout = setTimeout(abort, /^(desc.json|descriptors\?)/.test(path) ? 22000 : 4500)
+    const timeout = setTimeout(
+      abort,
+      /^(desc\.json|map\.json|descriptors\?)/.test(path) ? 22000 : 4500,
+    )
     try {
       const options: RequestInit & { targetAddressSpace?: string } = {
         mode: 'cors',
@@ -265,7 +293,8 @@ export class AjaAdapter implements DeviceAdapter {
     const values: Values = {}
     const context = await this.readContext(channel.id)
     for (const d of channel.descriptors) {
-      const value = readValue(await this.readParameter(d.nativeId!), d.nativeId!)
+      const native = this.nativeFor(d, context)
+      const value = readValue(await this.readParameter(native), native)
       if (value < d.min || value > d.max)
         throw new Error(`${d.label} returned an out-of-range value`)
       values[d.id] = value
@@ -301,12 +330,144 @@ export class AjaAdapter implements DeviceAdapter {
     for (const p of parameters) {
       const response = await this.readParameter(p.id)
       const value = stringValue(response)
+      if (p.id === fsModeId && this.hdrMode !== undefined && Number(value) !== this.hdrMode)
+        throw new Error('FS-HDR operating mode changed; reconnect to refresh the processor list')
       const selected = selectedResponse(response) as Raw | undefined
       if (typeof selected?.value_name === 'string') this.contextNames.set(p.id, selected.value_name)
       if (!value) throw new Error(`Unable to read source context: ${p.label}`)
       parts.push(`${p.id}=${value}`)
     }
     return parts.join('|')
+  }
+  private nativeFor(descriptor: ParameterDescriptor, context: string) {
+    const base = descriptor.nativeId!
+    const route = this.hdrRoutes.get(base)
+    if (!route) return base
+    const value = context
+      .split('|')
+      .find((part) => part.startsWith(route.source + '='))
+      ?.split('=')[1]
+    const id = value && route.banks[value]
+    const raw = id && matchingDescriptor(this.hdrDescriptors, id)
+    const mapped = raw && mapDescriptor(raw, descriptor.id)
+    if (!mapped || !id) throw new Error(`No readable FS-HDR input memory for ${base}`)
+    if (
+      (
+        ['min', 'max', 'step', 'neutral', 'scale', 'offset', 'kind', 'unit', 'choices'] as const
+      ).some((key) => JSON.stringify(mapped[key]) !== JSON.stringify(descriptor[key]))
+    )
+      throw new Error(`FS-HDR input memory changed range for ${base}; reconnect`)
+    return id
+  }
+  private async probeHdr(raw: Raw[], result: ProbeResult, signal?: AbortSignal) {
+    try {
+      const modeResponse = await this.request(`config?action=get&paramid=${fsModeId}`, signal)
+      const mode = readValue(modeResponse, fsModeId)
+      if (![0, 1, 2].includes(mode)) throw new Error('Unrecognized FS-HDR operating mode')
+      this.hdrMode = mode
+      this.hdrDescriptors = raw
+      this.hdrRoutes.clear()
+      result.checks.push({
+        name: 'Operating mode',
+        status: 'pass',
+        detail: mode === 2 ? '4K/UHD single channel (VID0)' : 'HD/SD four channel (VID1-4)',
+      })
+      let map: unknown
+      try {
+        map = await this.request('map.json', signal)
+        if (!map || typeof map !== 'object' || !('forward_maps' in map))
+          throw new Error('Invalid FS-HDR parameter map')
+      } catch (error) {
+        throw new Error(
+          /Unsupported AJA endpoint/.test(message(error))
+            ? 'Update SignalShade Connect to 0.4.2 or newer to read the FS-HDR parameter map'
+            : `FS-HDR parameter map: ${message(error)}`,
+        )
+      }
+      const processors = mode === 2 ? [0] : [1, 2, 3, 4]
+      for (const n of processors) {
+        const processor = n || 1,
+          prefix = `eParamID_Vid${n}`
+        // Keep single-channel VID0 distinct from VID1 across a mode change.
+        const id = `${this.address}/vid${n}`
+        const context: ContextParameter[] = [{ id: fsModeId, label: 'Operating mode' }]
+        const input = prefix + 'VideoInput',
+          format = prefix + 'DetectedInputFormat'
+        if (raw.some((r) => r.param_id === input)) context.push({ id: input, label: 'Video input' })
+        if (raw.some((r) => r.param_id === format))
+          context.push({ id: format, label: 'Detected input format' })
+        const bases = new Set(
+          raw.flatMap((d) => {
+            const base = fsHdrColorBase(String(d.param_id))
+            return base?.startsWith(prefix) && !String(d.param_id).endsWith('_status_page')
+              ? [base]
+              : []
+          }),
+        )
+        for (const base of bases) {
+          const route = fsInputRoute(map, base)
+          if (!route) continue
+          this.hdrRoutes.set(base, route)
+          if (!context.some((p) => p.id === route.source))
+            context.push({ id: route.source, label: 'Video input' })
+        }
+        this.contextParameters.set(id, context)
+        try {
+          if (signal?.aborted) throw new Error('Probe cancelled')
+          const fingerprint = await this.readContext(id)
+          const descriptors: ParameterDescriptor[] = []
+          for (const base of bases) {
+            const semantic = hdrSemantic(base)
+            if (!semantic) continue
+            const route = this.hdrRoutes.get(base)
+            const source =
+              route &&
+              fingerprint
+                .split('|')
+                .find((part) => part.startsWith(route.source + '='))
+                ?.split('=')[1]
+            const native = route ? source && route.banks[source] : base
+            const definition = native && matchingDescriptor(raw, native)
+            if (!definition) {
+              if (route)
+                throw new Error(`No descriptor for active FS-HDR input memory ${native || base}`)
+              continue
+            }
+            const descriptor = mapDescriptor(definition, semantic)
+            if (descriptor) descriptors.push({ ...descriptor, nativeId: base })
+          }
+          if (!descriptors.length) continue
+          const channel: Channel = {
+            id,
+            deviceId: this.address,
+            processor,
+            label: `Processor ${processor}`,
+            source: 'Device context',
+            format: 'Read from device',
+            context: fingerprint,
+            descriptors,
+            values: {},
+            updatedAt: 0,
+            locked: false,
+            pending: false,
+          }
+          const state = await this.read(channel)
+          if (state.context !== fingerprint)
+            throw new Error('Source context changed while probing; reconnect')
+          result.channels.push({ ...channel, ...state, updatedAt: Date.now() })
+        } catch (error) {
+          result.checks.push({ name: `VID${n}`, status: 'fail', detail: message(error) })
+        }
+      }
+    } catch (error) {
+      result.checks.push({ name: 'FS-HDR mapping', status: 'fail', detail: message(error) })
+    }
+    result.descriptors = result.channels.flatMap((c) => c.descriptors)
+    result.checks.push({
+      name: 'Color readback',
+      status: result.channels.length ? 'pass' : 'fail',
+      detail: `${result.channels.length} FS-HDR processors with ${result.descriptors.length} readable controls.`,
+    })
   }
   async write(channel: Channel, descriptor: ParameterDescriptor, value: number) {
     if (
@@ -319,10 +480,11 @@ export class AjaAdapter implements DeviceAdapter {
       throw new Error('Invalid hardware parameter or value')
     if (channel.context !== (await this.readContext(channel.id)))
       throw new Error('Source changed; refresh before adjusting')
+    const native = this.nativeFor(descriptor, channel.context)
     await this.request(
-      `${this.legacyJson ? 'json' : 'config'}?${new URLSearchParams({ action: 'set', paramid: descriptor.nativeId, value: String(value), configid: '0' })}`,
+      `${this.legacyJson ? 'json' : 'config'}?${new URLSearchParams({ action: 'set', paramid: native, value: String(value), configid: '0' })}`,
     )
-    const readback = readValue(await this.readParameter(descriptor.nativeId), descriptor.nativeId)
+    const readback = readValue(await this.readParameter(native), native)
     if ((await this.readContext(channel.id)) !== channel.context)
       throw new Error('Source changed during write; result is uncertain')
     if (Math.abs(readback - value) > descriptor.step / 10)
@@ -348,7 +510,7 @@ export class AjaAdapter implements DeviceAdapter {
       const extracted = extractDescriptors(response)
       result.rawDescriptorCount = extracted.length
       result.rawDescriptors = extracted
-      raw = activeFsDescriptors(extracted)
+      raw = extracted
       if (!raw.length) throw new Error('No recognized parameter descriptors in desc.json')
       result.checks.push({
         name: 'Readable API',
@@ -417,15 +579,30 @@ export class AjaAdapter implements DeviceAdapter {
         return result
       }
     }
-    const identity = raw.filter((r) =>
-      /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
-        String(r.param_name),
-      ),
-    )
+    const identity = [
+      ...new Map(
+        raw
+          .filter(
+            (r) =>
+              ['eParamID_ProductID', 'eParamID_SoftwareVersion'].includes(String(r.param_id)) ||
+              /^(product( id| name| model)?|model( name)?|firmware( version)?|software version)$/i.test(
+                String(r.param_name),
+              ),
+          )
+          .map((r) => [r.param_id, r]),
+      ).values(),
+    ]
     let identification = ''
     for (const r of identity) {
       try {
-        identification += ` ${stringValue(await this.readParameter(String(r.param_id)))}`
+        const id = String(r.param_id)
+        const response = selectedResponse(await this.readParameter(id), id)
+        const value = stringValue(response)
+        identification += ` ${value}`
+        if (id === 'eParamID_ProductID' && !modelName(value)) {
+          const name = response && typeof response === 'object' ? (response as Raw).value_name : ''
+          if (typeof name === 'string') identification += ` ${name}`
+        }
       } catch {
         /* reported below */
       }
@@ -437,8 +614,12 @@ export class AjaAdapter implements DeviceAdapter {
           'device-info',
           signal,
         )) as ProbeResult['webIdentity']
-        if (/\bAJA\b/i.test(result.webIdentity?.title ?? ''))
-          result.model = modelName(result.webIdentity?.model ?? result.webIdentity?.title ?? '')
+        if (
+          /\bAJA\b/i.test(result.webIdentity?.title ?? '') ||
+          (result.webIdentity as { aja?: boolean })?.aja
+        )
+          result.model =
+            modelName(result.webIdentity?.title ?? '') ?? modelName(result.webIdentity?.model ?? '')
       } catch {
         /* Retain the API identity failure below. */
       }
@@ -460,6 +641,16 @@ export class AjaAdapter implements DeviceAdapter {
         ? `${result.model} · ${result.firmware}`
         : 'Device did not report an AJA FS model. Model identification is needed to add it.',
     })
+    if (result.model === 'FS-HDR') {
+      await this.probeHdr(raw, result, signal)
+      return result
+    }
+    try {
+      raw = activeFsDescriptors(raw)
+    } catch (error) {
+      result.checks.push({ name: 'Ambiguous mapping', status: 'fail', detail: message(error) })
+      return result
+    }
     const groups = new Map<number, ParameterDescriptor[]>()
     for (const r of raw) {
       const mapped = mapDescriptor(r)
@@ -470,7 +661,7 @@ export class AjaAdapter implements DeviceAdapter {
         result.checks.push({
           name: 'Ambiguous mapping',
           status: 'fail',
-          detail: `Processor ${processor}: multiple descriptors match ${mapped.id}. Hardware controls remain locked.`,
+          detail: `Processor ${processor}: multiple descriptors match ${mapped.id} (${list.find((d) => d.id === mapped.id)?.nativeId}, ${mapped.nativeId}). Hardware controls remain locked.`,
         })
         continue
       }

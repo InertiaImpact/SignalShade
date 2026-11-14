@@ -6,7 +6,7 @@ import {
   validateWrite,
   scanOrigins,
 } from './policy.js'
-import { activeFsDescriptors } from './fs-parameters.js'
+import { writableFsDescriptors } from './fs-parameters.js'
 import { fs1Descriptors, fs1ReadIds, isFs1Identity, fs1ReadValue } from './legacy-fs1.js'
 
 const queues = new Map()
@@ -31,7 +31,7 @@ async function fetchJson(origin, path, m = {}) {
     Math.max(
       1,
       Math.min(
-        /^(desc.json|descriptors\?)/.test(path) ? 20000 : 3000,
+        /^(desc\.json|map\.json|descriptors\?)/.test(path) ? 20000 : 3000,
         (m.deadline ?? Date.now() + 6000) - Date.now(),
       ),
     ),
@@ -61,7 +61,9 @@ async function fetchJson(origin, path, m = {}) {
     if (!response.ok) throw new Error(`Device returned HTTP ${response.status} at ${path}`)
     const reader = response.body.getReader()
     // FS descriptor tables can exceed 4 MiB. Stay below Chrome's 64 MiB message ceiling.
-    const limit = /^(desc.json|descriptors\?)/.test(path) ? 32 * 1024 * 1024 : 4 * 1024 * 1024
+    const limit = /^(desc\.json|map\.json|descriptors\?)/.test(path)
+      ? 32 * 1024 * 1024
+      : 4 * 1024 * 1024
     let size = 0,
       result = ''
     const decoder = new TextDecoder()
@@ -83,7 +85,7 @@ async function fetchJson(origin, path, m = {}) {
         .trim()
         .slice(0, 180)
       const model = result.match(
-        /\bFS[- ]?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
+        /\bFS(?:[- ]|\s*\|\s*)?HDR\b|\bFS1[- ]X\b|\bFS[124]\b|\bHELO(?:[- ]?PLUS)?\b|\bKi ?Pro(?: (?:Ultra|GO|Rack|Mini))?/i,
       )?.[0]
       return { title, model, aja: /\bAJA\b/i.test(result), status: response.status }
     }
@@ -186,7 +188,7 @@ async function handle(m, sender) {
       if (
         !Number.isFinite(m.deadline) ||
         m.deadline < Date.now() ||
-        m.deadline > Date.now() + (op.kind === 'descriptors' ? 22000 : 10000)
+        m.deadline > Date.now() + (['descriptors', 'map'].includes(op.kind) ? 22000 : 10000)
       )
         throw new Error('Request expired; reconnect and read device state')
       if (!(await chrome.permissions.contains({ origins: [hostPattern] })))
@@ -233,7 +235,7 @@ async function handle(m, sender) {
               raw = fs1Descriptors
             }
           }
-          list = raw === fs1Descriptors ? fs1Descriptors : activeFsDescriptors(descriptors(raw))
+          list = raw === fs1Descriptors ? fs1Descriptors : writableFsDescriptors(descriptors(raw))
           discovered.set(`${owner}:${origin}`, list)
         }
         validateWrite(op, list)
@@ -272,7 +274,7 @@ async function handle(m, sender) {
       if (op.kind === 'descriptors')
         discovered.set(
           `${sender.tab.id}:${sender.documentId}:${origin}`,
-          activeFsDescriptors(descriptors(result)),
+          writableFsDescriptors(descriptors(result)),
         )
       // Login responses never expose cookies or other authentication metadata.
       return op.kind === 'login'
