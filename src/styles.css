@@ -4890,6 +4890,7 @@ button {
   display: grid;
   gap: 0;
   margin: 20px 0;
+  padding: 0;
 }
 .recorder-storage-row {
   display: grid;
@@ -4899,14 +4900,81 @@ button {
   border-bottom: 1px solid var(--border-default);
   font-size: 14px;
 }
-.recorder-storage-row > span:last-of-type {
+.recorder-storage-row > .recorder-storage-metrics {
   grid-column: 1 / -1;
   color: var(--text-muted);
+}
+.recorder-storage-row strong small {
+  margin-left: 7px;
+  color: var(--accent-text);
+  font-size: 10px;
 }
 .recorder-storage-row meter {
   width: 100%;
   height: 7px;
   grid-column: 1 / -1;
+}
+.modal.wide.recorder-fleet-modal {
+  width: 1000px;
+  max-width: calc(100vw - 24px);
+}
+.recorder-fleet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 270px), 1fr));
+  align-items: stretch;
+  gap: 12px;
+}
+.recorder-fleet-card {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-default);
+  border-radius: 6px;
+  background: var(--surface-panel);
+  padding: 12px;
+}
+.recorder-fleet-heading,
+.recorder-fleet-state,
+.recorder-fleet-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.recorder-fleet-heading h3 {
+  margin: 0;
+  font-size: 15px;
+  overflow-wrap: anywhere;
+}
+.recorder-fleet-state {
+  margin-top: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--border-subtle);
+}
+.recorder-fleet-state .mono {
+  font-size: 12px;
+}
+.recorder-fleet .recorder-storage-list {
+  margin: 0 0 12px;
+}
+.recorder-fleet .recorder-storage-row {
+  grid-template-columns: minmax(0, 1fr) auto;
+  padding: 7px 0;
+  gap: 4px 8px;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+.recorder-fleet .recorder-storage-row > span:nth-child(2) {
+  text-align: right;
+  max-width: 115px;
+}
+.recorder-fleet-warning {
+  font-size: 12px;
+  margin: 8px 0 0;
+}
+.recorder-fleet-actions {
+  flex-wrap: wrap;
+  margin-top: auto;
 }
 .connections-content .device-section:first-child {
   border-top: 0;

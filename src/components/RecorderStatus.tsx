@@ -11,6 +11,23 @@ export const recorderStateLabel: Record<RecorderSnapshot['state'], string> = {
   offline: 'Offline',
   playback: 'Playback',
 }
+export function recorderSummary(snapshot: RecorderSnapshot, now: number) {
+  const stale = !!snapshot.updatedAt && now - snapshot.updatedAt > 10000
+  const recording = !stale && snapshot.state === 'recording'
+  const status = snapshot.pending
+    ? snapshot.pending === 'record'
+      ? 'Starting…'
+      : 'Stopping…'
+    : stale && snapshot.state !== 'offline'
+      ? 'Stale'
+      : recorderStateLabel[snapshot.state]
+  const duration =
+    !stale && (recording || snapshot.state === 'paused') && snapshot.duration
+      ? `${snapshot.durationKind === 'observed' ? '~' : ''}${snapshot.duration}`
+      : undefined
+  return { stale, recording, status, duration }
+}
+
 export function RecorderStatus({
   config,
   snapshot,
@@ -43,24 +60,41 @@ export function RecorderStatus({
           {warnings.length > 1 ? ` · ${warnings.length - 1} more` : ''}
         </p>
       )}
-      <div className="recorder-storage-list">
-        {snapshot.media.map((media) => (
-          <div key={media.id} className={`recorder-storage-row ${media.active ? 'active' : ''}`}>
-            <strong>{media.label}</strong>
-            <span>{media.status === 'Unknown' ? 'Unavailable' : media.status}</span>
-            <span>{mediaSummary(media) === media.status ? '' : mediaSummary(media)}</span>
-            {media.freePercent !== undefined && (
+      <RecorderStorage media={snapshot.media} />
+    </div>
+  )
+}
+
+export function RecorderStorage({ media }: { media: RecorderSnapshot['media'] }) {
+  if (!media.length) return <p className="muted">Storage status unavailable</p>
+  return (
+    <ul className="recorder-storage-list" aria-label="Storage destinations">
+      {media.map((destination) => {
+        const summary = mediaSummary(destination)
+        return (
+          <li
+            key={destination.id}
+            className={`recorder-storage-row ${destination.active ? 'active' : ''}`}
+          >
+            <strong>
+              {destination.label}
+              {destination.active && <small>Active</small>}
+            </strong>
+            <span>{destination.status === 'Unknown' ? 'Unavailable' : destination.status}</span>
+            {summary !== destination.status && (
+              <span className="recorder-storage-metrics">{summary}</span>
+            )}
+            {destination.freePercent !== undefined && (
               <meter
                 min={0}
                 max={100}
-                value={media.freePercent}
-                aria-label={`${media.label} free space`}
+                value={destination.freePercent}
+                aria-label={`${destination.label} free space`}
               />
             )}
-          </div>
-        ))}
-      </div>
-      {!snapshot.media.length && <p className="muted">Storage status unavailable</p>}
-    </div>
+          </li>
+        )
+      })}
+    </ul>
   )
 }

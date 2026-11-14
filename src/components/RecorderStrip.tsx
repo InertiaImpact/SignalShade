@@ -2,17 +2,19 @@ import { useEffect, useState, useSyncExternalStore } from 'react'
 import { TriangleAlert } from 'lucide-react'
 import { desk } from '../core/store'
 import { disconnected, recorderWarnings, type RecorderConfig } from '../recorders/types'
-import { recorderStateLabel } from './RecorderStatus'
+import { recorderSummary } from './RecorderStatus'
 import { RecorderTransport } from './RecorderTransport'
 
 export function RecorderStrip({
   configs,
   readOnly,
   manage,
+  openOverview,
 }: {
   configs: RecorderConfig[]
   readOnly: boolean
-  manage: (id?: string) => void
+  manage: (id: string) => void
+  openOverview: () => void
 }) {
   const states = useSyncExternalStore(desk.recorders.subscribe, desk.recorders.getSnapshot)
   const [now, setNow] = useState(Date.now)
@@ -33,27 +35,13 @@ export function RecorderStrip({
 
   const recorders = configs.map((config) => {
     const snapshot = states[config.id] ?? disconnected()
-    const stale = !!snapshot.updatedAt && now - snapshot.updatedAt > 10000
-    const recording = !stale && snapshot.state === 'recording'
     const warnings = recorderWarnings(snapshot, config, now)
     const attention = warnings.length > 0 || snapshot.state === 'offline'
-    const status = snapshot.pending
-      ? snapshot.pending === 'record'
-        ? 'Starting…'
-        : 'Stopping…'
-      : stale
-        ? 'Stale'
-        : recorderStateLabel[snapshot.state]
-    const duration =
-      !stale && (recording || snapshot.state === 'paused') && snapshot.duration
-        ? `${snapshot.durationKind === 'observed' ? '~' : ''}${snapshot.duration}`
-        : undefined
-    return { config, snapshot, recording, warnings, attention, status, duration }
+    return { config, snapshot, warnings, attention, ...recorderSummary(snapshot, now) }
   })
   const single = recorders.length === 1 ? recorders[0] : undefined
   const active = recorders.filter((item) => item.recording)
   const attention = recorders.filter((item) => item.attention)
-  const first = active[0] ?? attention[0] ?? recorders[0]
   const overview = single
     ? [single.status, single.duration].filter(Boolean).join(' ')
     : `${active.length} REC / ${recorders.length}`
@@ -64,9 +52,9 @@ export function RecorderStrip({
     <section className="recorder-strip" aria-label="Recorder monitoring">
       <button
         className={`recorder-overview ${single ? 'single' : ''} ${active.length ? 'recording' : ''}`}
-        aria-label={`Recorder details · ${overviewTitle}${attention.length ? ` · ${attention.length} need attention` : ''}`}
-        title={`${overviewTitle}${attention.length ? ` · ${attention.length} need attention` : ''}`}
-        onClick={() => manage(first.config.id)}
+        aria-label={`Recorder overview · ${overviewTitle}${attention.length ? ` · ${attention.length} need attention` : ''}`}
+        title="Open recorder overview"
+        onClick={openOverview}
       >
         {overview}
         {attention.length > 0 && <TriangleAlert size={11} className="text-warning" />}

@@ -40,6 +40,7 @@ import { GangControls } from './components/GangControls'
 import { GangCard } from './components/GangCard'
 import { DeviceDialog } from './components/DeviceDialog'
 import { RecorderStrip } from './components/RecorderStrip'
+import { RecorderOverview } from './components/RecorderOverview'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
 import { ViewDialog } from './components/ViewDialog'
@@ -71,6 +72,7 @@ import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 
 type Dialog =
   | 'devices'
+  | 'recorders'
   | 'gang'
   | 'presets'
   | 'layout'
@@ -399,7 +401,12 @@ export default function App() {
               </>
             )}
           </div>
-          <RecorderStrip configs={w.recorders ?? []} readOnly={readOnly} manage={openDevices} />
+          <RecorderStrip
+            configs={w.recorders ?? []}
+            readOnly={readOnly}
+            manage={openDevices}
+            openOverview={() => setDialog('recorders')}
+          />
           <div className="topbar-right">
             <button
               className="connection-summary"
@@ -547,20 +554,15 @@ export default function App() {
           )}
         </nav>
         <div className="sidebar-heading">
-          <span className="eyebrow">DEVICES</span>
-          <button
-            className="icon-button tiny"
-            aria-label="Manage devices"
-            onClick={() => openDevices()}
-          >
-            <Plus size={15} />
-          </button>
+          <span className="eyebrow">CHANNELS BY DEVICE</span>
         </div>
-        <nav aria-label="Devices">
+        <nav aria-label="Channels by device">
           {w.devices.map((d) => (
             <button
               className={`nav-item device-nav ${view === deviceViewKey(d.id) ? 'active' : ''}`}
               key={d.id}
+              aria-current={view === deviceViewKey(d.id) ? 'page' : undefined}
+              title={`Show channels on ${d.label}`}
               onClick={() => selectView(deviceViewKey(d.id))}
             >
               <Server size={16} />
@@ -574,9 +576,15 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <button className="add-device" onClick={() => openDevices()}>
-          <Plus size={15} />
-          Connect a device
+        <button
+          className="add-device"
+          onClick={() => {
+            setSidebar(false)
+            openDevices()
+          }}
+        >
+          <Settings2 size={15} />
+          Manage devices
         </button>
         <div className="sidebar-bottom">
           <button className="nav-item" onClick={() => setDialog('presets')}>
@@ -647,11 +655,11 @@ export default function App() {
             </div>
             <button
               className="button small"
-              aria-label="Select visible"
               title="Select visible channels · Ctrl/⌘-click or drag headers for a partial selection"
+              disabled={!visibleChannels.length}
               onClick={() => selectMany(visibleChannels.map((c) => c.id))}
             >
-              Select all
+              Select visible
             </button>
             <div className="arrow-step">
               <span>Step</span>
@@ -1072,6 +1080,15 @@ export default function App() {
           close={close}
           readOnly={readOnly}
           initialSelection={deviceSelection}
+        />
+      )}
+      {dialog === 'recorders' && (
+        <RecorderOverview
+          configs={w.recorders ?? []}
+          states={recorderStates}
+          readOnly={readOnly}
+          openDevice={openDevices}
+          close={close}
         />
       )}
       {dialog === 'gang' && (
