@@ -3393,6 +3393,12 @@ button {
   position: static;
   margin: 0;
 }
+.app .main-heading > .sidebar-toggle {
+  flex-shrink: 0;
+}
+.app .main-heading > .sidebar-toggle[aria-expanded='true'] > svg {
+  color: var(--accent-text);
+}
 .app .channel-toolbar {
   flex: 1 1 auto;
   min-width: 0;
@@ -4459,7 +4465,10 @@ button {
   border-radius: 8px;
   z-index: 12;
 }
-@media (min-width: 801px) {
+@media (width > 800px) {
+  .app .main-heading > .mobile-menu {
+    display: none;
+  }
   .app.sidebar-collapsed {
     grid-template-columns: minmax(0, 1fr);
   }
@@ -4484,7 +4493,7 @@ button {
   .app .sidebar.open {
     visibility: visible;
   }
-  .app .desktop-sidebar-toggle {
+  .app .main-heading > .desktop-sidebar-toggle {
     display: none;
   }
   .app .workspace-picker .workspace-switch {

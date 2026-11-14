@@ -637,23 +637,25 @@ export default function App() {
       <main className="main" {...paneSelectionHandlers}>
         <div className="main-heading">
           <button
-            className="icon-button mobile-menu"
-            aria-label={sidebar ? 'Close navigation' : 'Open navigation'}
+            className="button sidebar-toggle mobile-menu"
+            aria-label={sidebar ? 'Close sidebar navigation' : 'Open sidebar navigation'}
             aria-controls="desk-sidebar"
             aria-expanded={sidebar}
             onClick={() => setSidebar(!sidebar)}
           >
-            <PanelLeftOpen size={19} />
+            {sidebar ? <PanelLeftClose size={16} /> : <PanelLeftOpen size={16} />}
+            <span>Sidebar</span>
           </button>
           <button
-            className="icon-button desktop-sidebar-toggle"
+            className="button sidebar-toggle desktop-sidebar-toggle"
             aria-controls="desk-sidebar"
             aria-expanded={!collapsed}
             aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
             onClick={toggleCollapsed}
           >
-            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
+            {collapsed ? <PanelLeftOpen size={16} /> : <PanelLeftClose size={16} />}
+            <span>Sidebar</span>
           </button>
           <h1>
             {title}
