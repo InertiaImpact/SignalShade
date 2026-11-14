@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  QrCode,
   RefreshCw,
   RotateCcw,
   Save,
@@ -44,6 +45,8 @@ import { RecorderOverview } from './components/RecorderOverview'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
 import { ViewDialog } from './components/ViewDialog'
+import { ImportWorkspaceQr, WorkspaceQr } from './components/WorkspaceQr'
+import { workspaceQrFragment } from './core/workspace-qr'
 import { useCardOrder } from './components/useCardOrder'
 import { cardsInView, customViewKey, deviceViewKey, gangViewKey } from './core/views'
 import { ConvergeControls } from './components/ConvergeControls'
@@ -78,6 +81,7 @@ type Dialog =
   | 'layout'
   | 'reset'
   | 'workspace'
+  | 'workspace-qr'
   | 'new-workspace'
   | 'view'
   | 'help'
@@ -93,6 +97,24 @@ export default function App() {
     [sort, setSort] = useState('custom'),
     [dialog, setDialog] = useState<Dialog>(null)
   const [deviceSelection, setDeviceSelection] = useState<string>()
+  const [incomingWorkspaceQr, setIncomingWorkspaceQr] = useState(() =>
+    location.hash.startsWith(workspaceQrFragment) ? location.hash : '',
+  )
+  const closeWorkspaceQrImport = () => {
+    history.replaceState(history.state, '', location.pathname + location.search)
+    setIncomingWorkspaceQr('')
+  }
+  useEffect(() => {
+    const readLink = () => {
+      if (location.hash.startsWith(workspaceQrFragment)) {
+        setDialog(null)
+        setWorkspaceMenu(false)
+        setIncomingWorkspaceQr(location.hash)
+      } else setIncomingWorkspaceQr('')
+    }
+    window.addEventListener('hashchange', readLink)
+    return () => window.removeEventListener('hashchange', readLink)
+  }, [])
   const openDevices = (id?: string) => {
     setDeviceSelection(id)
     setDialog('devices')
@@ -250,7 +272,8 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (target.closest('input, select, textarea, [role="dialog"]') || dialog) return
+      if (target.closest('input, select, textarea, [role="dialog"]') || dialog || incomingWorkspaceQr)
+        return
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault()
         if (!readOnly) desk.undo()
@@ -268,7 +291,7 @@ export default function App() {
     }
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
-  }, [dialog, readOnly, group])
+  }, [dialog, incomingWorkspaceQr, readOnly, group])
   const selectView = (id: string) => {
     setView(id)
     setSidebar(false)
@@ -396,6 +419,14 @@ export default function App() {
                     }}
                   >
                     <Download size={15} /> Export workspace
+                  </button>
+                  <button
+                    onClick={() => {
+                      setWorkspaceMenu(false)
+                      setDialog('workspace-qr')
+                    }}
+                  >
+                    <QrCode size={15} /> Export workspace as QR code
                   </button>
                 </div>
               </>
@@ -1109,6 +1140,27 @@ export default function App() {
         />
       )}
       {dialog === 'workspace' && <WorkspaceDialog workspace={w} close={close} />}
+      {dialog === 'workspace-qr' && <WorkspaceQr workspace={w} close={close} />}
+      {incomingWorkspaceQr && (
+        <ImportWorkspaceQr
+          key={incomingWorkspaceQr}
+          hash={incomingWorkspaceQr}
+          disabled={readOnly || snapshot.busy > 0 || recorderBusy || snapshot.converging}
+          blockedReason={
+            snapshot.lockedTab
+              ? 'Close the other SignalShade tab on this device and reload to import.'
+              : globalLock
+                ? 'Unlock the desk before importing. Reopen this link after unlocking.'
+                : undefined
+          }
+          onImport={async (workspace) => {
+            await desk.addWorkspace(workspace, 'import')
+            selectView('all')
+            closeWorkspaceQrImport()
+          }}
+          close={closeWorkspaceQrImport}
+        />
+      )}
       {dialog === 'new-workspace' && (
         <Modal title="New workspace" close={close}>
           <form

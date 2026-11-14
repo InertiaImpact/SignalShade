@@ -4668,6 +4668,12 @@ button {
   margin: 14px auto;
   background: white;
 }
+.workspace-qr-modal {
+  width: min(560px, calc(100vw - 24px));
+}
+.workspace-qr-modal .diagnostic-qr {
+  width: min(100%, 480px);
+}
 .diagnostic-modal > textarea,
 .diagnostic-page > textarea {
   box-sizing: border-box;
