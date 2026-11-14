@@ -445,19 +445,27 @@ export class DeskStore {
           address: result.address,
           simulated: false,
           status: 'online',
-          armed: true,
+          armed: false,
         },
       ],
       channels: [...others, ...channels],
       gangs: workspace.gangs.map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) })),
     })
-    this.log(`Connected ${deviceLabel}`, 'success')
+    this.log(`Connected ${deviceLabel} in read-only mode`, 'success')
   }
   armDevice(id: string, armed: boolean) {
     if (!this.canEdit()) return
     const device = this.state.workspace.devices.find((d) => d.id === id)
     if (!device?.simulated && armed && (!this.adapters.has(id) || device?.status !== 'online'))
       throw new Error('Reconnect and pass the device checks first')
+    if (
+      armed &&
+      !device?.simulated &&
+      !this.state.workspace.channels.some(
+        (channel) => channel.deviceId === id && channel.descriptors.length,
+      )
+    )
+      throw new Error('No mapped color controls; this device is available for monitoring only')
     this.workspace({
       ...this.state.workspace,
       devices: this.state.workspace.devices.map((d) => (d.id === id ? { ...d, armed } : d)),

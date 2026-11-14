@@ -34,7 +34,7 @@ async function settle() {
 }
 const value = (id: string, param = 'gain') =>
   store.getSnapshot().workspace.channels.find((c) => c.id === id)!.values[param as 'gain']
-function hardwareFixture(address = 'http://10.0.0.2') {
+function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   const channel = {
     ...demoWorkspace().channels[0],
     id: `${address}/vid1`,
@@ -55,10 +55,35 @@ function hardwareFixture(address = 'http://10.0.0.2') {
     rawDescriptorCount: 20,
   }
   store.connect(adapter, result, 'Test hardware')
-  store.armDevice(channel.deviceId, true)
-  return { channel, adapter }
+  if (arm) store.armDevice(channel.deviceId, true)
+  return { channel, adapter, result }
 }
 describe('command engine', () => {
+  it('connects and reconnects hardware without enabling writes', async () => {
+    const { channel, adapter, result } = hardwareFixture(undefined, false)
+    const device = () =>
+      store.getSnapshot().workspace.devices.find((d) => d.id === channel.deviceId)
+    expect(device()).toMatchObject({ status: 'online', armed: false })
+    await store.refresh()
+    store.adjust([channel.id], 'gain', 1.2, 'absolute')
+    await settle()
+    expect(adapter.write).not.toHaveBeenCalled()
+    store.armDevice(channel.deviceId, true)
+    store.connect(adapter, result, 'Test hardware')
+    expect(device()?.armed).toBe(false)
+    expect(adapter.write).not.toHaveBeenCalled()
+  })
+
+  it('keeps devices with no verified controls in monitoring mode', () => {
+    const { channel, adapter, result } = hardwareFixture(undefined, false)
+    store.connect(
+      adapter,
+      { ...result, descriptors: [], channels: [{ ...channel, descriptors: [], values: {} }] },
+      'Monitor',
+    )
+    expect(() => store.armDevice(channel.deviceId, true)).toThrow('monitoring only')
+    expect(adapter.write).not.toHaveBeenCalled()
+  })
   it('waits for every device read to settle after a failed Converge preflight', async () => {
     const first = hardwareFixture(),
       second = hardwareFixture('http://10.0.0.3')

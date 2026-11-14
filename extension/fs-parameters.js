@@ -20,7 +20,7 @@ export const activeFsId = (id) => String(id).match(bank)?.[1] ?? id
 // VID1–4, and its web UI resolves stored input memories through /map.json.
 export function fsHdrColorBase(id) {
   return String(id).match(
-    /^(eParamID_Vid[0-4](?:YUVProcAmp(?:Gain|Black|Hue|Sat|Enable)|RGBProcAmp(?:Enable|(?:Gain|Black|Gamma)(?:Red|Green|Blue))))(?:_[A-Za-z0-9_]+)?$/,
+    /^(eParamID_Vid[0-4](?:YUVProcAmp(?:Gain|Black|Hue|Sat|Enable)|RGBProcAmp(?:Enable|(?:Gain|Black|Gamma)(?:Red|Green|Blue))))(?:_[A-Za-z0-9_]+|SDI(?:[1-8]|(?:1_2|3_4|5_6|7_8)_DualLink|(?:1_4|5_8)_QuadLink))?$/,
   )?.[1]
 }
 export const fsModeId = 'eParamID_FS4Mode'

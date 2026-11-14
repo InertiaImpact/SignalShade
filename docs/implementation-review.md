@@ -1,5 +1,9 @@
 # Recorder implementation and code review
 
+## FS-HDR sparse input maps and read-only Add — 0.5.4
+
+The live four-channel report downloaded both tables but failed to resolve Proc Amp enable. The dashboard accepts FS-HDR bank IDs with or without a separator before the firmware input suffix. For a missing map entry, it requires a unique descriptor corresponding to the selected input's enum label, or a read-only base request explicitly naming a valid bank. If it cannot resolve an enable control, it omits that stage and keeps other verified controls or monitoring. The QR reports the input index and whether the map entry or descriptor was absent. Successful Add/Reconnect leaves live processor writes disabled until explicitly enabled. Connect 0.4.2 already accepts the verified exact IDs, so no extension update is required.
+
 ## Device Add progress and cancellation — 0.5.3
 
 Devices shows the current Add phase and a Cancel button at the top of the manager. The read-only probe has a 75-second budget after browser approval and can cancel an in-flight context or color read. FS-HDR reuses its initial source context and still rechecks it after readback. The diagnostic QR includes the most recent Add phase and any current REST endpoint even when the report is incomplete. Connect 0.4.2 is unchanged.

@@ -2,6 +2,27 @@ import { expect, it } from 'vitest'
 import qrcode from 'qrcode-generator'
 import { diagnosticFragment, diagnosticLink, diagnosticSummary } from './diagnostic-summary'
 
+it('includes sparse-map details even if monitoring connected successfully', () => {
+  const origin = 'http://10.0.0.2'
+  const detail =
+    'Active input mapping missing for eParamID_Vid1YUVProcAmpEnable (input index 12; no entry; 8 usable entries)'
+  const summary = diagnosticSummary(
+    {
+      reports: {
+        [origin]: {
+          model: 'FS-HDR',
+          channels: [{}],
+          checks: [{ status: 'info', name: 'VID1', detail }],
+        },
+      },
+      events: [{ origin, action: 'connect-complete' }],
+    },
+    origin,
+  )
+  expect(summary).toContain('Input index: 12 | no entry | 8 map entries')
+  expect(summary).toContain('VID1: active input mapping missing Vid1YUVProcAmpEnable')
+})
+
 it('reports the current step and pending request before the probe returns', () => {
   const origin = 'http://10.215.20.20'
   const summary = diagnosticSummary(

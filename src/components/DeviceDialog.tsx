@@ -241,7 +241,14 @@ export function DeviceDialog({
         if (controller.signal.aborted) return
         desk.connect(adapter, report, name)
         kept = true
-        setNotice(`${name || report.model} added · ${origin}`)
+        const missing = report.checks.some((check) =>
+          check.detail.startsWith('Active input mapping missing'),
+        )
+        setNotice(
+          !report.descriptors.length
+            ? `${name || report.model} added for monitoring. No color controls could be mapped. Open Diagnostic QR for details.`
+            : `${name || report.model} added read-only. ${missing ? 'Some controls could not be mapped. ' : ''}Enable writes in device details when ready.`,
+        )
       }
       diagnostics.event({ action: 'connect-complete', origin })
       setPassword('')

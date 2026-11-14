@@ -24,7 +24,11 @@ function reason(value: string) {
     return 'duplicate descriptors'
   if (/update SignalShade Connect|unsupported AJA endpoint/i.test(value))
     return 'Connect update needed'
-  if (/no descriptor|no readable.*memory|unsupported FS input map/i.test(value))
+  if (
+    /active input mapping missing|no descriptor|no readable.*memory|unsupported FS input map/i.test(
+      value,
+    )
+  )
     return 'active input mapping missing'
   if (/invalid.*parameter map|FS-HDR parameter map/i.test(value)) return 'parameter map unavailable'
   if (/operating mode/i.test(value)) return 'operating mode unreadable/changed'
@@ -61,8 +65,9 @@ export function diagnosticSummary(
   const firmware = text(report.firmware).match(/\b\d{1,2}\.\d{1,2}\.\d{1,2}(?:\.\d{1,2})?\b/)?.[0]
   const checks = Array.isArray(report.checks) ? report.checks.map(row) : []
   const failed = checks.filter((c) => c.status === 'fail')
+  const mappingNote = checks.find((c) => text(c.detail).startsWith('Active input mapping missing'))
   const errorEvent = [...events].reverse().find((e) => e.action === 'connect-failed')
-  const failure = failed[0] ?? row(errorEvent)
+  const failure = failed[0] ?? (errorEvent ? row(errorEvent) : (mappingNote ?? {}))
   const failureText = text(failure.detail) || text(failure.error)
   const lastStage = text([...events].reverse().find((e) => e.action === 'add-stage')?.stage)
   const completed = events.some((e) => e.action === 'connect-complete')
@@ -78,6 +83,9 @@ export function diagnosticSummary(
   const semantic = failureText.match(
     /\bmatch (procEnabled|rgbEnabled|gain|black|hue|saturation|(?:red|green|blue)(?:Gain|Black|Gamma))\b/,
   )?.[1]
+  const mapping = failureText.match(
+    /\binput index (\d{1,10}|unknown); (no entry|entry rejected|descriptor absent); (\d{1,5}) usable entries\b/,
+  )
   const count = Number.isSafeInteger(report.rawDescriptorCount) ? report.rawDescriptorCount : '-'
   const mode = checks.some((c) => text(c.detail).includes('(VID0)'))
     ? '1ch'
@@ -101,6 +109,7 @@ export function diagnosticSummary(
     lines.push(
       `${stage}: ${reason(failureText)}${semantic ? ' ' + semantic : ''}${failureIds.length ? ' ' + failureIds.join('/') : ''}`,
     )
+  if (mapping) lines.push(`Input index: ${mapping[1]} | ${mapping[2]} | ${mapping[3]} map entries`)
   const selectedEvents = [
     ...events.filter((e) => /^(desc\.json|map\.json|descriptors\?)/.test(text(e.path))).slice(-2),
     ...events.filter((e) => e.error || (typeof e.status === 'number' && e.status >= 400)).slice(-3),

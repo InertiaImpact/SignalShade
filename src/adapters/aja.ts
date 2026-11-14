@@ -24,6 +24,15 @@ import type {
 } from '../core/types'
 
 type Raw = Record<string, unknown>
+class MissingHdrMapping extends Error {}
+function hdrInputIndex(context: string, source: string) {
+  const raw = context
+    .split('|')
+    .find((part) => part.startsWith(source + '='))
+    ?.slice(source.length + 1)
+  const index = raw?.trim() ? Number(raw) : NaN
+  return Number.isSafeInteger(index) && index >= 0 ? String(index) : undefined
+}
 export type ContextParameter = { id: string; label: string }
 const processorOf = (id: string) =>
   Number(id.match(/(?:Vid|Video|Processor|Ch)([1-4])(?=[A-Z_]|$)/i)?.[1] ?? '1')
@@ -233,6 +242,7 @@ export class AjaAdapter implements DeviceAdapter {
   private contextNames = new Map<string, string>()
   private hdrMode?: number
   private hdrRoutes = new Map<string, NonNullable<ReturnType<typeof fsInputRoute>>>()
+  private hdrMap: unknown
   private hdrDescriptors: Raw[] = []
   private transport = new AjaTransport()
   readonly address: string
@@ -351,14 +361,9 @@ export class AjaAdapter implements DeviceAdapter {
     const base = descriptor.nativeId!
     const route = this.hdrRoutes.get(base)
     if (!route) return base
-    const value = context
-      .split('|')
-      .find((part) => part.startsWith(route.source + '='))
-      ?.split('=')[1]
-    const id = value && route.banks[value]
-    const raw = id && matchingDescriptor(this.hdrDescriptors, id)
-    const mapped = raw && mapDescriptor(raw, descriptor.id)
-    if (!mapped || !id) throw new Error(`No readable FS-HDR input memory for ${base}`)
+    const { id, definition } = this.hdrBank(base, route, context)
+    const mapped = mapDescriptor(definition, descriptor.id)
+    if (!mapped) throw new Error(`Invalid FS-HDR descriptor for ${id}; reconnect`)
     if (
       (
         ['min', 'max', 'step', 'neutral', 'scale', 'offset', 'kind', 'unit', 'choices'] as const
@@ -366,6 +371,116 @@ export class AjaAdapter implements DeviceAdapter {
     )
       throw new Error(`FS-HDR input memory changed range for ${base}; reconnect`)
     return id
+  }
+  private hdrBank(
+    base: string,
+    route: NonNullable<ReturnType<typeof fsInputRoute>>,
+    context: string,
+  ) {
+    // AJA's firmware web UI indexes its map using the numeric input value.
+    const index = hdrInputIndex(context, route.source)
+    const id = index === undefined ? undefined : route.banks[index]
+    const definition = id ? matchingDescriptor(this.hdrDescriptors, id) : undefined
+    if (!id || !definition) {
+      const candidate = index === undefined ? undefined : this.reportedHdrBank(base, index)
+      const cause = id ? 'descriptor absent' : candidate ? 'entry rejected' : 'no entry'
+      const reported =
+        typeof candidate === 'string' && /^eParamID_[A-Za-z0-9_]{1,120}$/.test(candidate)
+          ? `; ${candidate}`
+          : ''
+      throw new MissingHdrMapping(
+        `Active input mapping missing for ${base} (input index ${index ?? 'unknown'}; ${cause}; ${Object.keys(route.banks).length} usable entries${reported})`,
+      )
+    }
+    return { id, definition }
+  }
+  private reportedHdrBank(base: string, index: string) {
+    const map = this.hdrMap as {
+      forward_maps?: Record<string, { param_maps?: Record<string, unknown> }>
+    }
+    return map?.forward_maps?.[base]?.param_maps?.[index]
+  }
+  private async recoverHdrBank(
+    base: string,
+    route: NonNullable<ReturnType<typeof fsInputRoute>>,
+    context: string,
+    signal?: AbortSignal,
+  ) {
+    const index = hdrInputIndex(context, route.source)
+    if (index === undefined) return
+    const mappedId = route.banks[index]
+    if (!mappedId && this.reportedHdrBank(base, index)) return
+    const baseId = this.hdrDescriptors.find((d) => d.param_id === route.source)
+    const choices = Array.isArray(baseId?.enum_values) ? baseId.enum_values : []
+    const labels = choices.filter((choice) => choice && Number(choice.value) === Number(index))
+    const sourceLabel =
+      labels.length === 1 && typeof labels[0].text === 'string'
+        ? labels[0].text.replace(/\s+/g, '')
+        : ''
+    const single = sourceLabel.match(/^SDI([1-8])$/i)?.[1]
+    const linked = sourceLabel.match(/^(?:SDI)?([1-8])[/-]([1-8])(Dual|Quad)Link$/i)
+    let suffix = single ? 'SDI' + single : ''
+    if (linked) {
+      const pair = linked[1] + '_' + linked[2]
+      if (linked[3].toLowerCase() === 'dual' && ['1_2', '3_4', '5_6', '7_8'].includes(pair))
+        suffix = `SDI${pair}_DualLink`
+      if (linked[3].toLowerCase() === 'quad' && ['1_4', '5_8'].includes(pair))
+        suffix = `SDI${pair}_QuadLink`
+    }
+    // AJA constructs native descriptor IDs by joining control and input
+    // suffix. Some tables include a separator; compare the exact two forms.
+    const mappedSuffix = mappedId?.slice(base.length).replace(/^_/, '')
+    if (suffix && mappedSuffix && suffix !== mappedSuffix) return
+    if (
+      !suffix &&
+      mappedSuffix &&
+      /^SDI(?:[1-8]|(?:1_2|3_4|5_6|7_8)_DualLink|(?:1_4|5_8)_QuadLink)$/.test(mappedSuffix)
+    )
+      suffix = mappedSuffix
+    if (
+      suffix &&
+      route.source.endsWith('VideoInput') &&
+      !route.source.endsWith('ActualVideoInput')
+    ) {
+      const candidates = [base + suffix, base + '_' + suffix].filter((id) =>
+        this.hdrDescriptors.some((d) => d.param_id === id),
+      )
+      if (candidates.length === 1) {
+        const definition = matchingDescriptor(this.hdrDescriptors, candidates[0])!
+        if (mapDescriptor(definition, hdrSemantic(base))) {
+          route.banks[index] = candidates[0]
+          return definition
+        }
+      }
+    }
+    if (mappedId) return
+    // Some units can read the base alias even when the table has no usable
+    // entry. Only an explicitly named, same-control bank can fill the gap.
+    let response: unknown
+    try {
+      response = selectedResponse(await this.readParameter(base, signal), base)
+    } catch {
+      signal?.throwIfAborted()
+      return
+    }
+    if (!response || typeof response !== 'object') return
+    const raw = response as Raw
+    if (!Number.isFinite(toNumber(raw.value))) return
+    const reported = [
+      ...new Set(
+        [raw.name, raw.param_id, raw.paramid].filter(
+          (id): id is string => typeof id === 'string' && /^eParamID_/.test(id) && id !== base,
+        ),
+      ),
+    ]
+    if (reported.length !== 1) return
+    const id = reported[0]
+    if (fsHdrColorBase(id) !== base || id.endsWith('_status_page')) return
+    if (suffix && id.slice(base.length).replace(/^_/, '') !== suffix) return
+    const definition = matchingDescriptor(this.hdrDescriptors, id)
+    if (!definition || !mapDescriptor(definition, hdrSemantic(base))) return
+    route.banks[index] = id
+    return definition
   }
   private async probeHdr(
     raw: Raw[],
@@ -380,6 +495,7 @@ export class AjaAdapter implements DeviceAdapter {
       if (![0, 1, 2].includes(mode)) throw new Error('Unrecognized FS-HDR operating mode')
       this.hdrMode = mode
       this.hdrDescriptors = raw
+      this.hdrMap = undefined
       this.hdrRoutes.clear()
       result.checks.push({
         name: 'Operating mode',
@@ -399,6 +515,7 @@ export class AjaAdapter implements DeviceAdapter {
             : `FS-HDR parameter map: ${message(error)}`,
         )
       }
+      this.hdrMap = map
       const processors = mode === 2 ? [0] : [1, 2, 3, 4]
       for (const n of processors) {
         signal?.throwIfAborted()
@@ -421,39 +538,43 @@ export class AjaAdapter implements DeviceAdapter {
               : []
           }),
         )
-        for (const base of bases) {
-          const route = fsInputRoute(map, base)
-          if (!route) continue
-          this.hdrRoutes.set(base, route)
-          if (!context.some((p) => p.id === route.source))
-            context.push({ id: route.source, label: 'Video input' })
-        }
-        this.contextParameters.set(id, context)
         try {
           if (signal?.aborted) throw new Error('Probe cancelled')
+          for (const base of bases) {
+            const route = fsInputRoute(map, base)
+            if (!route) continue
+            this.hdrRoutes.set(base, route)
+            if (!context.some((p) => p.id === route.source))
+              context.push({ id: route.source, label: 'Video input' })
+          }
+          this.contextParameters.set(id, context)
           const fingerprint = await this.readContext(id, signal)
           const descriptors: ParameterDescriptor[] = []
+          const unmappedStages = new Set<ParameterDescriptor['section']>()
           for (const base of bases) {
             const semantic = hdrSemantic(base)
             if (!semantic) continue
             const route = this.hdrRoutes.get(base)
-            const source =
-              route &&
-              fingerprint
-                .split('|')
-                .find((part) => part.startsWith(route.source + '='))
-                ?.split('=')[1]
-            const native = route ? source && route.banks[source] : base
-            const definition = native && matchingDescriptor(raw, native)
-            if (!definition) {
-              if (route)
-                throw new Error(`No descriptor for active FS-HDR input memory ${native || base}`)
-              continue
+            let definition: Raw | undefined
+            try {
+              definition = route
+                ? this.hdrBank(base, route, fingerprint).definition
+                : matchingDescriptor(raw, base)
+            } catch (error) {
+              if (!(error instanceof MissingHdrMapping)) throw error
+              definition = route && (await this.recoverHdrBank(base, route, fingerprint, signal))
+              if (!definition) {
+                result.checks.push({ name: `VID${n}`, status: 'info', detail: error.message })
+                if (semantic === 'procEnabled') unmappedStages.add('Proc amp')
+                if (semantic === 'rgbEnabled') unmappedStages.add('RGB correction')
+                continue
+              }
             }
-            const descriptor = mapDescriptor(definition, semantic)
+            const descriptor = definition && mapDescriptor(definition, semantic)
             if (descriptor) descriptors.push({ ...descriptor, nativeId: base })
+            else if (semantic === 'procEnabled' || semantic === 'rgbEnabled')
+              unmappedStages.add(semantic === 'procEnabled' ? 'Proc amp' : 'RGB correction')
           }
-          if (!descriptors.length) continue
           const channel: Channel = {
             id,
             deviceId: this.address,
@@ -462,7 +583,7 @@ export class AjaAdapter implements DeviceAdapter {
             source: 'Device context',
             format: 'Read from device',
             context: fingerprint,
-            descriptors,
+            descriptors: descriptors.filter((d) => !unmappedStages.has(d.section)),
             values: {},
             updatedAt: 0,
             locked: false,
@@ -482,8 +603,12 @@ export class AjaAdapter implements DeviceAdapter {
     result.descriptors = result.channels.flatMap((c) => c.descriptors)
     result.checks.push({
       name: 'Color readback',
-      status: result.channels.length ? 'pass' : 'fail',
-      detail: `${result.channels.length} FS-HDR processors with ${result.descriptors.length} readable controls.`,
+      status: result.descriptors.length ? 'pass' : result.channels.length ? 'info' : 'fail',
+      detail: result.descriptors.length
+        ? `${result.channels.length} FS-HDR processors with ${result.descriptors.length} readable controls.`
+        : result.channels.length
+          ? 'Monitoring only: no color controls could be mapped.'
+          : 'No FS-HDR processors could be read.',
     })
   }
   async write(channel: Channel, descriptor: ParameterDescriptor, value: number) {

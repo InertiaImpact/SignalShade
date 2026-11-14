@@ -4,7 +4,7 @@ import { AjaAdapter } from './aja'
 const modeId = 'eParamID_FS4Mode'
 const native = (n: number, control: string, suffix = '') => `eParamID_Vid${n}${control}${suffix}`
 
-function fixture(mode: number, conflict = false, identity = 'normal') {
+function fixture(mode: number, conflict = false, identity = 'normal', sparse = '') {
   const input = (n: number) => native(n, 'VideoInput')
   const controls = {
     YUVProcAmpEnable: 'ProcAmp Enable',
@@ -26,10 +26,14 @@ function fixture(mode: number, conflict = false, identity = 'normal') {
   ])
   const forward_maps: Record<string, unknown> = {}
   for (const n of [0, 1, 2, 3, 4]) {
-    descriptors.push({ param_id: input(n), param_name: 'Video Input' })
+    descriptors.push({
+      param_id: input(n),
+      param_name: 'Video Input',
+      ...(sparse === 'enum' ? { enum_values: [{ value: 1, text: 'SDI 1' }] } : {}),
+    })
     values.set(input(n), 1)
     for (const [control, label] of Object.entries(controls)) {
-      const a = native(n, control, '_SDI1_2_DualLink'),
+      const a = native(n, control, sparse === 'enum' ? 'SDI1' : '_SDI1_2_DualLink'),
         b = native(n, control, '_SDI3_4_DualLink')
       const base = native(n, control)
       const enable = control.endsWith('Enable')
@@ -46,7 +50,11 @@ function fixture(mode: number, conflict = false, identity = 'normal') {
       }
       descriptors.push({ ...def, param_id: base }, { ...def, param_id: a }, { ...def, param_id: b })
       if (conflict && n === 0 && enable) descriptors.push({ ...def, param_id: a, max_value: 2 })
-      forward_maps[base] = { map_scheme: 1, depends_on: [input(n)], param_maps: { 1: a, 2: b } }
+      forward_maps[base] = {
+        map_scheme: 1,
+        depends_on: [input(n)],
+        param_maps: sparse && enable ? { 2: b } : { 1: a, 2: b },
+      }
       values.set(a, enable ? 1 : 105)
       values.set(b, enable ? 0 : 110)
     }
@@ -69,6 +77,15 @@ function fixture(mode: number, conflict = false, identity = 'normal') {
       id = u.searchParams.get('paramid') ?? ''
     if (u.pathname === '/desc.json') return Response.json(descriptors)
     if (u.pathname === '/map.json') return Response.json({ forward_maps })
+    if (sparse && /^eParamID_Vid[0-4]YUVProcAmpEnable$/.test(id)) {
+      const name =
+        sparse === 'alias'
+          ? id + '_SDI1_2_DualLink'
+          : sparse === 'wrong'
+            ? native(0, 'YUVProcAmpEnable', '_SDI1_2_DualLink')
+            : id
+      return Response.json({ name, value: 1 })
+    }
     if (id === 'eParamID_ProductID' && identity === 'canonical')
       return Response.json({ name: id, value: '123', value_name: 'FS | HDR' })
     if (!values.has(id)) return new Response('', { status: 404 })
@@ -126,6 +143,62 @@ it('reports a genuine conflict in the selected bank, with its exact ID', async (
     ),
   ).toBe(true)
   expect(f.writes).toEqual([])
+  adapter.dispose()
+})
+
+it.each(['missing', 'wrong'])(
+  'adds the FS-HDR without writing or guessing the missing enable bank (%s)',
+  async (kind) => {
+    const f = fixture(1, false, 'normal', kind)
+    const adapter = new AjaAdapter('10.0.0.2')
+    const report = await adapter.probe()
+    expect(report.channels).toHaveLength(4)
+    expect(report.checks.filter((c) => c.status === 'fail')).toEqual([])
+    expect(
+      report.checks.some((c) => c.detail.includes('input index 1; no entry; 1 usable entries')),
+    ).toBe(true)
+    expect(report.channels[0].values).toEqual({ redGain: 105 })
+    expect(f.writes).toEqual([])
+    adapter.dispose()
+  },
+)
+
+it('recovers a sparse map only from a read that explicitly names the valid active bank', async () => {
+  const f = fixture(1, false, 'normal', 'alias')
+  const adapter = new AjaAdapter('10.0.0.2')
+  const report = await adapter.probe()
+  expect(report.channels).toHaveLength(4)
+  expect(report.channels[0].values).toEqual({ procEnabled: 1, gain: 105, redGain: 105 })
+  expect(f.writes).toEqual([])
+  const ch = report.channels[0]
+  await adapter.write(
+    ch,
+    ch.descriptors.find((d) => d.id === 'procEnabled')!,
+    0,
+  )
+  expect(f.writes).toEqual([native(1, 'YUVProcAmpEnable', '_SDI1_2_DualLink')])
+  adapter.dispose()
+})
+
+it('uses the selected SDI input enum to resolve a firmware ID with no separator', async () => {
+  const f = fixture(1, false, 'normal', 'enum')
+  const adapter = new AjaAdapter('10.0.0.2')
+  const report = await adapter.probe()
+  expect(report.channels).toHaveLength(4)
+  expect(report.channels[0].values).toEqual({ procEnabled: 1, gain: 105, redGain: 105 })
+  expect(
+    f.read.mock.calls.every(([url]) => new URL(url).searchParams.get('action') !== 'set'),
+  ).toBe(true)
+  expect(
+    f.read.mock.calls.some(([url]) => url.includes('paramid=eParamID_Vid1YUVProcAmpEnableSDI1')),
+  ).toBe(true)
+  const ch = report.channels[0]
+  await adapter.write(
+    ch,
+    ch.descriptors.find((d) => d.id === 'procEnabled')!,
+    0,
+  )
+  expect(f.writes).toEqual([native(1, 'YUVProcAmpEnable', 'SDI1')])
   adapter.dispose()
 })
 

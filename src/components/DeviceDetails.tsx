@@ -132,10 +132,17 @@ export function DeviceDetails({
         {device && (
           <button
             className="button"
-            disabled={readOnly || busy || device.status !== 'online'}
+            disabled={
+              readOnly ||
+              busy ||
+              device.status !== 'online' ||
+              !workspace.channels.some(
+                (channel) => channel.deviceId === device.id && channel.descriptors.length,
+              )
+            }
             onClick={() => act(() => desk.armDevice(device.id, !device.armed))}
           >
-            {device.armed ? 'Lock control' : 'Enable control'}
+            {device.armed ? 'Lock writes' : 'Enable writes'}
           </button>
         )}
         {recorder && (
