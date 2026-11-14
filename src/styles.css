@@ -4674,6 +4674,12 @@ button {
 .workspace-qr-modal .diagnostic-qr {
   width: min(100%, 480px);
 }
+.workspace-qr-parts {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
 .diagnostic-modal > textarea,
 .diagnostic-page > textarea {
   box-sizing: border-box;

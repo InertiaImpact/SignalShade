@@ -1,4 +1,4 @@
-import { StrictMode } from 'react'
+import { StrictMode, useSyncExternalStore } from 'react'
 import { createRoot } from 'react-dom/client'
 import App from './App'
 import { publishUpdate } from './core/updates'
@@ -6,6 +6,7 @@ import { applyBroadcastTheme } from './theme'
 import './styles.css'
 import { diagnosticFragment } from './core/diagnostic-summary'
 import { DiagnosticSummaryPage } from './components/DiagnosticQr'
+import { isWorkspacePartHash, WorkspaceQrPartPage } from './components/WorkspaceQr'
 
 applyBroadcastTheme(document.documentElement)
 
@@ -18,8 +19,19 @@ if (diagnostic) {
     /* Keep malformed input out of the dashboard. */
   }
 }
+const subscribeHash = (notify: () => void) => {
+  window.addEventListener('hashchange', notify)
+  return () => window.removeEventListener('hashchange', notify)
+}
+function Page() {
+  const hash = useSyncExternalStore(subscribeHash, () => location.hash)
+  if (isWorkspacePartHash(hash)) return <WorkspaceQrPartPage key={hash} hash={hash} />
+  return diagnostic ? <DiagnosticSummaryPage summary={summary} /> : <App />
+}
 createRoot(document.getElementById('root')!).render(
-  <StrictMode>{diagnostic ? <DiagnosticSummaryPage summary={summary} /> : <App />}</StrictMode>,
+  <StrictMode>
+    <Page />
+  </StrictMode>,
 )
 
 if (!diagnostic && 'serviceWorker' in navigator && import.meta.env.PROD) {

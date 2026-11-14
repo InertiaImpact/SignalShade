@@ -192,7 +192,7 @@ export function validateWorkspace(input: unknown): Workspace {
   }
   return { ...parsed, ...pruneViewCards(parsed) }
 }
-function database(): Promise<IDBDatabase> {
+export function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
     const request = indexedDB.open('signalshade', 1)
     request.onupgradeneeded = () => request.result.createObjectStore('workspace')

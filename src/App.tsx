@@ -45,8 +45,9 @@ import { RecorderOverview } from './components/RecorderOverview'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
 import { ViewDialog } from './components/ViewDialog'
-import { ImportWorkspaceQr, WorkspaceQr } from './components/WorkspaceQr'
-import { workspaceQrFragment } from './core/workspace-qr'
+import { ImportWorkspaceQr, WorkspaceQr, isWorkspaceImportHash } from './components/WorkspaceQr'
+import { workspaceReadyFragment } from './core/workspace-qr'
+import { forgetWorkspaceParts } from './core/workspace-qr-transfer'
 import { useCardOrder } from './components/useCardOrder'
 import { cardsInView, customViewKey, deviceViewKey, gangViewKey } from './core/views'
 import { ConvergeControls } from './components/ConvergeControls'
@@ -98,7 +99,7 @@ export default function App() {
     [dialog, setDialog] = useState<Dialog>(null)
   const [deviceSelection, setDeviceSelection] = useState<string>()
   const [incomingWorkspaceQr, setIncomingWorkspaceQr] = useState(() =>
-    location.hash.startsWith(workspaceQrFragment) ? location.hash : '',
+    isWorkspaceImportHash(location.hash) ? location.hash : '',
   )
   const closeWorkspaceQrImport = () => {
     history.replaceState(history.state, '', location.pathname + location.search)
@@ -106,7 +107,7 @@ export default function App() {
   }
   useEffect(() => {
     const readLink = () => {
-      if (location.hash.startsWith(workspaceQrFragment)) {
+      if (isWorkspaceImportHash(location.hash)) {
         setDialog(null)
         setWorkspaceMenu(false)
         setIncomingWorkspaceQr(location.hash)
@@ -272,7 +273,11 @@ export default function App() {
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
-      if (target.closest('input, select, textarea, [role="dialog"]') || dialog || incomingWorkspaceQr)
+      if (
+        target.closest('input, select, textarea, [role="dialog"]') ||
+        dialog ||
+        incomingWorkspaceQr
+      )
         return
       if ((e.ctrlKey || e.metaKey) && e.key === 'z') {
         e.preventDefault()
@@ -1155,6 +1160,10 @@ export default function App() {
           }
           onImport={async (workspace) => {
             await desk.addWorkspace(workspace, 'import')
+            if (incomingWorkspaceQr.startsWith(workspaceReadyFragment))
+              void forgetWorkspaceParts(
+                incomingWorkspaceQr.slice(workspaceReadyFragment.length),
+              ).catch(() => {})
             selectView('all')
             closeWorkspaceQrImport()
           }}
