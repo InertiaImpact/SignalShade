@@ -45,7 +45,8 @@ it('shows mixed stage ticks in Quick, pulses the entire compact toggle and sends
   workspace.channels[0].values.procEnabled = 0
   await render()
   const group = host.querySelector('.quick-stage-controls .state-toggle')!
-  expect(host.querySelectorAll('.state-toggle')).toHaveLength(1)
+  expect(host.querySelectorAll('.state-toggle')).toHaveLength(2)
+  expect(button('RGB correction On')).toBeDefined()
   expect(button('Proc amp Off').querySelectorAll('.state-ticks i')).toHaveLength(1)
   expect(button('Proc amp On').querySelectorAll('.state-ticks i')).toHaveLength(1)
   expect(host.querySelector<HTMLInputElement>('input[aria-label="Gain slider"]')?.disabled).toBe(

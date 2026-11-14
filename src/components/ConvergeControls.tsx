@@ -38,7 +38,7 @@ export function ConvergeControls({
       role="group"
       aria-label="Converge controls"
     >
-      <span>Converge</span>
+      <span className="converge-label">Converge</span>
       <div className="segmented">
         {(['small', 'large'] as const).map((step) => (
           <button

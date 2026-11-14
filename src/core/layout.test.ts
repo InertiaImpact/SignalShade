@@ -14,24 +14,17 @@ import {
 import { validateWorkspace } from './persistence'
 
 describe('recoverable control layout', () => {
-  it('shows only supported stage controls relevant to Quick fields, including an explicitly pinned enable', () => {
+  it('shows both Quick stage switches when supported and keeps unavailable stages out', () => {
     const available = demoWorkspace().channels[0].descriptors
-    expect(
-      quickStages(quickControls({ descriptors: available }, ['gain']), available).map((d) => d.id),
-    ).toEqual(['procEnabled'])
-    expect(
-      quickStages(quickControls({ descriptors: available }, ['gain', 'redGain']), available).map(
-        (d) => d.id,
-      ),
-    ).toEqual(['procEnabled', 'rgbEnabled'])
-    expect(
-      quickStages(quickControls({ descriptors: available }, ['rgbEnabled']), available).map(
-        (d) => d.id,
-      ),
-    ).toEqual(['rgbEnabled'])
+    expect(quickStages(['Proc amp'], available).map((d) => d.id)).toEqual(['procEnabled'])
+    expect(quickStages(['Proc amp', 'RGB correction'], available).map((d) => d.id)).toEqual([
+      'procEnabled',
+      'rgbEnabled',
+    ])
+    expect(quickStages(['RGB correction'], available).map((d) => d.id)).toEqual(['rgbEnabled'])
     expect(
       quickStages(
-        quickControls({ descriptors: available }, ['gain']),
+        ['Proc amp'],
         available.filter((d) => d.id !== 'procEnabled'),
       ),
     ).toEqual([])

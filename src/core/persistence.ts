@@ -3,6 +3,13 @@ import type { Workspace } from './types'
 import { visibleSections } from './layout'
 import { recorderModels } from '../recorders/types'
 import { normalizeAddress } from '../adapters/aja'
+import { pruneViewCards } from './views'
+
+export const originalWorkspaceId = 'original'
+export interface WorkspaceLibrary {
+  active: string
+  entries: { id: string; workspace: Workspace }[]
+}
 
 const finite = z.number().finite()
 const paramId = z
@@ -37,6 +44,17 @@ const descriptor = z
   )
 const schema = z.object({
   convergeTargetId: z.string().optional(),
+  views: z
+    .array(
+      z.object({
+        id: z.string().min(1).max(200),
+        name: z.string().trim().min(1).max(100),
+        cards: z.array(z.string()).max(132),
+      }),
+    )
+    .max(100)
+    .optional(),
+  cardOrders: z.record(z.string(), z.array(z.string()).max(132)).optional(),
   recorders: z
     .array(
       z
@@ -154,6 +172,7 @@ export function validateWorkspace(input: unknown): Workspace {
     deviceIds.size !== parsed.devices.length ||
     channelIds.size !== parsed.channels.length ||
     new Set(parsed.gangs.map((g) => g.id)).size !== parsed.gangs.length ||
+    new Set(parsed.views?.map((view) => view.id)).size !== (parsed.views?.length ?? 0) ||
     new Set(parsed.presets.map((p) => p.id)).size !== parsed.presets.length
   )
     throw new Error('Duplicate IDs in workspace')
@@ -171,7 +190,7 @@ export function validateWorkspace(input: unknown): Workspace {
         throw new Error(`Value outside range: ${c.label} / ${d.label}`)
     }
   }
-  return parsed
+  return { ...parsed, ...pruneViewCards(parsed) }
 }
 function database(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
@@ -181,14 +200,54 @@ function database(): Promise<IDBDatabase> {
     request.onerror = () => reject(request.error)
   })
 }
-export async function loadWorkspace(): Promise<Workspace | undefined> {
+export async function loadWorkspace(): Promise<WorkspaceLibrary | undefined> {
   const db = await database()
   try {
     return await new Promise((resolve, reject) => {
-      const request = db.transaction('workspace').objectStore('workspace').get('current')
+      const store = db.transaction('workspace').objectStore('workspace')
+      const request = store.get('library')
       request.onsuccess = () => {
         try {
-          resolve(request.result ? validateWorkspace(request.result) : undefined)
+          const saved: unknown = request.result
+          if (saved) {
+            const library = z
+              .object({
+                active: z.string(),
+                entries: z
+                  .array(z.object({ id: z.string().min(1), workspace: z.unknown() }))
+                  .min(1),
+              })
+              .parse(saved)
+            const entries = library.entries.map(({ id, workspace }) => ({
+              id,
+              workspace: validateWorkspace(workspace),
+            }))
+            resolve({
+              active: entries.some((entry) => entry.id === library.active)
+                ? library.active
+                : entries[0].id,
+              entries,
+            })
+            return
+          }
+          const legacy = store.get('current')
+          legacy.onsuccess = () => {
+            try {
+              resolve(
+                legacy.result
+                  ? {
+                      active: originalWorkspaceId,
+                      entries: [
+                        { id: originalWorkspaceId, workspace: validateWorkspace(legacy.result) },
+                      ],
+                    }
+                  : undefined,
+              )
+            } catch (error) {
+              reject(error)
+            }
+          }
+          legacy.onerror = () => reject(legacy.error)
         } catch (e) {
           reject(e)
         }
@@ -199,12 +258,12 @@ export async function loadWorkspace(): Promise<Workspace | undefined> {
     db.close()
   }
 }
-export async function saveWorkspace(workspace: Workspace) {
+export async function saveWorkspace(library: WorkspaceLibrary) {
   const db = await database()
   try {
     await new Promise<void>((resolve, reject) => {
       const tx = db.transaction('workspace', 'readwrite')
-      tx.objectStore('workspace').put(workspace, 'current')
+      tx.objectStore('workspace').put(library, 'library')
       tx.oncomplete = () => resolve()
       tx.onerror = () => reject(tx.error)
     })

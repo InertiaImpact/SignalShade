@@ -1,9 +1,7 @@
 import { useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
 import {
   Activity,
-  ArrowDown,
   ArrowRight,
-  ArrowUp,
   AudioLines,
   Check,
   ChevronDown,
@@ -16,8 +14,8 @@ import {
   Layers3,
   Lock,
   MoreHorizontal,
-  Network,
   PanelLeftClose,
+  PanelLeftOpen,
   Plus,
   RefreshCw,
   RotateCcw,
@@ -30,7 +28,6 @@ import {
   Target,
   Unlock,
   Upload,
-  Waves,
   X,
 } from 'lucide-react'
 import { desk } from './core/store'
@@ -45,9 +42,11 @@ import { DeviceDialog } from './components/DeviceDialog'
 import { RecorderStrip } from './components/RecorderStrip'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
+import { ViewDialog } from './components/ViewDialog'
+import { useCardOrder } from './components/useCardOrder'
+import { cardsInView, customViewKey, deviceViewKey, gangViewKey } from './core/views'
 import { ConvergeControls } from './components/ConvergeControls'
 import {
-  ConfirmWorkspace,
   GangDialog,
   LayoutDialog,
   PresetDialog,
@@ -68,15 +67,25 @@ import {
 } from './core/layout'
 import { RgbTabs } from './components/RgbTabs'
 import { resolveSelection, toggleSelection } from './core/selection'
-import type { CSSProperties, MouseEvent } from 'react'
+import type { CSSProperties, MouseEvent, ReactNode } from 'react'
 
-type Dialog = 'devices' | 'gang' | 'presets' | 'layout' | 'reset' | 'workspace' | 'help' | null
+type Dialog =
+  | 'devices'
+  | 'gang'
+  | 'presets'
+  | 'layout'
+  | 'reset'
+  | 'workspace'
+  | 'new-workspace'
+  | 'view'
+  | 'help'
+  | null
 let initialized = false
 export default function App() {
   const snapshot = useSyncExternalStore(desk.subscribe, desk.getSnapshot),
     { workspace: w } = snapshot
   const [view, setView] = useState('all'),
-    [selected, setSelected] = useState('demo-ch-1'),
+    [selected, setSelected] = useState(''),
     [selection, setSelection] = useState<string[]>([]),
     [query, setQuery] = useState(''),
     [sort, setSort] = useState('custom'),
@@ -86,6 +95,7 @@ export default function App() {
     setDeviceSelection(id)
     setDialog('devices')
   }
+  const [viewEditorId, setViewEditorId] = useState<string>()
   const [editGang, setEditGang] = useState<Gang>(),
     [resetScope, setResetScope] = useState<{
       ids: string[]
@@ -98,10 +108,14 @@ export default function App() {
   const [activity, setActivity] = useState(false),
     [editLayout, setEditLayout] = useState(false),
     [menu, setMenu] = useState(false),
-    [pendingWorkspace, setPendingWorkspace] = useState<{
-      kind: 'demo' | 'empty' | 'import'
-      data?: unknown
-    }>(),
+    [workspaceMenu, setWorkspaceMenu] = useState(false),
+    [collapsed, setCollapsed] = useState(() => {
+      try {
+        return localStorage.getItem('signalshade-sidebar-collapsed') === 'true'
+      } catch {
+        return false
+      }
+    }),
     [sidebar, setSidebar] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
   const globalLock = snapshot.controlsLocked
@@ -138,17 +152,15 @@ export default function App() {
   }
   const selectionGesture = useChannelSelection(selectedTokens, selectMany, selectChannel)
   const { rectangle, preview, ...paneSelectionHandlers } = selectionGesture
-  const currentViewGang = w.gangs.find((g) => g.id === view)
+  const currentViewGang = w.gangs.find((g) => gangViewKey(g.id) === view)
+  const currentCustomView = w.views?.find((item) => customViewKey(item.id) === view)
+  const currentDevice = w.devices.find((d) => deviceViewKey(d.id) === view)
+  const cardOrder = cardsInView(w, view)
   const channels = useMemo(() => {
-    let list = w.channels.filter(
-      (c) =>
-        (view === 'all' ||
-          view === 'favorites' ||
-          currentViewGang?.members.includes(c.id) ||
-          c.deviceId === view) &&
-        `${c.label} ${c.source} ${w.devices.find((d) => d.id === c.deviceId)?.label}`
-          .toLowerCase()
-          .includes(query.toLowerCase()),
+    let list = w.channels.filter((c) =>
+      `${c.label} ${c.source} ${w.devices.find((d) => d.id === c.deviceId)?.label}`
+        .toLowerCase()
+        .includes(query.toLowerCase()),
     )
     if (sort === 'name') list = [...list].sort((a, b) => a.label.localeCompare(b.label))
     if (sort === 'device')
@@ -156,7 +168,7 @@ export default function App() {
         (a, b) => a.deviceId.localeCompare(b.deviceId) || a.processor - b.processor,
       )
     return list
-  }, [w, view, currentViewGang, query, sort])
+  }, [w, query, sort])
   const connectionCount = w.devices.length + (w.recorders?.length ?? 0)
   const simulated =
       w.devices.filter((d) => d.simulated).length +
@@ -185,10 +197,21 @@ export default function App() {
     })),
   )
   const previewIds = resolveSelection(w, preview ?? selectedTokens).channels.map((c) => c.id)
-  const shownGangCards =
-    view === 'all'
-      ? w.gangs.filter((g) => g.showAsCard && g.name.toLowerCase().includes(query.toLowerCase()))
-      : []
+  const visibleChannelIds = new Set(channels.map((channel) => channel.id))
+  const shownGangCards = w.gangs.filter((g) => g.name.toLowerCase().includes(query.toLowerCase()))
+  const visibleGangIds = new Set(shownGangCards.map((g) => g.id))
+  const visibleCards = cardOrder.filter((id) => visibleChannelIds.has(id) || visibleGangIds.has(id))
+  const visibleChannels = channels.filter((channel) => visibleCards.includes(channel.id))
+  const sortedChannels = [...visibleChannels]
+  const orderedCards =
+    sort === 'custom'
+      ? visibleCards
+      : visibleCards.map((id) => (visibleGangIds.has(id) ? id : sortedChannels.shift()!.id))
+  const reorder = useCardOrder(
+    orderedCards,
+    !readOnly && sort === 'custom' && !query.trim(),
+    (id, target) => desk.moveViewCard(view, id, target),
+  )
   const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
     activeDescriptors.some((d) => d.section === s),
   )
@@ -216,11 +239,12 @@ export default function App() {
     if (
       view !== 'all' &&
       view !== 'favorites' &&
-      !w.gangs.some((g) => g.id === view) &&
-      !w.devices.some((d) => d.id === view)
+      !currentViewGang &&
+      !currentDevice &&
+      !currentCustomView
     )
       setView('all')
-  }, [w.channels, w.gangs, w.devices, selected, view])
+  }, [w.channels, w.gangs, selected, view, currentViewGang, currentDevice, currentCustomView])
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -231,6 +255,7 @@ export default function App() {
       }
       if (e.key === 'Escape') {
         setMenu(false)
+        setWorkspaceMenu(false)
         setSidebar(false)
         clearSelection()
       }
@@ -242,17 +267,30 @@ export default function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [dialog, readOnly, group])
-  const selectView = (id: string, additive = false) => {
-    if (additive && w.gangs.some((g) => g.id === id)) {
-      selectChannel(id, true)
-      return
-    }
+  const selectView = (id: string) => {
     setView(id)
     setSidebar(false)
-    if (w.gangs.some((g) => g.id === id)) {
-      setSelected(id)
-      setSelection([])
-      setRelative(true)
+    setQuery('')
+    setSort('custom')
+    clearSelection()
+  }
+  const changeWorkspace = async (change: () => Promise<void>) => {
+    try {
+      await change()
+      selectView('all')
+      close()
+      setWorkspaceMenu(false)
+    } catch (error) {
+      desk.log(message(error), 'error')
+      setActivity(true)
+    }
+  }
+  const toggleCollapsed = () => {
+    setCollapsed(!collapsed)
+    try {
+      localStorage.setItem('signalshade-sidebar-collapsed', String(!collapsed))
+    } catch {
+      // The sidebar still works when browser storage is unavailable.
     }
   }
   const toggleFavorite = (id: ParameterId) => {
@@ -267,10 +305,13 @@ export default function App() {
   }
   const title =
     currentViewGang?.name ??
-    w.devices.find((d) => d.id === view)?.label ??
+    currentCustomView?.name ??
+    currentDevice?.label ??
     (view === 'favorites' ? 'Pinned controls' : 'All channels')
   return (
-    <div className={`app ${w.density === 'compact' ? 'compact' : ''}`}>
+    <div
+      className={`app ${w.density === 'compact' ? 'compact' : ''} ${collapsed ? 'sidebar-collapsed' : ''}`}
+    >
       <div className="header-area">
         <header className="topbar">
           <div className="brand">
@@ -281,15 +322,83 @@ export default function App() {
               Signal<span className="brand-light">Shade</span>
             </span>
           </div>
-          <button
-            className="workspace-switch"
-            title="Workspace settings · saved locally"
-            onClick={() => !readOnly && setDialog('workspace')}
-          >
-            <span className="workspace-dot" />
-            <span>{w.name}</span>
-            <ChevronDown size={15} />
-          </button>
+          <div className="menu-container workspace-picker">
+            <button
+              className="workspace-switch"
+              aria-label={`Workspaces · ${w.name}`}
+              aria-expanded={workspaceMenu}
+              onClick={() => setWorkspaceMenu(!workspaceMenu)}
+            >
+              <span className="workspace-dot" />
+              <span>{w.name}</span>
+              <ChevronDown size={15} />
+            </button>
+            {workspaceMenu && (
+              <>
+                <button
+                  className="menu-dismiss"
+                  aria-label="Close workspace menu"
+                  onClick={() => setWorkspaceMenu(false)}
+                />
+                <div className="dropdown-menu workspace-menu">
+                  {snapshot.workspaces.map(({ id, name }) => (
+                    <button
+                      key={id}
+                      aria-current={id === snapshot.workspaceId ? 'true' : undefined}
+                      disabled={
+                        id !== snapshot.workspaceId &&
+                        (readOnly || snapshot.busy > 0 || recorderBusy)
+                      }
+                      onClick={() =>
+                        id === snapshot.workspaceId
+                          ? setWorkspaceMenu(false)
+                          : void changeWorkspace(() => desk.switchWorkspace(id))
+                      }
+                    >
+                      {id === snapshot.workspaceId ? <Check size={15} /> : <FolderOpen size={15} />}
+                      {name}
+                    </button>
+                  ))}
+                  <hr />
+                  <button
+                    disabled={readOnly || snapshot.busy > 0 || recorderBusy}
+                    onClick={() => {
+                      setWorkspaceMenu(false)
+                      setDialog('new-workspace')
+                    }}
+                  >
+                    <Plus size={15} /> New workspace
+                  </button>
+                  <button
+                    disabled={readOnly}
+                    onClick={() => {
+                      setWorkspaceMenu(false)
+                      setDialog('workspace')
+                    }}
+                  >
+                    <Edit3 size={15} /> Rename workspace
+                  </button>
+                  <button
+                    disabled={readOnly || snapshot.busy > 0 || recorderBusy}
+                    onClick={() => {
+                      setWorkspaceMenu(false)
+                      importRef.current?.click()
+                    }}
+                  >
+                    <Upload size={15} /> Import as workspace
+                  </button>
+                  <button
+                    onClick={() => {
+                      downloadJson('signalshade-workspace.json', w)
+                      setWorkspaceMenu(false)
+                    }}
+                  >
+                    <Download size={15} /> Export workspace
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
           <RecorderStrip configs={w.recorders ?? []} readOnly={readOnly} manage={openDevices} />
           <div className="topbar-right">
             <button
@@ -324,6 +433,15 @@ export default function App() {
             </button>
             <span className="topbar-divider" />
             <button
+              className={`icon-button activity-toggle ${lastActivity?.type === 'error' ? 'text-error' : ''}`}
+              aria-label="Activity log"
+              aria-expanded={activity}
+              title={lastActivity?.text ?? 'Activity log'}
+              onClick={() => setActivity(!activity)}
+            >
+              <Activity size={16} />
+            </button>
+            <button
               className="avatar"
               aria-label="Help and keyboard shortcuts"
               onClick={() => setDialog('help')}
@@ -333,9 +451,20 @@ export default function App() {
           </div>
         </header>
       </div>
-      <aside className={`sidebar ${sidebar ? 'open' : ''}`}>
+      <aside id="desk-sidebar" className={`sidebar ${sidebar ? 'open' : ''}`}>
         <div className="sidebar-top">
-          <span className="eyebrow">WORKSPACE</span>
+          <span className="eyebrow">VIEWS</span>
+          <button
+            className="icon-button tiny"
+            aria-label="Create view"
+            disabled={readOnly}
+            onClick={() => {
+              setViewEditorId(undefined)
+              setDialog('view')
+            }}
+          >
+            <Plus size={15} />
+          </button>
           <button
             className="icon-button tiny mobile-close"
             aria-label="Close sidebar"
@@ -344,7 +473,7 @@ export default function App() {
             <X size={16} />
           </button>
         </div>
-        <nav aria-label="Workspace navigation">
+        <nav aria-label="Views">
           <button
             className={`nav-item ${view === 'all' ? 'active' : ''}`}
             onClick={() => selectView('all')}
@@ -353,6 +482,16 @@ export default function App() {
             <span>All channels</span>
             <span className="nav-count">{w.channels.length}</span>
           </button>
+          {w.views?.map((item) => (
+            <button
+              key={item.id}
+              className={`nav-item ${view === customViewKey(item.id) ? 'active' : ''}`}
+              onClick={() => selectView(customViewKey(item.id))}
+            >
+              <Grid2X2 size={17} />
+              <span>{item.name}</span>
+            </button>
+          ))}
           <button
             className={`nav-item ${view === 'favorites' ? 'active' : ''}`}
             onClick={() => selectView('favorites')}
@@ -379,9 +518,11 @@ export default function App() {
           {w.gangs.map((g) => (
             <div className="gang-nav-row" key={g.id}>
               <button
-                className={`nav-item gang-nav ${view === g.id ? 'active' : ''}`}
+                className={`nav-item gang-nav ${view === gangViewKey(g.id) ? 'active' : ''}`}
                 aria-pressed={selectedTokens.includes(g.id)}
-                onClick={(e) => selectView(g.id, e.ctrlKey || e.metaKey)}
+                onClick={(e) =>
+                  e.ctrlKey || e.metaKey ? selectChannel(g.id, true) : selectView(gangViewKey(g.id))
+                }
               >
                 <span className="group-dot" style={{ background: g.color }} />
                 <span>{g.name}</span>
@@ -410,7 +551,7 @@ export default function App() {
           <button
             className="icon-button tiny"
             aria-label="Manage devices"
-            onClick={() => setDialog('devices')}
+            onClick={() => openDevices()}
           >
             <Plus size={15} />
           </button>
@@ -418,9 +559,9 @@ export default function App() {
         <nav aria-label="Devices">
           {w.devices.map((d) => (
             <button
-              className={`nav-item device-nav ${view === d.id ? 'active' : ''}`}
+              className={`nav-item device-nav ${view === deviceViewKey(d.id) ? 'active' : ''}`}
               key={d.id}
-              onClick={() => selectView(d.id)}
+              onClick={() => selectView(deviceViewKey(d.id))}
             >
               <Server size={16} />
               <span>
@@ -433,7 +574,7 @@ export default function App() {
             </button>
           ))}
         </nav>
-        <button className="add-device" onClick={() => setDialog('devices')}>
+        <button className="add-device" onClick={() => openDevices()}>
           <Plus size={15} />
           Connect a device
         </button>
@@ -447,28 +588,51 @@ export default function App() {
             <Settings2 size={17} />
             <span>Customize desk</span>
           </button>
-          <div className="sidebar-footer">
-            <span className="mini-logo">
-              <AudioLines size={15} />
-              SignalShade
-            </span>
-            <span>v0.1</span>
-          </div>
         </div>
       </aside>
       <main className="main" {...paneSelectionHandlers}>
         <div className="main-heading">
           <button
             className="icon-button mobile-menu"
-            aria-label="Open sidebar"
+            aria-label={sidebar ? 'Close navigation' : 'Open navigation'}
+            aria-controls="desk-sidebar"
+            aria-expanded={sidebar}
             onClick={() => setSidebar(!sidebar)}
           >
-            <PanelLeftClose size={20} />
+            <PanelLeftOpen size={19} />
+          </button>
+          <button
+            className="icon-button desktop-sidebar-toggle"
+            aria-controls="desk-sidebar"
+            aria-expanded={!collapsed}
+            aria-label={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            onClick={toggleCollapsed}
+          >
+            {collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}
           </button>
           <h1>
             {title}
-            <span className="view-count">{channels.length}</span>
+            <span className="view-count">{visibleChannels.length}</span>
           </h1>
+          {(currentCustomView || currentViewGang) && (
+            <button
+              className="icon-button"
+              aria-label={currentCustomView ? 'Edit view' : 'Edit gang group'}
+              disabled={readOnly}
+              onClick={() => {
+                if (currentCustomView) {
+                  setViewEditorId(currentCustomView.id)
+                  setDialog('view')
+                } else {
+                  setEditGang(currentViewGang)
+                  setDialog('gang')
+                }
+              }}
+            >
+              <Edit3 size={15} />
+            </button>
+          )}
           <div className="channel-toolbar">
             <div className="search">
               <Search size={15} />
@@ -485,7 +649,7 @@ export default function App() {
               className="button small"
               aria-label="Select visible"
               title="Select visible channels · Ctrl/⌘-click or drag headers for a partial selection"
-              onClick={() => selectMany(channels.map((c) => c.id))}
+              onClick={() => selectMany(visibleChannels.map((c) => c.id))}
             >
               Select all
             </button>
@@ -533,7 +697,7 @@ export default function App() {
                   <>
                     <button
                       className="menu-dismiss"
-                      aria-label="Close workspace menu"
+                      aria-label="Close channel menu"
                       onClick={() => setMenu(false)}
                     />
                     <div className="dropdown-menu">
@@ -550,43 +714,13 @@ export default function App() {
                         </select>
                       </label>
                       <button
+                        disabled={readOnly || !snapshot.history.length || snapshot.busy > 0}
                         onClick={() => {
-                          downloadJson('signalshade-workspace.json', w)
+                          desk.undo()
                           setMenu(false)
                         }}
                       >
-                        <Download size={15} />
-                        Export workspace
-                      </button>
-                      <button
-                        disabled={readOnly}
-                        onClick={() => {
-                          importRef.current?.click()
-                          setMenu(false)
-                        }}
-                      >
-                        <Upload size={15} />
-                        Import workspace
-                      </button>
-                      <button
-                        disabled={readOnly || snapshot.busy > 0}
-                        onClick={() => {
-                          setPendingWorkspace({ kind: 'empty' })
-                          setMenu(false)
-                        }}
-                      >
-                        <FolderOpen size={15} />
-                        Start empty workspace
-                      </button>
-                      <button
-                        disabled={readOnly || snapshot.busy > 0}
-                        onClick={() => {
-                          setPendingWorkspace({ kind: 'demo' })
-                          setMenu(false)
-                        }}
-                      >
-                        <Waves size={15} />
-                        Load demo desk
+                        <RotateCcw size={15} /> Undo last adjustment
                       </button>
                       <hr />
                       <button
@@ -672,46 +806,13 @@ export default function App() {
             try {
               if (file.size > 5_000_000) throw new Error('Workspace file must be smaller than 5 MB')
               const data = validateWorkspace(JSON.parse(await file.text()))
-              setPendingWorkspace({ kind: 'import', data })
+              await changeWorkspace(() => desk.addWorkspace(data, 'import'))
             } catch (e) {
               desk.log(`Import failed: ${message(e)}`, 'error')
               setActivity(true)
             }
           }}
         />
-        {currentViewGang && (
-          <div className="group-strip">
-            <span className="group-dot" style={{ background: currentViewGang.color }} />
-            <span>
-              <strong>{currentViewGang.name}</strong> · {currentViewGang.members.length} members ·{' '}
-              {currentViewGang.parameters.length
-                ? `${currentViewGang.parameters.length} masked controls`
-                : 'All compatible controls'}
-            </span>
-            <button
-              className="button small"
-              onClick={() => {
-                setSelected(currentViewGang.id)
-                setSelection([])
-                setRelative(true)
-              }}
-            >
-              <SlidersHorizontal size={13} />
-              Group controls
-            </button>
-            <button
-              className="icon-button"
-              disabled={readOnly}
-              aria-label="Edit selected gang"
-              onClick={() => {
-                setEditGang(currentViewGang)
-                setDialog('gang')
-              }}
-            >
-              <Edit3 size={14} />
-            </button>
-          </div>
-        )}
         {batch && (
           <section
             className="inspector gang-console"
@@ -865,51 +966,68 @@ export default function App() {
             )}
           </section>
         )}
-        <div className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}>
-          {shownGangCards.map((g) => (
-            <GangCard
-              key={`gang-${g.id}`}
-              gang={g}
-              workspace={w}
-              disabled={readOnly || snapshot.converging}
-              multiplier={multiplier}
-              selected={(preview ?? selectedTokens).includes(g.id)}
-              busy={snapshot.converging || snapshot.busy > 0}
-              onSelect={(e) => selectChannel(g.id, e.ctrlKey || e.metaKey)}
-              onOpen={() => selectChannel(g.id)}
-              onHide={() => desk.showGangCard(g.id, false)}
-              onReset={(section) => reset(g.members, section, g.parameters)}
-            />
-          ))}
-          {channels.map((c, index) => (
-            <ChannelCard
-              key={c.id}
-              channel={c}
-              index={index}
-              workspace={w}
-              selected={previewIds.includes(c.id)}
-              gangSelected={w.gangs.some(
-                (g) => selectedTokens.includes(g.id) && g.members.includes(c.id),
-              )}
-              selectionColor={group?.color}
-              edit={editLayout}
-              disabled={readOnly || snapshot.converging}
-              target={c.id === w.convergeTargetId}
-              targetBusy={snapshot.busy > 0}
-              onTarget={() =>
-                desk.setConvergeTarget(c.id === w.convergeTargetId ? undefined : c.id)
-              }
-              onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
-              multiplier={multiplier}
-              onReset={(section) => reset([c.id], section)}
-            />
-          ))}
+        <div
+          className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}
+          {...reorder.handlers}
+        >
+          {orderedCards.map((id, index) => {
+            const g = shownGangCards.find((item) => item.id === id)
+            if (g)
+              return (
+                <GangCard
+                  key={`gang-${g.id}`}
+                  gang={g}
+                  grip={reorder.grip(id, g.name)}
+                  dropTarget={reorder.target === id}
+                  workspace={w}
+                  disabled={readOnly || snapshot.converging}
+                  multiplier={multiplier}
+                  selected={(preview ?? selectedTokens).includes(g.id)}
+                  busy={snapshot.converging || snapshot.busy > 0}
+                  onSelect={(e) => selectChannel(g.id, e.ctrlKey || e.metaKey)}
+                  onOpen={
+                    currentViewGang?.id === g.id ? undefined : () => selectView(gangViewKey(g.id))
+                  }
+                  onHide={view === 'all' ? () => desk.showGangCard(g.id, false) : undefined}
+                  onReset={(section) => reset(g.members, section, g.parameters)}
+                />
+              )
+            const c = visibleChannels.find((channel) => channel.id === id)!
+            return (
+              <ChannelCard
+                key={c.id}
+                channel={c}
+                grip={reorder.grip(id, c.label)}
+                dropTarget={reorder.target === id}
+                index={index}
+                workspace={w}
+                selected={previewIds.includes(c.id)}
+                gangSelected={w.gangs.some(
+                  (g) => selectedTokens.includes(g.id) && g.members.includes(c.id),
+                )}
+                selectionColor={group?.color}
+                edit={editLayout}
+                disabled={readOnly || snapshot.converging}
+                target={c.id === w.convergeTargetId}
+                targetBusy={snapshot.busy > 0}
+                onTarget={() =>
+                  desk.setConvergeTarget(c.id === w.convergeTargetId ? undefined : c.id)
+                }
+                onSelect={(e) => selectChannel(c.id, e.ctrlKey || e.metaKey)}
+                multiplier={multiplier}
+                onReset={(section) => reset([c.id], section)}
+              />
+            )
+          })}
         </div>
-        {!channels.length && !shownGangCards.length && query && (
+        {!orderedCards.length && query && (
           <div className="empty-small">
             <Search size={24} />
-            <p>No channels match “{query}”.</p>
+            <p>No cards match “{query}”.</p>
           </div>
+        )}
+        {!orderedCards.length && !query && currentCustomView && (
+          <p className="muted">Edit this view to add cards.</p>
         )}
       </main>
 
@@ -925,33 +1043,6 @@ export default function App() {
           }}
         />
       )}
-      <footer className="statusbar">
-        <button className={activity ? 'active' : ''} onClick={() => setActivity(!activity)}>
-          <Activity size={14} />
-          <span>Activity</span>
-          <span className="activity-count">{snapshot.activities.length}</span>
-          <ChevronDown size={12} className={activity ? 'flip' : ''} />
-        </button>
-        <span className={`last-action ${lastActivity?.type === 'error' ? 'text-error' : ''}`}>
-          {lastActivity?.text ?? 'Starting desk…'}
-        </span>
-        <div className="statusbar-right">
-          <button
-            disabled={readOnly || !snapshot.history.length || snapshot.busy > 0}
-            title="Undo last adjustment (Ctrl/Cmd+Z)"
-            onClick={() => desk.undo()}
-          >
-            <RotateCcw size={13} />
-            Undo
-          </button>
-          <span className="statusbar-separator" />
-          <span>
-            <Network size={12} />
-            LOCAL CONTROL
-          </span>
-          <span className="statusbar-version">SIGNALSHADE / 0.1.0</span>
-        </div>
-      </footer>
       {activity && (
         <section className="activity-panel" aria-label="Activity log">
           <div className="section-heading">
@@ -1001,6 +1092,51 @@ export default function App() {
         />
       )}
       {dialog === 'workspace' && <WorkspaceDialog workspace={w} close={close} />}
+      {dialog === 'new-workspace' && (
+        <Modal title="New workspace" close={close}>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault()
+              const data = new FormData(event.currentTarget)
+              const name = String(data.get('name')).trim()
+              if (name)
+                void changeWorkspace(() =>
+                  desk.addWorkspace(
+                    undefined,
+                    data.get('setup') === 'demo' ? 'demo' : 'empty',
+                    name,
+                  ),
+                )
+            }}
+          >
+            <label className="field">
+              Workspace name
+              <input name="name" maxLength={100} required />
+            </label>
+            <label className="field">
+              Start with
+              <select name="setup">
+                <option value="empty">Empty workspace</option>
+                <option value="demo">Demo devices</option>
+              </select>
+            </label>
+            <div className="modal-footer">
+              <button className="button primary">Create workspace</button>
+            </div>
+          </form>
+        </Modal>
+      )}
+      {dialog === 'view' && (
+        <ViewDialog
+          workspace={w}
+          view={w.views?.find((item) => item.id === viewEditorId)}
+          close={close}
+          saved={(id) => {
+            selectView(customViewKey(id))
+            close()
+          }}
+        />
+      )}
       {dialog === 'help' && (
         <Modal
           title="A desk for every source"
@@ -1037,8 +1173,8 @@ export default function App() {
             </p>
             <h3>Protect your setup</h3>
             <p>
-              Export a workspace backup from the ⋯ menu. Imported workspaces never send commands
-              automatically. Hardware credentials are kept in session memory only.
+              Export a workspace backup from the workspace menu. Imported workspaces never send
+              commands automatically. Hardware credentials are kept in session memory only.
             </p>
             <div className="shortcut-row">
               <kbd>/</kbd>
@@ -1057,23 +1193,6 @@ export default function App() {
           </div>
         </Modal>
       )}
-      {pendingWorkspace && (
-        <ConfirmWorkspace
-          kind={pendingWorkspace.kind}
-          close={() => setPendingWorkspace(undefined)}
-          confirm={() => {
-            void desk
-              .replaceWorkspace(pendingWorkspace.data, pendingWorkspace.kind)
-              .then(() => {
-                setPendingWorkspace(undefined)
-                setSelected('')
-                setSelection([])
-                setView('all')
-              })
-              .catch((e) => desk.log(message(e), 'error'))
-          }}
-        />
-      )}
     </div>
   )
 }
@@ -1081,6 +1200,8 @@ export default function App() {
 function ChannelCard({
   channel: c,
   index,
+  grip,
+  dropTarget,
   workspace: w,
   selected,
   gangSelected,
@@ -1096,6 +1217,8 @@ function ChannelCard({
 }: {
   channel: Channel
   index: number
+  grip?: ReactNode
+  dropTarget: boolean
   workspace: ReturnType<typeof desk.getSnapshot>['workspace']
   selected: boolean
   gangSelected: boolean
@@ -1132,20 +1255,27 @@ function ChannelCard({
         : c.descriptors.filter((d) => d.section === activeTab)
   const blocked =
     disabled || c.locked || !device.armed || device.status !== 'online' || !!c.issue || !c.updatedAt
-  const quickStageDescriptors = activeTab === 'quick' ? quickStages(descriptors, c.descriptors) : []
+  const quickStageDescriptors =
+    activeTab === 'quick'
+      ? quickStages(
+          [...cardSections, ...descriptors.map((descriptor) => descriptor.section)],
+          c.descriptors,
+        )
+      : []
   const fields = descriptors.filter(
     (d) => !quickStageDescriptors.some((stage) => stage.id === d.id),
   )
   const groups = w.gangs.filter((g) => g.members.includes(c.id))
   return (
     <article
-      className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''} ${target ? 'converge-target' : ''}`}
+      className={`channel-card ${selected ? 'selected' : ''} ${gangSelected ? 'gang-member' : ''} ${c.locked ? 'locked' : ''} ${target ? 'converge-target' : ''} ${dropTarget ? 'card-drop-target' : ''}`}
       aria-label={`${c.label} channel`}
       data-channel-id={c.id}
       data-selection-id={c.id}
       style={{ '--selection-color': selectionColor ?? 'var(--accent)' } as CSSProperties}
     >
       <div className="card-heading">
+        {grip}
         <button
           className="card-select"
           aria-label={`Select ${c.label}`}
@@ -1238,47 +1368,41 @@ function ChannelCard({
               Rename
             </button>
           )}
-          <button
-            className="icon-button tiny"
-            aria-label={`Move ${c.label} earlier`}
-            onClick={() => desk.reorderChannel(c.id, -1)}
-          >
-            <ArrowUp size={13} />
-          </button>
-          <button
-            className="icon-button tiny"
-            aria-label={`Move ${c.label} later`}
-            onClick={() => desk.reorderChannel(c.id, 1)}
-          >
-            <ArrowDown size={13} />
-          </button>
         </div>
       )}
-      <div className="card-control-tabs" role="tablist" aria-label={`Controls for ${c.label}`}>
-        {(['quick', ...cardSections] as const).map((tab) => (
-          <button
-            key={tab}
-            data-control-section={
-              tab === 'RGB correction' ? 'rgb' : tab === 'Proc amp' ? 'procamp' : 'quick'
-            }
-            role="tab"
-            aria-selected={activeTab === tab}
-            onClick={() => setControlTab(tab)}
-          >
-            {tab === 'quick' ? 'Quick' : tab === 'RGB correction' ? 'RGB' : tab}
-          </button>
-        ))}
-        {activeTab !== 'quick' && (
-          <button
-            className="icon-button tiny section-reset"
-            disabled={blocked}
-            aria-label={`Reset ${activeTab} for ${c.label}`}
-            title="Reset section"
-            onClick={() => onReset(activeTab)}
-          >
-            <RotateCcw size={12} />
-          </button>
-        )}
+      <div className="card-control-bar">
+        <div className="card-control-tabs" role="tablist" aria-label={`Controls for ${c.label}`}>
+          {(['quick', ...cardSections] as const).map((tab) => (
+            <button
+              key={tab}
+              data-control-section={
+                tab === 'RGB correction' ? 'rgb' : tab === 'Proc amp' ? 'procamp' : 'quick'
+              }
+              role="tab"
+              aria-selected={activeTab === tab}
+              onClick={() => setControlTab(tab)}
+            >
+              {tab === 'quick' ? 'Quick' : tab === 'RGB correction' ? 'RGB' : tab}
+            </button>
+          ))}
+          {activeTab !== 'quick' && (
+            <button
+              className="icon-button tiny section-reset"
+              disabled={blocked}
+              aria-label={`Reset ${activeTab} for ${c.label}`}
+              title="Reset section"
+              onClick={() => onReset(activeTab)}
+            >
+              <RotateCcw size={12} />
+            </button>
+          )}
+        </div>
+        <QuickStageControls
+          descriptors={quickStageDescriptors}
+          channels={[c]}
+          disabled={blocked}
+          idPrefix="quick-card"
+        />
       </div>
       {activeTab === 'RGB correction' && (
         <RgbTabs
@@ -1296,12 +1420,6 @@ function ChannelCard({
         role="tabpanel"
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for ${c.label}`}
       >
-        <QuickStageControls
-          descriptors={quickStageDescriptors}
-          channels={[c]}
-          disabled={blocked}
-          idPrefix="quick-card"
-        />
         {fields.map((d) => (
           <ParameterControl
             key={d.id}

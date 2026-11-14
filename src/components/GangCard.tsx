@@ -1,4 +1,4 @@
-import { useState, type CSSProperties, type MouseEvent } from 'react'
+import { useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react'
 import { ChevronRight, Layers3, RotateCcw, X } from 'lucide-react'
 import {
   availableRgbFamilies,
@@ -17,6 +17,8 @@ import { ConvergeControls } from './ConvergeControls'
 
 export function GangCard({
   gang,
+  grip,
+  dropTarget = false,
   workspace,
   disabled,
   multiplier,
@@ -28,11 +30,13 @@ export function GangCard({
   busy = false,
 }: {
   gang: Gang
+  grip?: ReactNode
+  dropTarget?: boolean
   workspace: Workspace
   disabled: boolean
   multiplier: number
-  onOpen: () => void
-  onHide: () => void
+  onOpen?: () => void
+  onHide?: () => void
   onReset: (section?: Section) => void
   onSelect?: (event: MouseEvent<HTMLButtonElement>) => void
   selected?: boolean
@@ -68,17 +72,23 @@ export function GangCard({
   const sectionTone =
     activeTab === 'RGB correction' ? 'rgb' : activeTab === 'Proc amp' ? 'procamp' : 'quick'
   const quickStageDescriptors =
-    activeTab === 'quick' ? quickStages(fields, gangDescriptors(channels)) : []
+    activeTab === 'quick'
+      ? quickStages(
+          [...sections, ...fields.map((field) => field.section)],
+          gangDescriptors(channels),
+        )
+      : []
   const controls = fields.filter((d) => !quickStageDescriptors.some((stage) => stage.id === d.id))
 
   return (
     <article
-      className={`channel-card gang-card ${selected ? 'selected' : ''}`}
+      className={`channel-card gang-card ${selected ? 'selected' : ''} ${dropTarget ? 'card-drop-target' : ''}`}
       aria-label={`${gang.name} gang card`}
       data-selection-id={gang.id}
       style={{ '--gang-color': gang.color, '--selection-color': gang.color } as CSSProperties}
     >
       <div className="card-heading">
+        {grip}
         <button
           className="card-select"
           aria-label={`Open ${gang.name} gang controls`}
@@ -135,43 +145,54 @@ export function GangCard({
         >
           <span className={`status-dot ${blocked ? 'offline' : ''}`} />
         </span>
-        <button
-          className="icon-button tiny"
-          disabled={disabled}
-          aria-label={`Hide ${gang.name} card`}
-          onClick={onHide}
-        >
-          <X size={13} />
-        </button>
-      </div>
-      <div
-        className="card-control-tabs"
-        role="tablist"
-        aria-label={`Controls for gang ${gang.name}`}
-      >
-        {(['quick', ...sections] as const).map((s) => (
+        {onHide && (
           <button
-            key={s}
-            role="tab"
-            aria-selected={activeTab === s}
-            data-control-section={
-              s === 'RGB correction' ? 'rgb' : s === 'Proc amp' ? 'procamp' : 'quick'
-            }
-            onClick={() => setTab(s)}
+            className="icon-button tiny"
+            disabled={disabled}
+            aria-label={`Hide ${gang.name} card`}
+            onClick={onHide}
           >
-            {s === 'quick' ? 'Quick' : s === 'RGB correction' ? 'RGB' : s}
-          </button>
-        ))}
-        {activeTab !== 'quick' && (
-          <button
-            className="icon-button tiny section-reset"
-            disabled={blocked}
-            aria-label={`Reset ${activeTab} for gang ${gang.name}`}
-            onClick={() => onReset(activeTab)}
-          >
-            <RotateCcw size={12} />
+            <X size={13} />
           </button>
         )}
+      </div>
+      <div className="card-control-bar">
+        <div
+          className="card-control-tabs"
+          role="tablist"
+          aria-label={`Controls for gang ${gang.name}`}
+        >
+          {(['quick', ...sections] as const).map((s) => (
+            <button
+              key={s}
+              role="tab"
+              aria-selected={activeTab === s}
+              data-control-section={
+                s === 'RGB correction' ? 'rgb' : s === 'Proc amp' ? 'procamp' : 'quick'
+              }
+              onClick={() => setTab(s)}
+            >
+              {s === 'quick' ? 'Quick' : s === 'RGB correction' ? 'RGB' : s}
+            </button>
+          ))}
+          {activeTab !== 'quick' && (
+            <button
+              className="icon-button tiny section-reset"
+              disabled={blocked}
+              aria-label={`Reset ${activeTab} for gang ${gang.name}`}
+              onClick={() => onReset(activeTab)}
+            >
+              <RotateCcw size={12} />
+            </button>
+          )}
+        </div>
+        <QuickStageControls
+          descriptors={quickStageDescriptors}
+          channels={channels}
+          disabled={blocked}
+          editableIds={descriptors.map((d) => d.id)}
+          idPrefix={`quick-gang-${gang.id}`}
+        />
       </div>
       {activeTab === 'RGB correction' && (
         <RgbTabs
@@ -187,13 +208,6 @@ export function GangCard({
         aria-label={`${activeTab === 'quick' ? 'Quick' : activeTab} controls for gang ${gang.name}`}
         data-control-section={sectionTone}
       >
-        <QuickStageControls
-          descriptors={quickStageDescriptors}
-          channels={channels}
-          disabled={blocked}
-          editableIds={descriptors.map((d) => d.id)}
-          idPrefix={`quick-gang-${gang.id}`}
-        />
         {controls.map((d) => (
           <ParameterControl
             key={`${d.id}-${relative}`}
@@ -211,9 +225,11 @@ export function GangCard({
         )}
       </div>
       <div className="card-bottom">
-        <button className="gang-members-link" onClick={onOpen}>
-          Members <ChevronRight size={12} />
-        </button>
+        {onOpen && (
+          <button className="gang-members-link" onClick={onOpen}>
+            Members <ChevronRight size={12} />
+          </button>
+        )}
         <button
           className="icon-button tiny"
           disabled={blocked}

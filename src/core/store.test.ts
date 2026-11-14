@@ -2,7 +2,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { DeskStore } from './store'
 import { demoWorkspace } from './demo'
 import { AjaAdapter } from '../adapters/aja'
-import { loadWorkspace } from './persistence'
+import { loadWorkspace, originalWorkspaceId, saveWorkspace } from './persistence'
+import { cardsInView, customViewKey, gangViewKey } from './views'
 import type { ProbeResult, Workspace } from './types'
 import { subscribeStageAdjustments } from './stages'
 import { subscribeDemoChanges } from './demo-feedback'
@@ -42,6 +43,10 @@ async function settle() {
 }
 const value = (id: string, param = 'gain') =>
   store.getSnapshot().workspace.channels.find((c) => c.id === id)!.values[param as 'gain']
+const stored = (workspace: Workspace) => ({
+  active: originalWorkspaceId,
+  entries: [{ id: originalWorkspaceId, workspace }],
+})
 function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   const channel = {
     ...demoWorkspace().channels[0],
@@ -67,6 +72,43 @@ function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   return { channel, adapter, result }
 }
 describe('command engine', () => {
+  it('keeps card orders independent and restores the selected workspace and its views', async () => {
+    const initial = store.getSnapshot()
+    const gang = initial.workspace.gangs[0]
+    const [first, second] = initial.workspace.channels
+    const groupView = gangViewKey(gang.id)
+    const customView = customViewKey('production')
+    expect(cardsInView(initial.workspace, groupView)[0]).toBe(gang.id)
+    store.saveView({ id: 'production', name: 'Production', cards: [second.id, gang.id, first.id] })
+    store.moveViewCard(groupView, gang.id, first.id)
+    store.moveViewCard('all', second.id, first.id)
+    store.moveViewCard(customView, gang.id, first.id)
+    expect(cardsInView(store.getSnapshot().workspace, groupView)[0]).toBe(first.id)
+    expect(cardsInView(store.getSnapshot().workspace, 'all')[0]).toBe(second.id)
+    expect(cardsInView(store.getSnapshot().workspace, customView)).toEqual([
+      second.id,
+      first.id,
+      gang.id,
+    ])
+    await store.addWorkspace(undefined, 'empty', 'Remote truck')
+    const secondId = store.getSnapshot().workspaceId
+    expect(store.getSnapshot().workspace.channels).toHaveLength(0)
+    const saved = vi.mocked(saveWorkspace).mock.calls.at(-1)![0]
+    vi.mocked(loadWorkspace).mockResolvedValueOnce(saved)
+    store.dispose()
+    store = new DeskStore()
+    await store.initialize()
+    expect(store.getSnapshot().workspaceId).toBe(secondId)
+    await store.switchWorkspace(initial.workspaceId)
+    expect(cardsInView(store.getSnapshot().workspace, customView)).toEqual([
+      second.id,
+      first.id,
+      gang.id,
+    ])
+    store.deleteGang(gang.id)
+    expect(cardsInView(store.getSnapshot().workspace, customView)).toEqual([second.id, first.id])
+  })
+
   it('restores saved processors independently after reload and restores writes only on a fresh match', async () => {
     const first = hardwareFixture()
     const changed = hardwareFixture('http://10.0.0.3')
@@ -94,7 +136,7 @@ describe('command engine', () => {
       }
     })
     const write = vi.spyOn(AjaAdapter.prototype, 'write')
-    vi.mocked(loadWorkspace).mockResolvedValueOnce(saved)
+    vi.mocked(loadWorkspace).mockResolvedValueOnce(stored(saved))
     store.dispose()
     store = new DeskStore()
     await store.initialize()
@@ -127,7 +169,7 @@ describe('command engine', () => {
     await settle()
     expect(adapter.write).toHaveBeenCalledOnce()
     store.setControlsLocked(true)
-    vi.mocked(loadWorkspace).mockResolvedValueOnce(saved)
+    vi.mocked(loadWorkspace).mockResolvedValueOnce(stored(saved))
     vi.spyOn(AjaAdapter.prototype, 'probe').mockResolvedValue({
       ...result,
       channels: [{ ...channel, updatedAt: Date.now() }],
@@ -468,7 +510,7 @@ describe('command engine', () => {
         }),
     )
     const refreshing = store.refresh()
-    await store.replaceWorkspace(undefined, 'empty')
+    await store.addWorkspace(undefined, 'empty')
     resolve({ values: {}, context: 'obsolete' })
     await refreshing
     expect(store.getSnapshot().workspace.channels).toEqual([])
@@ -593,7 +635,7 @@ describe('command engine', () => {
     w.devices[0].simulated = false
     w.devices[0].armed = true
     w.devices[0].address = 'http://10.0.0.2'
-    await store.replaceWorkspace(w, 'import')
+    await store.addWorkspace(w, 'import')
     expect(store.getSnapshot().workspace.devices[0]).toMatchObject({
       status: 'offline',
       armed: false,
@@ -658,7 +700,7 @@ describe('command engine', () => {
       id: `demo-ch-${i + 1}`,
     }))
     w.gangs = []
-    await store.replaceWorkspace(w, 'import')
+    await store.addWorkspace(w, 'import')
     store.adjust(
       w.channels.map((c) => c.id),
       'gain',

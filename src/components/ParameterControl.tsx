@@ -17,6 +17,7 @@ export function ParameterControl({
   compact = false,
   idPrefix,
   hideReset = false,
+  shortLabel,
 }: {
   descriptor: ParameterDescriptor
   channels: Channel[]
@@ -28,6 +29,7 @@ export function ParameterControl({
   compact?: boolean
   idPrefix?: string
   hideReset?: boolean
+  shortLabel?: string
 }) {
   const ids = channels.map((c) => c.id),
     current = commonValue(channels, d.id)
@@ -177,7 +179,9 @@ export function ParameterControl({
     >
       <div className="parameter-heading">
         {toggle ? (
-          <span className="function-tag">{d.label}</span>
+          <span className="function-tag" title={shortLabel ? d.label : undefined}>
+            {shortLabel ?? d.label}
+          </span>
         ) : (
           <label className="function-tag" htmlFor={inputId}>
             {d.label}

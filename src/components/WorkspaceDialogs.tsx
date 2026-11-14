@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { Check, Download, Layers3, Plus, Save, Trash2 } from 'lucide-react'
+import { Check, Download, Layers3, Save, Trash2 } from 'lucide-react'
 import { parameters } from '../core/color'
 import { downloadJson } from '../core/persistence'
 import { desk } from '../core/store'
@@ -573,11 +573,7 @@ export function ResetDialog({
 export function WorkspaceDialog({ workspace, close }: { workspace: Workspace; close: () => void }) {
   const [name, setName] = useState(workspace.name)
   return (
-    <Modal
-      title="Show workspace"
-      subtitle="Your device labels, groups, layouts, and presets live in this browser."
-      close={close}
-    >
+    <Modal title="Rename workspace" close={close}>
       <form
         onSubmit={(e) => {
           e.preventDefault()
@@ -589,63 +585,13 @@ export function WorkspaceDialog({ workspace, close }: { workspace: Workspace; cl
           Workspace name
           <input required value={name} onChange={(e) => setName(e.target.value)} maxLength={100} />
         </label>
-        <p className="muted">
-          Export a workspace backup to move your setup to another computer. Importing reconnects no
-          devices and sends no color changes.
-        </p>
         <div className="modal-footer">
-          <button
-            className="button"
-            type="button"
-            onClick={() => downloadJson('signalshade-workspace.json', workspace)}
-          >
-            <Download size={15} />
-            Export backup
-          </button>
           <button className="button primary">
             <Check size={15} />
             Save name
           </button>
         </div>
       </form>
-    </Modal>
-  )
-}
-
-export function ConfirmWorkspace({
-  kind,
-  close,
-  confirm,
-}: {
-  kind: string
-  close: () => void
-  confirm: () => void
-}) {
-  return (
-    <Modal
-      title={
-        kind === 'empty'
-          ? 'Start an empty workspace?'
-          : kind === 'demo'
-            ? 'Load the demo desk?'
-            : 'Replace this workspace?'
-      }
-      subtitle="This replaces the setup stored in this browser. No commands are sent to devices."
-      close={close}
-    >
-      <p>
-        Export your current workspace first if you want to keep its labels, gang groups, and
-        presets.
-      </p>
-      <div className="modal-footer">
-        <button className="button" onClick={close}>
-          Cancel
-        </button>
-        <button className="button primary" onClick={confirm}>
-          <Plus size={16} />
-          {kind === 'empty' ? 'Start empty' : kind === 'demo' ? 'Load demo' : 'Import workspace'}
-        </button>
-      </div>
     </Modal>
   )
 }

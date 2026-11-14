@@ -488,23 +488,6 @@ button {
   margin-top: auto;
   padding-top: 28px;
 }
-.sidebar-footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 22px 10px 17px;
-  color: var(--text-faint);
-  font-size: 9px;
-  border-top: 1px solid var(--border-subtle);
-  margin-top: 13px;
-}
-.mini-logo {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  font-size: 6.5px;
-  letter-spacing: 0.6px;
-}
 .sidebar-empty {
   font-size: 10px;
   color: var(--text-muted);
@@ -1114,22 +1097,6 @@ button {
   height: 4px;
   width: 4px;
 }
-.group-strip {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  background: var(--surface-panel);
-  border: 1px solid var(--border-default);
-  border-radius: 6px;
-  margin-bottom: 15px;
-  padding: 9px 11px;
-  font-size: 10px;
-  color: var(--text-secondary);
-  flex-wrap: wrap;
-}
-.group-strip > span:nth-child(2) {
-  flex: 1;
-}
 .card-issue {
   font-size: 9px;
   color: var(--danger);
@@ -1453,70 +1420,6 @@ button {
 }
 .member-summary > button > span:nth-child(2) {
   flex: 1;
-}
-.statusbar {
-  grid-column: 1/-1;
-  grid-row: 3;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  border-top: 1px solid var(--border-subtle);
-  background: var(--surface-panel);
-  z-index: 10;
-  padding: 0 15px;
-}
-.statusbar > button {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 9px;
-  color: var(--text-secondary);
-  padding: 0;
-}
-.activity-count {
-  font: 8px var(--mono);
-  color: var(--text-muted);
-}
-.statusbar > button.active {
-  color: var(--accent);
-}
-.last-action {
-  font-size: 8px;
-  color: var(--text-muted);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.statusbar-right {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  color: var(--text-faint);
-  flex-shrink: 0;
-  font-size: 8px;
-}
-.statusbar-right > button,
-.statusbar-right > span {
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.statusbar-right button {
-  font-size: 9px;
-  color: var(--text-secondary);
-}
-.statusbar-separator {
-  width: 1px;
-  height: 11px;
-  background: var(--surface-hover);
-}
-.statusbar-version {
-  font: 7px var(--mono);
-  letter-spacing: 0.6px;
-}
-.flip {
-  transform: rotate(180deg);
 }
 .activity-panel {
   position: absolute;
@@ -2256,9 +2159,6 @@ button {
   .topbar-right {
     gap: 12px;
   }
-  .statusbar-version {
-    display: none;
-  }
   .demo-banner > span:nth-child(2) {
     font-size: 9px;
   }
@@ -2279,13 +2179,6 @@ button {
   }
   .demo-banner button {
     font-size: 8px;
-  }
-  .sidebar-footer {
-    padding-left: 5px;
-    padding-right: 5px;
-  }
-  .sidebar-footer .mini-logo {
-    font-size: 6px;
   }
 }
 @media (max-width: 800px) {
@@ -2388,12 +2281,6 @@ button {
   .activity-panel {
     left: 0;
     right: 0;
-  }
-  .statusbar-right > span:last-child {
-    display: none;
-  }
-  .statusbar-right {
-    gap: 10px;
   }
   .modal-backdrop {
     padding: 17px;
@@ -2598,37 +2485,11 @@ button {
   .segmented button {
     font-size: 12px;
   }
-  .statusbar {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 35px;
-    gap: 10px;
-  }
-  .last-action {
-    max-width: calc(100vw - 190px);
-  }
-  .statusbar-right > span {
-    display: none;
-  }
-  .statusbar-right {
-    gap: 0;
-  }
-  .statusbar-right > button {
-    font-size: 9px;
-  }
   .modal {
     padding: 20px;
   }
   .checkbox-grid {
     grid-template-columns: 1fr 1fr;
-  }
-  .group-strip {
-    font-size: 10px;
-  }
-  .group-strip > .button {
-    margin-left: 15px;
   }
   .card-parameters .parameter.small input {
     font-size: 10px;
@@ -3453,7 +3314,7 @@ button {
 }
 /* Operator layout: one status header, one tool row, larger channel controls. */
 .app {
-  grid-template-rows: 64px minmax(0, 1fr) 35px;
+  grid-template-rows: 64px minmax(0, 1fr);
 }
 .app .brand {
   font-size: 20px;
@@ -3494,7 +3355,7 @@ button {
   padding: 6px 8px;
 }
 .app .main {
-  padding: 18px 22px 24px;
+  padding: 12px 12px 16px;
 }
 .app .main-heading {
   position: sticky;
@@ -3589,16 +3450,16 @@ button {
   font-size: 12px;
 }
 .app .channel-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 420px), 1fr));
-  gap: 16px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 1fr));
+  gap: 9px;
   padding-inline: 0;
 }
 .app.compact .channel-grid {
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 370px), 1fr));
 }
 .app .card-heading {
-  padding: 7px 14px;
-  gap: 9px;
+  padding: 7px 8px;
+  gap: 6px;
 }
 .app .card-select strong {
   font-size: 16px;
@@ -3625,16 +3486,17 @@ button {
   min-height: 32px;
 }
 .app .card-control-tabs {
-  gap: 20px;
-  padding-inline: 14px;
+  gap: 10px;
+  padding: 0;
+  border: 0;
 }
 .app .card-control-tabs > button[role='tab'] {
   font-size: 12px;
   padding: 6px 0;
 }
 .app .channel-card .card-parameters {
-  gap: 6px 20px;
-  padding: 7px 14px;
+  gap: 6px 12px;
+  padding: 7px 8px;
 }
 .app .card-parameters .parameter-heading {
   height: 30px;
@@ -3707,13 +3569,13 @@ button {
   padding: 6px 15px;
 }
 .app .channel-card > .rgb-tabs {
-  margin: 4px 14px 0;
+  margin: 4px 8px 0;
 }
 .app .channel-card .card-parameters.rgb-parameters {
   gap: 5px;
 }
 .app .card-bottom {
-  padding: 2px 14px;
+  padding: 2px 8px;
   min-height: 32px;
 }
 .app .group-tags button {
@@ -4160,16 +4022,18 @@ button {
   min-height: 46px;
 }
 .compact-converge {
-  flex-direction: column;
-  gap: 2px;
-  font-size: 9px;
-  line-height: 10px;
+  gap: 4px;
+  font-size: 10px;
 }
+.app .gang-card-mode,
 .compact-converge .segmented {
-  padding: 1px;
+  padding: 2px;
 }
+.gang-card-mode > button,
 .compact-converge .segmented > button {
-  padding: 2px 7px;
+  min-height: 22px;
+  min-width: 25px;
+  padding: 2px 5px;
   font-size: 10px;
   line-height: 12px;
 }
@@ -4530,8 +4394,133 @@ button {
   min-height: 0;
   gap: 6px;
 }
+.card-control-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 3px 8px;
+  padding: 0 8px;
+  border-block: 1px solid var(--border-subtle);
+}
+.card-control-bar .quick-stage-controls {
+  margin-left: auto;
+  gap: 3px 7px;
+  padding-block: 2px;
+}
+.card-control-bar .card-control-tabs {
+  flex: 1 0 auto;
+}
+.app .card-heading .card-grip {
+  color: var(--text-muted);
+  min-width: 21px;
+  padding: 0;
+  cursor: grab;
+  touch-action: none;
+}
+.app .card-heading .card-grip:active {
+  cursor: grabbing;
+}
+.app .channel-card.card-drop-target {
+  outline: 2px dashed var(--accent);
+  outline-offset: -2px;
+}
+.gang-card .card-bottom > button:last-child {
+  margin-left: auto;
+}
+.sidebar-top {
+  justify-content: flex-start;
+  gap: 6px;
+}
+.sidebar-top .mobile-close {
+  margin-left: auto;
+}
+.workspace-picker {
+  min-width: 0;
+}
+.workspace-picker .workspace-switch {
+  max-width: min(230px, 32vw);
+}
+.workspace-picker .workspace-menu {
+  left: 6px;
+  right: auto;
+  max-height: min(60vh, 440px);
+  overflow: auto;
+}
+.workspace-menu button[aria-current] {
+  color: var(--accent-text);
+}
+.app .activity-panel {
+  position: fixed;
+  inset: auto 12px 12px auto;
+  width: min(520px, calc(100% - 24px));
+  max-height: min(330px, 55vh);
+  border: 1px solid var(--border-default);
+  border-radius: 8px;
+  z-index: 12;
+}
+@media (min-width: 801px) {
+  .app.sidebar-collapsed {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app.sidebar-collapsed .sidebar {
+    display: none;
+  }
+  .app.sidebar-collapsed .main {
+    grid-column: 1;
+  }
+}
+@media (max-width: 800px) {
+  .app {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .app .main {
+    grid-column: 1;
+  }
+  .app .sidebar {
+    bottom: 0;
+    visibility: hidden;
+  }
+  .app .sidebar.open {
+    visibility: visible;
+  }
+  .app .desktop-sidebar-toggle {
+    display: none;
+  }
+  .app .workspace-picker .workspace-switch {
+    display: flex;
+  }
+}
+@media (max-width: 560px) {
+  .app {
+    padding-bottom: 0;
+  }
+  .app .topbar .brand {
+    min-width: 0;
+    padding-left: 5px;
+    gap: 0;
+  }
+  .app .topbar .brand > span:last-child {
+    display: none;
+  }
+  .app .workspace-picker .workspace-switch {
+    margin-left: 2px;
+    padding-inline: 4px;
+    gap: 3px;
+  }
+  .app .workspace-switch > svg {
+    margin-left: 0;
+    flex-shrink: 0;
+  }
+  .app .workspace-switch .workspace-dot {
+    display: none;
+  }
+  .compact-converge .converge-label {
+    display: none;
+  }
+}
 .app .quick-stage-controls .function-tag {
-  font-size: 11px;
+  font-size: 10px;
   color: var(--text-muted);
   white-space: nowrap;
 }
@@ -4540,15 +4529,15 @@ button {
 }
 .quick-stage-controls .state-toggle > button,
 .quick-stage-controls .state-mixed {
-  min-width: 30px;
+  min-width: 20px;
   min-height: 23px;
-  padding: 2px 4px;
+  padding: 1px 3px;
   gap: 2px;
   font-size: 10px;
   line-height: 14px;
 }
 .quick-stage-controls .state-ticks {
-  width: 23px;
+  width: 16px;
   column-gap: 1px;
 }
 .app .parameter.is-toggle {

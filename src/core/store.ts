@@ -1,7 +1,14 @@
 import { AjaAdapter, message } from '../adapters/aja'
 import { commonValue, isCompatible, quantize } from './color'
 import { demoWorkspace, emptyWorkspace, demoDevice } from './demo'
-import { loadWorkspace, saveWorkspace, validateWorkspace } from './persistence'
+import {
+  loadWorkspace,
+  originalWorkspaceId,
+  saveWorkspace,
+  validateWorkspace,
+  type WorkspaceLibrary,
+} from './persistence'
+import { cardsInView, customViewKey, pruneViewCards } from './views'
 import { RecorderStore } from '../recorders/store'
 import type { RecorderConfig } from '../recorders/types'
 import { isVisibleControl } from './layout'
@@ -14,6 +21,7 @@ import type {
   Channel,
   ColorPreset,
   Device,
+  DeskView,
   DeviceAdapter,
   Gang,
   ParameterId,
@@ -26,6 +34,8 @@ import type {
 
 interface Snapshot {
   workspace: Workspace
+  workspaceId: string
+  workspaces: { id: string; name: string }[]
   activities: Activity[]
   history: UndoEntry[]
   busy: number
@@ -46,8 +56,8 @@ interface Job {
   context: string
 }
 const deskLockKey = 'signalshade-desk-locked'
-const processorControlKey = (device: Device) =>
-  `signalshade-processor-control:${device.id}:${device.address}`
+const processorControlKey = (device: Device, workspaceId: string) =>
+  `signalshade-processor-control:${workspaceId === originalWorkspaceId ? '' : workspaceId + ':'}${device.id}:${device.address}`
 function sessionPreference(key: string, value?: string | null) {
   try {
     if (value === undefined) return sessionStorage.getItem(key)
@@ -86,6 +96,8 @@ function processorControlSignature(model: Model, firmware: string, channels: Cha
 export class DeskStore {
   private state: Snapshot = {
     workspace: demoWorkspace(),
+    workspaceId: originalWorkspaceId,
+    workspaces: [{ id: originalWorkspaceId, name: demoWorkspace().name }],
     activities: [],
     history: [],
     busy: 0,
@@ -95,6 +107,7 @@ export class DeskStore {
     converging: false,
   }
   private listeners = new Set<() => void>()
+  private inactiveWorkspaces = new Map<string, Workspace>()
   private adapters = new Map<string, DeviceAdapter>()
   private restoring = new Map<string, AbortController>()
   private queues = new Map<string, Job[]>()
@@ -112,6 +125,7 @@ export class DeskStore {
       if (!configs.find((c) => c.id === id)?.autoConnect)
         this.saveRecorders(configs.map((c) => (c.id === id ? { ...c, autoConnect: true } : c)))
     },
+    () => (this.state.workspaceId === originalWorkspaceId ? '' : this.state.workspaceId),
   )
   setControlsLocked(controlsLocked: boolean) {
     sessionPreference(deskLockKey, controlsLocked ? 'true' : null)
@@ -123,7 +137,7 @@ export class DeskStore {
     if (device.simulated) return
     const channels = this.state.workspace.channels.filter((c) => c.deviceId === device.id)
     sessionPreference(
-      processorControlKey(device),
+      processorControlKey(device, this.state.workspaceId),
       armed ? processorControlSignature(device.model, device.firmware, channels) : null,
     )
   }
@@ -145,22 +159,37 @@ export class DeskStore {
     this.state = { ...this.state, ...patch }
     this.listeners.forEach((l) => l())
   }
-  private workspace(workspace: Workspace) {
+  private workspace(workspace: Workspace, workspaceId = this.state.workspaceId) {
     if (
       workspace.convergeTargetId &&
       !workspace.channels.some((c) => c.id === workspace.convergeTargetId)
     )
       workspace = { ...workspace, convergeTargetId: undefined }
     const demoChanges = this.state.ready ? changedDemoLabels(this.state.workspace, workspace) : []
-    this.emit({ workspace })
+    const workspaces = [...this.inactiveWorkspaces.entries(), [workspaceId, workspace] as const]
+      .map(([id, saved]) => ({ id, name: saved.name }))
+      .sort((a, b) => a.name.localeCompare(b.name))
+    this.emit({ workspace, workspaceId, workspaces })
     notifyDemoChange(demoChanges)
     clearTimeout(this.saveTimer)
     if (this.state.ready && !this.state.lockedTab)
       this.saveTimer = setTimeout(() => {
-        saveWorkspace(this.state.workspace).catch((e) =>
-          this.emit({ storageError: `Local save failed: ${message(e)}. Export a backup.` }),
-        )
+        void this.persistWorkspaces()
       }, 500)
+  }
+  private async persistWorkspaces() {
+    const library: WorkspaceLibrary = {
+      active: this.state.workspaceId,
+      entries: [
+        ...[...this.inactiveWorkspaces].map(([id, workspace]) => ({ id, workspace })),
+        { id: this.state.workspaceId, workspace: this.state.workspace },
+      ],
+    }
+    try {
+      await saveWorkspace(library)
+    } catch (e) {
+      this.emit({ storageError: `Local save failed: ${message(e)}. Export a backup.` })
+    }
   }
   log(text: string, type: Activity['type'] = 'info') {
     this.emit({
@@ -192,7 +221,15 @@ export class DeskStore {
     } else this.emit({ lockedTab: true })
     try {
       const saved = await loadWorkspace()
-      if (saved) this.emit({ workspace: this.sanitize(saved) })
+      if (saved) {
+        const active = saved.entries.find((entry) => entry.id === saved.active)!
+        this.inactiveWorkspaces = new Map(
+          saved.entries
+            .filter((entry) => entry !== active)
+            .map(({ id, workspace }) => [id, workspace]),
+        )
+        this.workspace(this.sanitize(active.workspace), active.id)
+      }
     } catch (e) {
       this.emit({
         storageError: `Could not restore local workspace: ${message(e)}. Export a backup before closing.`,
@@ -400,14 +437,43 @@ export class DeskStore {
         ),
       })
   }
-  reorderChannel(id: string, direction: -1 | 1) {
+  saveView(view: DeskView) {
     if (!this.canEdit()) return
-    const channels = [...this.state.workspace.channels],
-      index = channels.findIndex((c) => c.id === id),
-      target = index + direction
-    if (index < 0 || target < 0 || target >= channels.length) return
-    ;[channels[index], channels[target]] = [channels[target], channels[index]]
-    this.workspace({ ...this.state.workspace, channels })
+    const workspace = this.state.workspace
+    const views = workspace.views ?? []
+    const next = { ...view, name: view.name.trim() }
+    if (!next.name || !next.cards.length)
+      throw new Error('Name the view and choose at least one card')
+    this.workspace(
+      validateWorkspace({
+        ...workspace,
+        views: views.some((item) => item.id === view.id)
+          ? views.map((item) => (item.id === view.id ? next : item))
+          : [...views, next],
+      }),
+    )
+  }
+  deleteView(id: string) {
+    if (!this.canEdit()) return
+    const workspace = this.state.workspace
+    this.workspace({ ...workspace, views: workspace.views?.filter((view) => view.id !== id) })
+  }
+  moveViewCard(view: string, id: string, target: string) {
+    if (id === target || !this.canEdit()) return
+    const workspace = this.state.workspace
+    const cards = cardsInView(workspace, view)
+    const sourceIndex = cards.indexOf(id)
+    const targetIndex = cards.indexOf(target)
+    if (sourceIndex < 0 || targetIndex < 0) return
+    cards.splice(sourceIndex, 1)
+    cards.splice(targetIndex, 0, id)
+    const custom = workspace.views?.find((item) => customViewKey(item.id) === view)
+    if (custom)
+      this.workspace({
+        ...workspace,
+        views: workspace.views?.map((item) => (item.id === custom.id ? { ...item, cards } : item)),
+      })
+    else this.workspace({ ...workspace, cardOrders: { ...workspace.cardOrders, [view]: cards } })
   }
   saveGang(gang: Gang) {
     if (!this.canEdit()) return
@@ -424,11 +490,13 @@ export class DeskStore {
     this.log(`Saved gang “${gang.name}”`)
   }
   deleteGang(id: string) {
-    if (this.canEdit())
-      this.workspace({
+    if (this.canEdit()) {
+      const next = {
         ...this.state.workspace,
         gangs: this.state.workspace.gangs.filter((g) => g.id !== id),
-      })
+      }
+      this.workspace({ ...next, ...pruneViewCards(next) })
+    }
   }
   showGangCard(id: string, showAsCard: boolean) {
     if (this.canEdit())
@@ -437,28 +505,49 @@ export class DeskStore {
         gangs: this.state.workspace.gangs.map((g) => (g.id === id ? { ...g, showAsCard } : g)),
       })
   }
-  async replaceWorkspace(input: unknown, kind: 'import' | 'demo' | 'empty') {
-    if (!this.canEdit()) return
+  private requireWorkspaceChange() {
+    if (!this.canEdit()) throw new Error('Unlock the desk before changing workspaces')
     if (this.state.busy || this.recorders.pending)
       throw new Error('Wait for pending commands before changing workspaces')
-    const next = this.sanitize(
-      validateWorkspace(
-        kind === 'demo' ? demoWorkspace() : kind === 'empty' ? emptyWorkspace() : input,
-      ),
+  }
+  async addWorkspace(input: unknown, kind: 'import' | 'demo' | 'empty', name?: string) {
+    this.requireWorkspaceChange()
+    const workspace = validateWorkspace(
+      kind === 'demo' ? demoWorkspace() : kind === 'empty' ? emptyWorkspace() : input,
     )
+    const id = crypto.randomUUID()
+    await this.activateWorkspace(
+      id,
+      name?.trim() ? { ...workspace, name: name.trim().slice(0, 100) } : workspace,
+      false,
+    )
+  }
+  async switchWorkspace(id: string) {
+    if (id === this.state.workspaceId) return
+    this.requireWorkspaceChange()
+    const workspace = this.inactiveWorkspaces.get(id)
+    if (workspace) await this.activateWorkspace(id, workspace, true)
+  }
+  private async activateWorkspace(id: string, workspace: Workspace, reconnect: boolean) {
+    const next = this.sanitize(workspace)
     this.convergeRemainders.clear()
-    this.state.workspace.devices.forEach((d) => this.rememberProcessorControl(d, false))
+    this.inactiveWorkspaces.set(this.state.workspaceId, this.state.workspace)
+    this.inactiveWorkspaces.delete(id)
     this.generation++
     this.restoring.forEach((controller) => controller.abort())
     this.restoring.clear()
     this.recorders.dispose()
     this.adapters.forEach((a) => a.dispose())
     this.adapters.clear()
+    this.running.clear()
+    this.queues.clear()
     this.historyIds.clear()
-    this.emit({ history: [] })
-    this.workspace(next)
-    this.recorders.sync(next.recorders ?? [])
-    this.log('Workspace loaded. Hardware writes are locked until reconnected.')
+    this.emit({ history: [], activities: [] })
+    this.workspace(next, id)
+    this.recorders.sync(next.recorders ?? [], reconnect)
+    clearTimeout(this.saveTimer)
+    void this.persistWorkspaces()
+    if (reconnect) void this.restoreProcessors()
   }
   connect(adapter: AjaAdapter, result: ProbeResult, label: string) {
     if (!this.canEdit()) return
@@ -525,7 +614,7 @@ export class DeskStore {
       result.channels.every(
         (c) => !!c.updatedAt && Date.now() - c.updatedAt <= 15000 && !c.issue,
       ) &&
-      sessionPreference(processorControlKey(saved)) ===
+      sessionPreference(processorControlKey(saved, this.state.workspaceId)) ===
         processorControlSignature(result.model, firmware, result.channels)
     const device: Device = {
       id,
@@ -537,14 +626,15 @@ export class DeskStore {
       status: 'online',
       armed,
     }
-    this.workspace({
+    const next = {
       ...workspace,
       devices: saved
         ? workspace.devices.map((d) => (d.id === id ? device : d))
         : [...workspace.devices, device],
       channels: ordered,
       gangs: workspace.gangs.map((g) => ({ ...g, members: g.members.filter((id) => ids.has(id)) })),
-    })
+    }
+    this.workspace({ ...next, ...pruneViewCards(next) })
     if (restoreControl && !armed) this.rememberProcessorControl(device, false)
     this.log(
       armed
@@ -640,7 +730,7 @@ export class DeskStore {
     this.adapters.delete(id)
     const channels = this.state.workspace.channels.filter((c) => c.deviceId !== id),
       ids = new Set(channels.map((c) => c.id))
-    this.workspace({
+    const next = {
       ...this.state.workspace,
       devices: this.state.workspace.devices.filter((d) => d.id !== id),
       channels,
@@ -648,7 +738,8 @@ export class DeskStore {
         ...g,
         members: g.members.filter((id) => ids.has(id)),
       })),
-    })
+    }
+    this.workspace({ ...next, ...pruneViewCards(next) })
   }
   adjust(
     ids: string[],
@@ -1060,8 +1151,10 @@ export class DeskStore {
         this.emit({ busy: Math.max(0, this.state.busy - dropped) })
         this.log(`${device.label}: ${message(e)}. Reconnect before adjusting.`, 'error')
       } finally {
-        this.running.delete(device.id)
-        if (this.queues.get(device.id)?.length) void this.drain(device.id)
+        if (generation === this.generation) {
+          this.running.delete(device.id)
+          if (this.queues.get(device.id)?.length) void this.drain(device.id)
+        }
       }
     }
   }

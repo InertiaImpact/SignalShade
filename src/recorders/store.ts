@@ -29,6 +29,7 @@ export class RecorderStore {
     private allowed: () => boolean,
     private log: (text: string, type?: 'success' | 'error' | 'info') => void,
     private rememberConnection: (id: string) => void = () => {},
+    private workspaceKey: () => string = () => '',
   ) {}
   subscribe = (listener: () => void) => {
     this.listeners.add(listener)
@@ -44,7 +45,7 @@ export class RecorderStore {
     this.state = { ...this.state, [id]: { ...(this.state[id] ?? disconnected()), ...patch } }
     this.listeners.forEach((l) => l())
   }
-  sync(configs: RecorderConfig[]) {
+  sync(configs: RecorderConfig[], resumeHardware = true) {
     this.configs = configs
     for (const [id, connection] of this.connections)
       if (!configs.some((c) => c.id === id)) {
@@ -55,7 +56,7 @@ export class RecorderStore {
     // Previously connected recorders resume read-only monitoring; polls never request permissions.
     for (const config of configs)
       if (
-        (config.simulated || config.autoConnect) &&
+        (config.simulated || (resumeHardware && config.autoConnect)) &&
         !this.connections.has(config.id) &&
         this.allowed()
       ) {
@@ -108,7 +109,8 @@ export class RecorderStore {
   }
   private preferenceKey(id: string) {
     const config = this.configs.find((c) => c.id === id)
-    return `signalshade-recorder-control:${id}:${config?.address}:${config?.model}`
+    const scope = this.workspaceKey()
+    return `signalshade-recorder-control:${scope ? scope + ':' : ''}${id}:${config?.address}:${config?.model}`
   }
   private controlPreference(id: string) {
     try {

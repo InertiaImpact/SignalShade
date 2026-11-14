@@ -81,9 +81,16 @@ export interface ColorPreset {
     descriptors: ParameterDescriptor[]
   }[]
 }
+export interface DeskView {
+  id: string
+  name: string
+  cards: string[]
+}
 export interface Workspace {
   convergeTargetId?: string
   recorders?: RecorderConfig[]
+  views?: DeskView[]
+  cardOrders?: Record<string, string[]>
   version: 1
   name: string
   devices: Device[]

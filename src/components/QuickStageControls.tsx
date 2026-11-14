@@ -34,6 +34,7 @@ export function QuickStageControls({
             multiplier={1}
             compact
             hideReset
+            shortLabel={d.id === 'procEnabled' ? 'Proc' : 'RGB'}
             idPrefix={idPrefix}
           />
         </div>
