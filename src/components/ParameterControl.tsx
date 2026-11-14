@@ -44,7 +44,7 @@ export function ParameterControl({
       setDraft(relative ? '' : current === undefined ? '' : current.toFixed(d.precision))
   }, [relative, current, d.precision])
   const send = (value: number, mode: 'relative' | 'absolute', id?: string) => {
-    if (!lock) desk.adjust(ids, d.id, value, mode, id)
+    return !lock && desk.adjust(ids, d.id, value, mode, id)
   }
   const commit = () => {
     focused.current = false
@@ -58,8 +58,9 @@ export function ParameterControl({
       return
     }
     const value = Number(draft)
-    if (relative ? value !== 0 : value !== current) send(value, relative ? 'relative' : 'absolute')
-    if (relative) setDraft('')
+    const changed = relative ? value !== 0 : value !== current
+    const accepted = changed && send(value, relative ? 'relative' : 'absolute')
+    if (relative || !accepted) setDraft(relative ? '' : (current?.toFixed(d.precision) ?? ''))
   }
   const finish = () => {
     gesture.current = undefined
@@ -107,7 +108,19 @@ export function ParameterControl({
     }
   }, [lock])
   // An absolute group needs a common starting value before an arrow can step it.
-  const arrowLock = lock || (!relative && channels.length > 1 && mixed)
+  const pending = channels.some((c) => c.pending)
+  const mixedAbsolute = !relative && channels.length > 1 && mixed
+  const arrowLock = lock || pending || mixedAbsolute
+  const unit = d.unit === 'native' ? '' : d.unit
+  const entryHint = relative
+    ? 'Type an offset and press Enter. Shows the live trim while dragging.'
+    : ''
+  const arrowHint = (sign: string) =>
+    pending
+      ? 'Waiting for readback. Extra clicks are ignored.'
+      : mixedAbsolute
+        ? 'Mixed values: set a value first or use Relative trim'
+        : `Trim ${sign}${d.step * multiplier}${unit ? ' ' + unit : ''}`
   const tone = d.id.startsWith('red')
     ? 'red'
     : d.id.startsWith('green')
@@ -211,9 +224,9 @@ export function ParameterControl({
               placeholder={relative ? 'Trim' : mixed ? 'Mixed' : '—'}
               value={liveDraft}
               title={
-                relative
-                  ? 'Type a positive or negative offset and press Enter. Shows the live trim while dragging.'
-                  : undefined
+                [entryHint, d.unit === 'native' ? 'Uses the device’s raw values.' : '']
+                  .filter(Boolean)
+                  .join(' ') || undefined
               }
               disabled={lock}
               onFocus={() => {
@@ -230,7 +243,7 @@ export function ParameterControl({
                 }
               }}
             />
-            <span className="unit">{d.unit}</span>
+            {unit && <span className="unit">{unit}</span>}
             {mixed && !relative && <span className="mixed-label">Mixed</span>}
           </div>
         )}
@@ -264,11 +277,7 @@ export function ParameterControl({
           <div className="slider-control">
             <button
               aria-label={'Decrease ' + d.label}
-              title={
-                arrowLock && mixed
-                  ? 'Mixed values: set a value first or use Relative trim'
-                  : 'Trim −' + d.step * multiplier + ' ' + d.unit
-              }
+              title={arrowHint('−')}
               disabled={arrowLock}
               onClick={() => nudge(-1)}
             >
@@ -302,7 +311,7 @@ export function ParameterControl({
                     ? trim.toFixed(d.precision) + ' relative trim'
                     : mixed && sliding === null
                       ? 'Mixed values; move to set all'
-                      : sliderValue + ' ' + d.unit
+                      : sliderValue + (unit ? ' ' + unit : '')
                 }
                 type="range"
                 min={min}
@@ -326,12 +335,14 @@ export function ParameterControl({
                   const trim = positions ? value - origin.current! : value
                   setSliding(value)
                   gesture.current ??= crypto.randomUUID()
-                  send(
-                    relative ? trim - delta.current : value,
-                    relative ? 'relative' : 'absolute',
-                    gesture.current,
+                  if (
+                    send(
+                      relative ? trim - delta.current : value,
+                      relative ? 'relative' : 'absolute',
+                      gesture.current,
+                    )
                   )
-                  delta.current = trim
+                    delta.current = trim
                 }}
                 onPointerUp={finish}
                 onPointerCancel={finish}
@@ -341,11 +352,7 @@ export function ParameterControl({
             </div>
             <button
               aria-label={'Increase ' + d.label}
-              title={
-                arrowLock && mixed
-                  ? 'Mixed values: set a value first or use Relative trim'
-                  : 'Trim +' + d.step * multiplier + ' ' + d.unit
-              }
+              title={arrowHint('+')}
               disabled={arrowLock}
               onClick={() => nudge(1)}
             >

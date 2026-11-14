@@ -424,15 +424,44 @@ describe('command engine', () => {
     expect(value('demo-ch-1')).toBe(1)
     expect(value('demo-ch-2')).toBe(1)
   })
-  it('accumulates fast nudges and makes a slider gesture one undo entry', async () => {
+  it('drops rapid inputs and groups accepted samples from one slider gesture into one undo entry', async () => {
     for (let i = 0; i < 10; i++)
       store.adjust(['demo-ch-1'], 'gain', 0.01, 'relative', 'one-gesture')
+    expect(store.getSnapshot().busy).toBe(1)
     await settle()
-    expect(value('demo-ch-1')).toBe(1.12)
+    expect(value('demo-ch-1')).toBe(1.03)
+    expect(store.adjust(['demo-ch-1'], 'gain', 0.01, 'relative', 'one-gesture')).toBe(true)
+    await settle()
+    expect(value('demo-ch-1')).toBe(1.04)
     expect(store.getSnapshot().history).toHaveLength(1)
     store.undo()
     await settle()
     expect(value('demo-ch-1')).toBe(1.02)
+  })
+  it('lets one accepted gang nudge finish without appending more clicks', async () => {
+    const members = ['demo-ch-1', 'demo-ch-2', 'demo-ch-5']
+    expect(store.adjust(members, 'gain', 0.01, 'relative')).toBe(true)
+    for (let i = 0; i < 12; i++) expect(store.adjust(members, 'gain', 0.01, 'relative')).toBe(false)
+    await settle()
+    expect(members.map((id) => value(id))).toEqual([1.03, 0.99, 1.01])
+    expect(store.getSnapshot().busy).toBe(0)
+    expect(store.getSnapshot().history).toHaveLength(1)
+  })
+  it('never defers an input until a hardware poll finishes', async () => {
+    const { channel, adapter } = hardwareFixture()
+    let complete!: () => void
+    vi.mocked(adapter.read).mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = () => resolve({ values: channel.values, context: channel.context })
+        }),
+    )
+    const polling = store.refresh()
+    expect(store.adjust([channel.id], 'gain', 0.01, 'relative')).toBe(false)
+    complete()
+    await polling
+    await settle()
+    expect(adapter.write).not.toHaveBeenCalled()
   })
   it('rejects incompatible preset units before sending any commands', () => {
     store.savePreset('Camera look', ['demo-ch-1'])
@@ -511,11 +540,11 @@ describe('command engine', () => {
     expect(adapter.write).toHaveBeenCalledTimes(1)
     expect(store.getSnapshot().activities.some((a) => a.text.includes('Undo conflict'))).toBe(true)
   })
-  it('discards queued writes and locks hardware after an uncertain write', async () => {
+  it('locks hardware after an uncertain write and ignores concurrent input', async () => {
     const { channel, adapter } = hardwareFixture()
     vi.mocked(adapter.write).mockRejectedValue(new Error('Network failed after send'))
     store.adjust([channel.id], 'gain', 1.1, 'absolute')
-    store.adjust([channel.id], 'black', 1, 'absolute')
+    expect(store.adjust([channel.id], 'black', 1, 'absolute')).toBe(false)
     await settle()
     expect(adapter.write).toHaveBeenCalledTimes(1)
     expect(store.getSnapshot().busy).toBe(0)

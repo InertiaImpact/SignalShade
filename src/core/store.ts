@@ -495,14 +495,24 @@ export class DeskStore {
     value: number,
     mode: 'relative' | 'absolute',
     gestureId?: string,
-  ) {
-    if (!this.canEdit()) return
+  ): boolean {
+    if (!this.canEdit()) return false
     const channels = [...new Set(ids)]
       .map((id) => this.state.workspace.channels.find((c) => c.id === id))
       .filter((c): c is Channel => !!c)
     if (!Number.isFinite(value) || !channels.length || !isCompatible(channels, parameter)) {
       this.log('This parameter is not compatible across all selected channels', 'error')
-      return
+      return false
+    }
+    // An interactive input can start one batch, but never join work in progress.
+    // A gang click still includes all its members, even on the same device.
+    if (channels.some((c) => this.running.has(c.deviceId) || this.queues.get(c.deviceId)?.length))
+      return false
+    try {
+      channels.forEach((channel) => this.available(channel))
+    } catch (e) {
+      this.log(message(e), 'error')
+      return false
     }
     this.convergeRemainders.clear()
     const operationId = gestureId ?? crypto.randomUUID()
@@ -517,6 +527,7 @@ export class DeskStore {
     }))
     this.announceAdjustments(operations)
     operations.forEach((job) => this.enqueue(job))
+    return true
   }
   reset(
     ids: string[],

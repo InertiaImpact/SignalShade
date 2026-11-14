@@ -13,7 +13,7 @@ let root: Root, host: HTMLDivElement
 let channels: Channel[]
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
-  adjust.mockClear()
+  adjust.mockReset().mockReturnValue(true)
   host = document.createElement('div')
   document.body.append(host)
   root = createRoot(host)
@@ -56,6 +56,30 @@ it('shows each member on the native range, including coincident positions and co
   expect(slider().max).toBe('1.5')
   expect(host.textContent).not.toContain('Members:')
   expect(adjust).not.toHaveBeenCalled()
+})
+it('keeps raw-value units in the tooltip and pauses arrow clicks during readback', async () => {
+  for (const c of channels) c.descriptors.find((d) => d.id === 'gain')!.unit = 'native'
+  channels[0].pending = true
+  await render()
+  const entry = host.querySelector<HTMLInputElement>('input[aria-label="Gain trim"]')!
+  expect(entry.title).toContain('device’s raw values')
+  expect(host.querySelector('.unit')).toBeNull()
+  const arrow = host.querySelector<HTMLButtonElement>('button[aria-label="Increase Gain"]')!
+  expect(arrow.disabled).toBe(true)
+  await act(async () => arrow.click())
+  expect(adjust).not.toHaveBeenCalled()
+  channels[0].pending = false
+  await render()
+  await act(async () => arrow.click())
+  expect(adjust).toHaveBeenCalledOnce()
+})
+it('counts only accepted slider samples when computing the next relative trim', async () => {
+  await render()
+  await move('1')
+  adjust.mockReturnValueOnce(false)
+  await move('1.1')
+  await move('1.2')
+  expect(adjust.mock.calls[2][2]).toBeCloseTo(0.2)
 })
 it('uses the full combined range when compatible members have different limits', async () => {
   channels[1].descriptors.find((d) => d.id === 'gain')!.max = 3
