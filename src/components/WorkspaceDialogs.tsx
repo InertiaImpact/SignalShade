@@ -500,6 +500,7 @@ export function ResetDialog({
   section,
   mask,
   masks,
+  gangName,
   close,
 }: {
   workspace: Workspace
@@ -507,13 +508,16 @@ export function ResetDialog({
   section?: string
   mask?: ParameterId[]
   masks?: ParameterMasks
+  gangName?: string
   close: () => void
 }) {
   const [includeEnables, setIncludeEnables] = useState(false)
+  const channels = workspace.channels.filter((c) => ids.includes(c.id))
+  const target =
+    gangName ?? (channels.length === 1 ? channels[0].label : `${channels.length} channels`)
   const resetMask = [
     ...new Set(
-      workspace.channels
-        .filter((c) => ids.includes(c.id))
+      channels
         .flatMap((c) =>
           c.descriptors.filter((d) => !masks?.[c.id]?.length || masks[c.id]!.includes(d.id)),
         )
@@ -524,21 +528,72 @@ export function ResetDialog({
   return (
     <Modal
       title={section ? `Reset ${section.toLowerCase()}` : 'Reset channel colors'}
-      subtitle={`${ids.length} ${ids.length === 1 ? 'channel' : 'channels'} will change immediately.`}
+      subtitle={gangName ? 'Gang reset' : undefined}
       close={close}
     >
+      <h3 className="reset-scope-name">{target}</h3>
+      <ul className="reset-targets" aria-label="Reset targets">
+        {channels.map((channel) => {
+          const device = workspace.devices.find((item) => item.id === channel.deviceId)
+          return (
+            <li key={channel.id}>
+              {(channels.length > 1 || gangName) && <strong>{channel.label}</strong>}
+              <dl>
+                <div>
+                  <dt>Device</dt>
+                  <dd>
+                    {device ? `${device.label} · ${device.model}` : 'Unavailable'}
+                    {device?.simulated && <span className="device-demo-badge">DEMO</span>}
+                  </dd>
+                </div>
+                {device && !device.simulated && (
+                  <div>
+                    <dt>Address</dt>
+                    <dd>{device.address}</dd>
+                  </div>
+                )}
+                {device && (
+                  <div>
+                    <dt>Firmware</dt>
+                    <dd>{device.firmware}</dd>
+                  </div>
+                )}
+                {device && !device.simulated && (
+                  <div>
+                    <dt>Connection</dt>
+                    <dd>
+                      {device.status === 'online'
+                        ? device.armed
+                          ? 'Live · Writes enabled'
+                          : 'Online · Read only'
+                        : device.status === 'connecting'
+                          ? 'Connecting'
+                          : 'Offline'}
+                    </dd>
+                  </div>
+                )}
+                <div>
+                  <dt>Processor</dt>
+                  <dd>Video {channel.processor}</dd>
+                </div>
+                <div>
+                  <dt>Input</dt>
+                  <dd>{channel.source}</dd>
+                </div>
+                <div>
+                  <dt>Format</dt>
+                  <dd>{channel.format}</dd>
+                </div>
+              </dl>
+            </li>
+          )
+        })}
+      </ul>
       <div className="notice warning">
         <p>
           Proc amp and RGB values return to unity. Enable states are preserved unless selected
           below. Only the current source-memory context is changed.
         </p>
-      </div>
-      <div className="reset-targets">
-        {workspace.channels
-          .filter((c) => ids.includes(c.id))
-          .map((c) => (
-            <span key={c.id}>{c.label}</span>
-          ))}
       </div>
       {(!!mask?.length || Object.values(masks ?? {}).some((m) => m?.length)) && (
         <p className="muted">Selected gang parameter masks apply to the reset.</p>
@@ -563,7 +618,7 @@ export function ResetDialog({
             close()
           }}
         >
-          Reset {ids.length} {ids.length === 1 ? 'channel' : 'channels'}
+          Reset {channels.length} {channels.length === 1 ? 'channel' : 'channels'}
         </button>
       </div>
     </Modal>

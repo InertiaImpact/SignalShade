@@ -1893,19 +1893,45 @@ button {
   font-size: 11px;
   max-width: 250px;
 }
-.reset-targets {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 7px;
-  margin: 20px 0;
+.reset-scope-name {
+  margin: 0 0 8px;
+  font-size: 21px;
+  overflow-wrap: anywhere;
 }
-.reset-targets > span {
-  font-size: 10px;
-  color: var(--text-secondary);
+.reset-targets {
+  display: grid;
+  gap: 6px;
+  margin: 0 0 14px;
+  padding: 0;
+  list-style: none;
+  max-height: min(290px, 40dvh);
+  overflow: auto;
+}
+.reset-targets > li {
   border: 1px solid var(--border-default);
-  padding: 6px 9px;
+  padding: 9px 10px;
   border-radius: 4px;
   background: var(--surface-raised);
+}
+.reset-targets > li > strong {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 14px;
+  overflow-wrap: anywhere;
+}
+.reset-targets dl {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 115px), 1fr));
+  gap: 6px 12px;
+  margin: 0;
+}
+.reset-targets dt {
+  color: var(--text-muted);
+  font-size: 11px;
+}
+.reset-targets dd {
+  margin: 0;
+  overflow-wrap: anywhere;
 }
 .help-content h3 {
   margin-top: 20px;

@@ -127,6 +127,7 @@ export default function App() {
       section?: Section
       mask?: ParameterId[]
       masks?: ParameterMasks
+      gangName?: string
     }>({ ids: [] }),
     [relative, setRelative] = useState(true),
     [multiplier, setMultiplier] = useState(1)
@@ -329,8 +330,14 @@ export default function App() {
     else if (!w.favorites.includes(id) && w.favorites.length < 8)
       desk.updateWorkspace({ favorites: [...w.favorites, id] })
   }
-  const reset = (ids: string[], s?: Section, mask?: ParameterId[], masks?: ParameterMasks) => {
-    setResetScope({ ids, section: s, mask, masks })
+  const reset = (
+    ids: string[],
+    s?: Section,
+    mask?: ParameterId[],
+    masks?: ParameterMasks,
+    gangName?: string,
+  ) => {
+    setResetScope({ ids, section: s, mask, masks, gangName })
     setDialog('reset')
   }
   const title =
@@ -912,7 +919,9 @@ export default function App() {
                   className="icon-button tiny"
                   disabled={readOnly || !targetIds.length}
                   aria-label="Reset selected colors"
-                  onClick={() => reset(targetIds, undefined, undefined, resolved.masks)}
+                  onClick={() =>
+                    reset(targetIds, undefined, undefined, resolved.masks, group?.name)
+                  }
                 >
                   <RotateCcw size={15} />
                 </button>
@@ -968,7 +977,7 @@ export default function App() {
                   multiplier={multiplier}
                   favorites={w.favorites}
                   toggleFavorite={readOnly ? undefined : toggleFavorite}
-                  onReset={(s) => reset(targetIds, s, undefined, resolved.masks)}
+                  onReset={(s) => reset(targetIds, s, undefined, resolved.masks, group?.name)}
                 />
                 <div className="console-parameters console-summary">
                   {batch && (
@@ -1040,7 +1049,7 @@ export default function App() {
                     currentViewGang?.id === g.id ? undefined : () => selectView(gangViewKey(g.id))
                   }
                   onHide={() => showGangCard(g.id, false)}
-                  onReset={(section) => reset(g.members, section, g.parameters)}
+                  onReset={(section) => reset(g.members, section, g.parameters, undefined, g.name)}
                 />
               )
             const c = visibleChannels.find((channel) => channel.id === id)!
@@ -1148,6 +1157,7 @@ export default function App() {
           section={resetScope.section}
           mask={resetScope.mask}
           masks={resetScope.masks}
+          gangName={resetScope.gangName}
           close={close}
         />
       )}
