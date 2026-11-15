@@ -3558,6 +3558,10 @@ button {
   font-size: 16px;
   font-weight: 550;
 }
+.app .channel-card:not(.gang-card) .card-select strong {
+  font-size: 20px;
+  line-height: 22.4px;
+}
 .app .card-select small {
   font-size: 11px;
   margin-top: 3px;
@@ -5040,6 +5044,11 @@ button {
   border-radius: 6px;
   background: var(--surface-panel);
   padding: 12px;
+}
+.recorder-capsule.is-recording,
+.recorder-fleet-card.is-recording,
+.recorder-overview.recording {
+  border-color: var(--danger, #f08080);
 }
 .recorder-fleet-heading,
 .recorder-fleet-state,

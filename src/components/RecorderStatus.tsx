@@ -46,7 +46,7 @@ export function RecorderStatus({
           className="mono"
           title={
             snapshot.durationKind === 'observed'
-              ? 'Estimated recording duration'
+              ? 'Elapsed since SignalShade first saw this recording'
               : 'Reported clip duration'
           }
         >

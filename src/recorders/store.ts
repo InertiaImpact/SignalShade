@@ -161,8 +161,7 @@ export class RecorderStore {
         (next.recordingId && next.recordingId !== before.recordingId))
     ) {
       recordingId = next.recordingId ?? crypto.randomUUID()
-      c.observedStart =
-        before?.state === 'idle' && Date.now() - before.updatedAt < 10000 ? Date.now() : undefined
+      c.observedStart = Date.now()
     } else if (next.state !== 'recording') {
       recordingId = undefined
       c.observedStart = undefined

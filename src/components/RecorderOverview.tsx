@@ -40,7 +40,7 @@ export function RecorderOverview({
           return (
             <article
               key={config.id}
-              className="recorder-fleet-card"
+              className={`recorder-fleet-card ${recording ? 'is-recording' : ''}`}
               aria-label={`${config.label} recorder`}
             >
               <div className="recorder-fleet-heading">
@@ -49,7 +49,18 @@ export function RecorderOverview({
               </div>
               <div className="recorder-fleet-state">
                 <strong className={recording ? 'text-recording' : ''}>{status}</strong>
-                {duration && <span className="mono">{duration}</span>}
+                {duration && (
+                  <span
+                    className="mono"
+                    title={
+                      snapshot.durationKind === 'observed'
+                        ? 'Elapsed since SignalShade first saw this recording'
+                        : 'Reported clip duration'
+                    }
+                  >
+                    {duration}
+                  </span>
+                )}
               </div>
               {warning && <p className="text-warning recorder-fleet-warning">{warning}</p>}
               <RecorderStorage

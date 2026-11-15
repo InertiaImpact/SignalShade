@@ -62,7 +62,7 @@ export function RecorderStrip({
       <div className="recorder-scroll" role="group" aria-label="Recorder list">
         {recorders.map(({ config, snapshot, recording, warnings, attention, status, duration }) => (
           <article
-            className="recorder-capsule"
+            className={`recorder-capsule ${recording ? 'is-recording' : ''}`}
             key={config.id}
             aria-label={`${config.label} recorder`}
           >
@@ -84,7 +84,7 @@ export function RecorderStrip({
                     className="recorder-duration"
                     title={
                       snapshot.durationKind === 'observed'
-                        ? 'Estimated recording duration'
+                        ? 'Elapsed since SignalShade first saw this recording'
                         : 'Reported clip duration'
                     }
                   >

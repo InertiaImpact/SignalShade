@@ -230,6 +230,39 @@ describe('recorder command lifecycle', () => {
     await store.command('test', 'record')
     expect(adapter.command).not.toHaveBeenCalled()
   })
+  it('shows observed elapsed time if a Ki Pro is already recording when connected', async () => {
+    let state: RecorderSnapshot['state'] = 'recording'
+    store.sync([{ ...config, model: 'Ki Pro Ultra 12G' }])
+    const adapter: RecorderAdapter = {
+      read: vi.fn(async () => snapshot(state)),
+      command: vi.fn(),
+      dispose: vi.fn(),
+    }
+    store.attach(config.id, adapter)
+    await store.refresh(config.id)
+    expect(store.getSnapshot().test).toMatchObject({
+      duration: '00:00:00',
+      durationKind: 'observed',
+    })
+    await vi.advanceTimersByTimeAsync(3200)
+    await store.refresh(config.id)
+    expect(store.getSnapshot().test.duration).toBe('00:00:03')
+    vi.mocked(adapter.read).mockResolvedValueOnce({
+      ...snapshot('recording'),
+      duration: '00:10:00:12',
+      durationKind: 'clip',
+    })
+    await store.refresh(config.id)
+    expect(store.getSnapshot().test).toMatchObject({
+      duration: '00:10:00:12',
+      durationKind: 'clip',
+    })
+    state = 'idle'
+    await store.refresh(config.id)
+    state = 'recording'
+    await store.refresh(config.id)
+    expect(store.getSnapshot().test).toMatchObject({ duration: '00:00:00', durationKind: 'observed' })
+  })
   it('discards late polls after disconnect and freezes the last duration on failure', async () => {
     const { adapter } = await fixture()
     vi.mocked(adapter.read).mockResolvedValueOnce({
