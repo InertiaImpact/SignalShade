@@ -710,8 +710,8 @@ export default function App() {
                 {(
                   [
                     ['Fine', 1],
-                    ['Normal', 5],
-                    ['Coarse', 10],
+                    ['Normal', 3],
+                    ['Coarse', 6],
                   ] as const
                 ).map(([label, step]) => (
                   <button

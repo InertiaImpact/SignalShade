@@ -78,7 +78,7 @@ Authentication supports an optional session-only Basic Authorization header, sub
 - **Workspace QR** is available below **Export workspace**. Open each scanned link in the same browser on the receiving device. For larger workspaces, scan the numbered codes in any order, then continue to import. Codes contain the setup, including device addresses, and are generated locally. Use JSON export if the setup exceeds 32 codes.
 - **Read-only connection:** adding or reconnecting a live processor reads its current settings. Choose **Enable writes** in its device details before making adjustments. A device with no verified color mapping remains available for monitoring.
 - **One operator:** other tabs in the same browser profile are read-only. This cannot enforce ownership across computers, profiles, vendor UIs, or hardware panels.
-- **Shortcuts:** `/` searches; `Ctrl/Cmd+Z` undoes an adjustment. Input edits commit on Enter or blur; slider adjustments are live. Fine/Normal/Coarse correspond to 1/5/10 native steps.
+- **Shortcuts:** `/` searches; `Ctrl/Cmd+Z` undoes an adjustment. Input edits commit on Enter or blur; slider adjustments are live. Fine/Normal/Coarse correspond to 1/3/6 native steps.
 
 ## GitHub Pages
 
