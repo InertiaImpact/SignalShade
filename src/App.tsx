@@ -52,6 +52,7 @@ import { ImportWorkspaceQr, WorkspaceQr, isWorkspaceImportHash } from './compone
 import { workspaceReadyFragment } from './core/workspace-qr'
 import { forgetWorkspaceParts } from './core/workspace-qr-transfer'
 import { useCardOrder } from './components/useCardOrder'
+import { useDeskLocation } from './components/useDeskLocation'
 import {
   cardsInView,
   customViewKey,
@@ -101,8 +102,8 @@ let initialized = false
 export default function App() {
   const snapshot = useSyncExternalStore(desk.subscribe, desk.getSnapshot),
     { workspace: w } = snapshot
-  const [view, setView] = useState('all'),
-    [selected, setSelected] = useState(''),
+  const { view, setView, paneRef } = useDeskLocation(w, snapshot.workspaceId, snapshot.ready)
+  const [selected, setSelected] = useState(''),
     [selection, setSelection] = useState<string[]>([]),
     [query, setQuery] = useState(''),
     [sort, setSort] = useState('custom'),
@@ -288,15 +289,7 @@ export default function App() {
     setSelection((ids) =>
       ids.filter((id) => w.channels.some((c) => c.id === id) || w.gangs.some((g) => g.id === id)),
     )
-    if (
-      view !== 'all' &&
-      view !== 'favorites' &&
-      !currentViewGang &&
-      !currentDevice &&
-      !currentCustomView
-    )
-      setView('all')
-  }, [w.channels, w.gangs, selected, view, currentViewGang, currentDevice, currentCustomView])
+  }, [w.channels, w.gangs, selected])
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement
@@ -324,17 +317,20 @@ export default function App() {
     window.addEventListener('keydown', handler)
     return () => window.removeEventListener('keydown', handler)
   }, [dialog, incomingWorkspaceQr, readOnly, group])
-  const selectView = (id: string) => {
-    setView(id)
+  const resetViewInteraction = () => {
     setSidebar(false)
     setQuery('')
     setSort('custom')
     clearSelection()
   }
+  const selectView = (id: string) => {
+    setView(id)
+    resetViewInteraction()
+  }
   const changeWorkspace = async (change: () => Promise<void>) => {
     try {
       await change()
-      selectView('all')
+      resetViewInteraction()
       close()
       setWorkspaceMenu(false)
     } catch (error) {
@@ -672,7 +668,7 @@ export default function App() {
           </button>
         </div>
       </aside>
-      <main className="main" {...paneSelectionHandlers}>
+      <main className="main" ref={paneRef} {...paneSelectionHandlers}>
         <div className="main-heading">
           <button
             className="button sidebar-toggle mobile-menu"
@@ -1242,7 +1238,7 @@ export default function App() {
               void forgetWorkspaceParts(
                 incomingWorkspaceQr.slice(workspaceReadyFragment.length),
               ).catch(() => {})
-            selectView('all')
+            resetViewInteraction()
             closeWorkspaceQrImport()
           }}
           close={closeWorkspaceQrImport}
