@@ -3417,6 +3417,11 @@ button {
   border-radius: 5px;
   padding: 4px 7px;
 }
+.view-icon {
+  flex: 0 0 17px;
+  text-align: center;
+  font: 15px/1 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+}
 .app .main-heading > .mobile-menu {
   position: static;
   margin: 0;

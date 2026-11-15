@@ -45,6 +45,7 @@ import { RecorderOverview } from './components/RecorderOverview'
 import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
 import { ViewDialog } from './components/ViewDialog'
+import { ViewIcon } from './components/ViewIcon'
 import { ImportWorkspaceQr, WorkspaceQr, isWorkspaceImportHash } from './components/WorkspaceQr'
 import { workspaceReadyFragment } from './core/workspace-qr'
 import { forgetWorkspaceParts } from './core/workspace-qr-transfer'
@@ -543,7 +544,7 @@ export default function App() {
               className={`nav-item ${view === customViewKey(item.id) ? 'active' : ''}`}
               onClick={() => selectView(customViewKey(item.id))}
             >
-              <Grid2X2 size={17} />
+              <ViewIcon title={item.name} />
               <span>{item.name}</span>
             </button>
           ))}
@@ -670,6 +671,7 @@ export default function App() {
             <span>Sidebar</span>
           </button>
           <h1>
+            {currentCustomView && <ViewIcon title={currentCustomView.name} />}
             {title}
             <span className="view-count">{visibleChannels.length}</span>
           </h1>
