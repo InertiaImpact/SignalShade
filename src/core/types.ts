@@ -86,11 +86,18 @@ export interface DeskView {
   name: string
   cards: string[]
 }
+export interface ViewSpacer {
+  id: string
+  kind: 'card' | 'bar'
+  columns?: number
+  height: number
+}
 export interface Workspace {
   convergeTargetId?: string
   recorders?: RecorderConfig[]
   views?: DeskView[]
   cardOrders?: Record<string, string[]>
+  viewSpacers?: Record<string, ViewSpacer[]>
   gangCardVisibility?: Record<string, Record<string, boolean>>
   version: 1
   name: string

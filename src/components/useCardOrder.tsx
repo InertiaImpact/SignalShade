@@ -14,8 +14,10 @@ export function useCardOrder(
     setDragged(undefined)
     setTarget(undefined)
   }
-  const card = (element: Element | null) =>
-    element?.closest<HTMLElement>('[data-selection-id]')?.dataset.selectionId
+  const card = (element: Element | null) => {
+    const item = element?.closest<HTMLElement>('[data-selection-id], [data-spacer-id]')
+    return item?.dataset.selectionId ?? item?.dataset.spacerId
+  }
   const touchTarget = (event: PointerEvent<HTMLElement>) =>
     card(document.elementFromPoint(event.clientX, event.clientY))
   return {

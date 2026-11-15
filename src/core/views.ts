@@ -3,6 +3,10 @@ import type { Workspace } from './types'
 export const customViewKey = (id: string) => `view:${id}`
 export const gangViewKey = (id: string) => `gang:${id}`
 export const deviceViewKey = (id: string) => `device:${id}`
+export const maxViewSpacers = 32
+export const maxSpacerRows = 8
+export const minBarHeight = 18
+export const maxBarHeight = 600
 
 export function cardsInView(workspace: Workspace, view: string): string[] {
   const custom = workspace.views?.find((item) => customViewKey(item.id) === view)
@@ -20,6 +24,7 @@ export function cardsInView(workspace: Workspace, view: string): string[] {
         (c) => (!gang || gang.members.includes(c.id)) && (!device || c.deviceId === device.id),
       )
       .map((c) => c.id),
+    ...(workspace.viewSpacers?.[view] ?? []).map((spacer) => spacer.id),
   ]
   if (gang && includedGangs.some((item) => item.id === gang.id)) {
     defaults.splice(defaults.indexOf(gang.id), 1)
@@ -43,17 +48,39 @@ export function pruneViewCards(workspace: Workspace) {
     ...workspace.devices.map((d) => deviceViewKey(d.id)),
   ])
   const gangIds = new Set(workspace.gangs.map((g) => g.id))
+  const viewSpacers =
+    workspace.viewSpacers &&
+    Object.fromEntries(
+      Object.entries(workspace.viewSpacers)
+        .filter(
+          ([key]) =>
+            keys.has(key) || workspace.views?.some((view) => customViewKey(view.id) === key),
+        )
+        .map(([key, spacers]) => [
+          key,
+          [
+            ...new Map(
+              spacers.filter((item) => !ids.has(item.id)).map((item) => [item.id, item]),
+            ).values(),
+          ],
+        ]),
+    )
+  const validCards = (order: string[], key: string) => {
+    const spacers = new Set(viewSpacers?.[key]?.map((item) => item.id))
+    return [...new Set(order.filter((id) => ids.has(id) || spacers.has(id)))]
+  }
   return {
+    viewSpacers,
     views: workspace.views?.map((view) => ({
       ...view,
-      cards: [...new Set(view.cards.filter((id) => ids.has(id)))],
+      cards: validCards(view.cards, customViewKey(view.id)),
     })),
     cardOrders:
       workspace.cardOrders &&
       Object.fromEntries(
         Object.entries(workspace.cardOrders)
           .filter(([key]) => keys.has(key))
-          .map(([key, order]) => [key, [...new Set(order.filter((id) => ids.has(id)))]]),
+          .map(([key, order]) => [key, validCards(order, key)]),
       ),
     gangCardVisibility:
       workspace.gangCardVisibility &&

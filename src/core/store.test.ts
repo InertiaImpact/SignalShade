@@ -72,6 +72,22 @@ function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   return { channel, adapter, result }
 }
 describe('command engine', () => {
+  it('keeps resized spacers and their order local to a view through workspace export', () => {
+    const channel = store.getSnapshot().workspace.channels[0]
+    const view = customViewKey('spacer-test')
+    store.saveView({ id: 'spacer-test', name: 'Production', cards: [channel.id] })
+    store.addViewSpacer(view, 'card', 30)
+    store.addViewSpacer(view, 'bar', 30)
+    const [card, bar] = store.getSnapshot().workspace.viewSpacers![view]
+    store.resizeViewSpacer(view, card.id, { columns: 2, height: 2 })
+    store.moveViewCard(view, bar.id, channel.id)
+    const restored = validateWorkspace(JSON.parse(JSON.stringify(store.getSnapshot().workspace)))
+    expect(cardsInView(restored, view)).toEqual([bar.id, channel.id, card.id])
+    expect(cardsInView(restored, 'all')).not.toContain(card.id)
+    expect(restored.viewSpacers?.[view]).toEqual([{ ...card, columns: 2, height: 2 }, bar])
+    store.removeViewSpacer(view, card.id)
+    expect(cardsInView(store.getSnapshot().workspace, view)).toEqual([bar.id, channel.id])
+  })
   it('keeps card orders independent and restores the selected workspace and its views', async () => {
     const initial = store.getSnapshot()
     const gang = initial.workspace.gangs[0]

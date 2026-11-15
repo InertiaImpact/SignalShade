@@ -17,6 +17,7 @@ import {
   PanelLeftClose,
   PanelLeftOpen,
   Plus,
+  Minus,
   QrCode,
   RefreshCw,
   RotateCcw,
@@ -46,11 +47,19 @@ import { DemoIndicator } from './components/DemoIndicator'
 import { QuickStageControls } from './components/QuickStageControls'
 import { ViewDialog } from './components/ViewDialog'
 import { ViewIcon } from './components/ViewIcon'
+import { SpacerCard, useSpacerGrid } from './components/SpacerCard'
 import { ImportWorkspaceQr, WorkspaceQr, isWorkspaceImportHash } from './components/WorkspaceQr'
 import { workspaceReadyFragment } from './core/workspace-qr'
 import { forgetWorkspaceParts } from './core/workspace-qr-transfer'
 import { useCardOrder } from './components/useCardOrder'
-import { cardsInView, customViewKey, deviceViewKey, gangViewKey } from './core/views'
+import {
+  cardsInView,
+  customViewKey,
+  deviceViewKey,
+  gangViewKey,
+  maxViewSpacers,
+  minBarHeight,
+} from './core/views'
 import { ConvergeControls } from './components/ConvergeControls'
 import {
   GangDialog,
@@ -227,18 +236,34 @@ export default function App() {
   const visibleChannelIds = new Set(channels.map((channel) => channel.id))
   const shownGangCards = w.gangs.filter((g) => g.name.toLowerCase().includes(query.toLowerCase()))
   const visibleGangIds = new Set(shownGangCards.map((g) => g.id))
-  const visibleCards = cardOrder.filter((id) => visibleChannelIds.has(id) || visibleGangIds.has(id))
+  const spacers = w.viewSpacers?.[view] ?? []
+  const visibleSpacers = new Map((query.trim() ? [] : spacers).map((spacer) => [spacer.id, spacer]))
+  const visibleCards = cardOrder.filter(
+    (id) => visibleChannelIds.has(id) || visibleGangIds.has(id) || visibleSpacers.has(id),
+  )
   const visibleChannels = channels.filter((channel) => visibleCards.includes(channel.id))
   const sortedChannels = [...visibleChannels]
   const orderedCards =
     sort === 'custom'
       ? visibleCards
-      : visibleCards.map((id) => (visibleGangIds.has(id) ? id : sortedChannels.shift()!.id))
+      : visibleCards.map((id) =>
+          visibleGangIds.has(id) || visibleSpacers.has(id) ? id : sortedChannels.shift()!.id,
+        )
+  const spacerGrid = useSpacerGrid(
+    visibleChannels[0]?.id ?? visibleCards.find((id) => visibleGangIds.has(id)),
+  )
+  const canEditSpacers = !readOnly && !snapshot.converging
+  const addSpacer = (kind: 'card' | 'bar') => {
+    const height = Math.round((spacerGrid.size.rowStep - spacerGrid.size.rowGap) / 10)
+    desk.addViewSpacer(view, kind, Math.max(minBarHeight, height))
+    setQuery('')
+  }
   const reorder = useCardOrder(
     orderedCards,
     !readOnly && sort === 'custom' && !query.trim(),
     (id, target) => desk.moveViewCard(view, id, target),
   )
+  let controlCardIndex = 0
   const consoleSections = visibleSections(w.hiddenSections).filter((s) =>
     activeDescriptors.some((d) => d.section === s),
   )
@@ -1030,9 +1055,25 @@ export default function App() {
         )}
         <div
           className={`channel-grid ${view === 'favorites' ? 'pins-view' : ''}`}
+          ref={spacerGrid.ref}
           {...reorder.handlers}
         >
-          {orderedCards.map((id, index) => {
+          {orderedCards.map((id) => {
+            const spacer = visibleSpacers.get(id)
+            if (spacer)
+              return (
+                <SpacerCard
+                  key={id}
+                  spacer={spacer}
+                  grid={spacerGrid.size}
+                  grip={reorder.grip(id, spacer.kind === 'bar' ? 'spacer bar' : 'blank card')}
+                  editable={canEditSpacers}
+                  dropTarget={reorder.target === id}
+                  resize={(size) => desk.resizeViewSpacer(view, id, size)}
+                  remove={() => desk.removeViewSpacer(view, id)}
+                />
+              )
+            const index = controlCardIndex++
             const g = shownGangCards.find((item) => item.id === id)
             if (g)
               return (
@@ -1081,6 +1122,24 @@ export default function App() {
               />
             )
           })}
+        </div>
+        <div className="grid-spacer-tools" role="group" aria-label="Add layout spacers">
+          <button
+            className="button small"
+            type="button"
+            disabled={!canEditSpacers || spacers.length >= maxViewSpacers}
+            onClick={() => addSpacer('card')}
+          >
+            <Plus size={13} /> Blank card
+          </button>
+          <button
+            className="button small"
+            type="button"
+            disabled={!canEditSpacers || spacers.length >= maxViewSpacers}
+            onClick={() => addSpacer('bar')}
+          >
+            <Minus size={13} /> Spacer bar
+          </button>
         </div>
         {!orderedCards.length && query && (
           <div className="empty-small">

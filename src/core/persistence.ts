@@ -3,7 +3,7 @@ import type { Workspace } from './types'
 import { visibleSections } from './layout'
 import { recorderModels } from '../recorders/types'
 import { normalizeAddress } from '../adapters/aja'
-import { pruneViewCards } from './views'
+import { maxBarHeight, maxSpacerRows, maxViewSpacers, minBarHeight, pruneViewCards } from './views'
 
 export const originalWorkspaceId = 'original'
 export interface WorkspaceLibrary {
@@ -49,12 +49,35 @@ const schema = z.object({
       z.object({
         id: z.string().min(1).max(200),
         name: z.string().trim().min(1).max(100),
-        cards: z.array(z.string()).max(132),
+        cards: z.array(z.string()).max(132 + maxViewSpacers),
       }),
     )
     .max(100)
     .optional(),
-  cardOrders: z.record(z.string(), z.array(z.string()).max(132)).optional(),
+  cardOrders: z.record(z.string(), z.array(z.string()).max(132 + maxViewSpacers)).optional(),
+  viewSpacers: z
+    .record(
+      z.string(),
+      z
+        .array(
+          z
+            .object({
+              id: z.string().uuid(),
+              kind: z.enum(['card', 'bar']),
+              columns: z.number().int().min(1).max(32).optional(),
+              height: z.number().int(),
+            })
+            .refine((spacer) =>
+              spacer.kind === 'bar'
+                ? spacer.height >= minBarHeight && spacer.height <= maxBarHeight
+                : spacer.columns !== undefined &&
+                  spacer.height >= 1 &&
+                  spacer.height <= maxSpacerRows,
+            ),
+        )
+        .max(maxViewSpacers),
+    )
+    .optional(),
   gangCardVisibility: z.record(z.string(), z.record(z.string(), z.boolean())).optional(),
   recorders: z
     .array(

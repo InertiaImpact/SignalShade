@@ -3420,7 +3420,11 @@ button {
 .view-icon {
   flex: 0 0 17px;
   text-align: center;
-  font: 15px/1 'Segoe UI Emoji', 'Apple Color Emoji', 'Noto Color Emoji', sans-serif;
+  font:
+    15px/1 'Segoe UI Emoji',
+    'Apple Color Emoji',
+    'Noto Color Emoji',
+    sans-serif;
 }
 .app .main-heading > .mobile-menu {
   position: static;
@@ -3489,12 +3493,62 @@ button {
   font-size: 12px;
 }
 .app .channel-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 390px), 1fr));
+  --channel-card-min: 390px;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--channel-card-min)), 1fr));
   gap: 9px;
   padding-inline: 0;
+  padding-bottom: 0;
 }
 .app.compact .channel-grid {
-  grid-template-columns: repeat(auto-fill, minmax(min(100%, 370px), 1fr));
+  --channel-card-min: 370px;
+}
+.view-spacer {
+  position: relative;
+  min-width: 0;
+  border: 1px dashed var(--border-default);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--surface-panel) 45%, transparent);
+}
+.view-spacer.card-drop-target {
+  border-color: var(--accent);
+}
+.spacer-actions {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  pointer-events: none;
+}
+.spacer-actions > button {
+  pointer-events: auto;
+  width: 26px;
+  min-width: 26px;
+  min-height: 0;
+  height: 24px;
+}
+.spacer-actions .card-grip {
+  cursor: grab;
+  touch-action: none;
+}
+.spacer-actions .spacer-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  cursor: nwse-resize;
+  touch-action: none;
+}
+.spacer-bar .spacer-actions {
+  align-items: center;
+  padding-right: 26px;
+}
+.spacer-bar .spacer-actions > button {
+  max-height: 100%;
+}
+.grid-spacer-tools {
+  display: flex;
+  gap: 6px;
+  margin-top: 8px;
 }
 .app .card-heading {
   padding: 7px 8px;

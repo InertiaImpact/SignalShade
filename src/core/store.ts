@@ -8,7 +8,7 @@ import {
   validateWorkspace,
   type WorkspaceLibrary,
 } from './persistence'
-import { cardsInView, customViewKey, pruneViewCards } from './views'
+import { cardsInView, customViewKey, maxViewSpacers, pruneViewCards } from './views'
 import { RecorderStore } from '../recorders/store'
 import type { RecorderConfig } from '../recorders/types'
 import { isVisibleControl } from './layout'
@@ -22,6 +22,7 @@ import type {
   ColorPreset,
   Device,
   DeskView,
+  ViewSpacer,
   DeviceAdapter,
   Gang,
   ParameterId,
@@ -456,7 +457,48 @@ export class DeskStore {
   deleteView(id: string) {
     if (!this.canEdit()) return
     const workspace = this.state.workspace
-    this.workspace({ ...workspace, views: workspace.views?.filter((view) => view.id !== id) })
+    const next = { ...workspace, views: workspace.views?.filter((view) => view.id !== id) }
+    this.workspace({ ...next, ...pruneViewCards(next) })
+  }
+  addViewSpacer(view: string, kind: ViewSpacer['kind'], height: number) {
+    const workspace = this.state.workspace
+    const spacers = workspace.viewSpacers?.[view] ?? []
+    if (spacers.length >= maxViewSpacers || !this.canEdit()) return
+    const spacer: ViewSpacer = {
+      id: crypto.randomUUID(),
+      kind,
+      columns: kind === 'card' ? 1 : undefined,
+      height: kind === 'card' ? 1 : height,
+    }
+    this.workspace({
+      ...workspace,
+      views: workspace.views?.map((item) =>
+        customViewKey(item.id) === view ? { ...item, cards: [...item.cards, spacer.id] } : item,
+      ),
+      viewSpacers: { ...workspace.viewSpacers, [view]: [...spacers, spacer] },
+    })
+  }
+  resizeViewSpacer(view: string, id: string, size: Pick<ViewSpacer, 'columns' | 'height'>) {
+    const workspace = this.state.workspace
+    const spacers = workspace.viewSpacers?.[view]
+    if (!spacers?.some((item) => item.id === id) || !this.canEdit()) return
+    this.workspace({
+      ...workspace,
+      viewSpacers: {
+        ...workspace.viewSpacers,
+        [view]: spacers.map((item) => (item.id === id ? { ...item, ...size } : item)),
+      },
+    })
+  }
+  removeViewSpacer(view: string, id: string) {
+    const workspace = this.state.workspace
+    const spacers = workspace.viewSpacers?.[view]
+    if (!spacers?.some((item) => item.id === id) || !this.canEdit()) return
+    const next = {
+      ...workspace,
+      viewSpacers: { ...workspace.viewSpacers, [view]: spacers.filter((item) => item.id !== id) },
+    }
+    this.workspace({ ...next, ...pruneViewCards(next) })
   }
   moveViewCard(view: string, id: string, target: string) {
     if (id === target || !this.canEdit()) return

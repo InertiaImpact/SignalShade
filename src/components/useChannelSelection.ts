@@ -28,7 +28,7 @@ export function useChannelSelection(
       const target = e.target as HTMLElement
       if (
         target.closest(
-          'input, select, textarea, label, summary, a, [contenteditable], [role="slider"], [role="tablist"], .main-heading, .gang-console, .card-edit, .card-control-bar, .card-parameters, .card-bottom, .add-channel-card',
+          'input, select, textarea, label, summary, a, [contenteditable], [role="slider"], [role="tablist"], .main-heading, .gang-console, .card-edit, .card-control-bar, .card-parameters, .card-bottom, .add-channel-card, [data-spacer-id]',
         ) ||
         (target.closest('button') && !target.closest('.card-select'))
       )
