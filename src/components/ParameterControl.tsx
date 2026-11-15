@@ -35,12 +35,14 @@ export function ParameterControl({
     current = commonValue(channels, d.id)
   const compatible = isCompatible(channels, d.id)
   const [draft, setDraft] = useState(''),
-    [sliding, setSliding] = useState<number | null>(null)
+    [sliding, setSliding] = useState<number | null>(null),
+    [dragging, setDragging] = useState(false)
   const focused = useRef(false),
     delta = useRef(0),
     origin = useRef<number | undefined>(undefined),
     gesture = useRef<string | undefined>(undefined)
   const cancelled = useRef(false)
+  const lastDragValue = useRef<number | undefined>(undefined)
   useEffect(() => {
     if (!focused.current)
       setDraft(relative ? '' : current === undefined ? '' : current.toFixed(d.precision))
@@ -68,6 +70,8 @@ export function ParameterControl({
     gesture.current = undefined
     delta.current = 0
     origin.current = undefined
+    lastDragValue.current = undefined
+    setDragging(false)
     setSliding(null)
   }
   const nudge = (direction: number) => send(direction * d.step * multiplier, 'relative')
@@ -148,8 +152,12 @@ export function ParameterControl({
       : sliderValue - (origin.current ?? reference)
     : sliderValue
   const liveDraft =
-    relative && sliding !== null && !focused.current
-      ? `${trim > 0 ? '+' : ''}${trim.toFixed(d.precision)}`
+    sliding !== null && !focused.current
+      ? relative
+        ? `${trim > 0 ? '+' : ''}${trim.toFixed(d.precision)}`
+        : dragging
+          ? quantize(sliding, d).toFixed(d.precision)
+          : draft
       : draft
   return (
     <div
@@ -248,7 +256,7 @@ export function ParameterControl({
               }}
             />
             {unit && <span className="unit">{unit}</span>}
-            {mixed && !relative && <span className="mixed-label">Mixed</span>}
+            {mixed && !relative && !dragging && <span className="mixed-label">Mixed</span>}
           </div>
         )}
         {(!hideReset || toggleFavorite) && (
@@ -320,7 +328,7 @@ export function ParameterControl({
                 type="range"
                 min={min}
                 max={max}
-                step={d.step}
+                step={dragging ? 'any' : d.step}
                 disabled={lock}
                 value={sliderValue}
                 style={
@@ -329,27 +337,37 @@ export function ParameterControl({
                   } as CSSProperties
                 }
                 onPointerDown={(e) => {
+                  if (e.button !== 0 || !e.isPrimary) return
                   e.currentTarget.setPointerCapture(e.pointerId)
                   if (positions) origin.current = reference
                   gesture.current = crypto.randomUUID()
+                  lastDragValue.current = relative ? 0 : current
+                  setDragging(true)
                 }}
                 onChange={(e) => {
                   const value = Number(e.target.value)
                   if (positions) origin.current ??= reference
-                  const trim = positions ? value - origin.current! : value
                   setSliding(value)
+                  // Pointer motion is continuous. Only distinct native steps are sent.
+                  const stepped = dragging ? quantize(value, { ...d, min, max }) : value
+                  const trim = positions ? stepped - origin.current! : stepped
+                  const target = relative ? trim : stepped
+                  if (dragging && target === lastDragValue.current) return
                   gesture.current ??= crypto.randomUUID()
                   if (
                     send(
-                      relative ? trim - delta.current : value,
+                      relative ? trim - delta.current : stepped,
                       relative ? 'relative' : 'absolute',
                       gesture.current,
                     )
-                  )
+                  ) {
                     delta.current = trim
+                    if (dragging) lastDragValue.current = target
+                  }
                 }}
                 onPointerUp={finish}
                 onPointerCancel={finish}
+                onLostPointerCapture={finish}
                 onKeyUp={finish}
                 onBlur={finish}
               />
