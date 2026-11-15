@@ -192,6 +192,11 @@ export class DeskStore {
       this.emit({ storageError: `Local save failed: ${message(e)}. Export a backup.` })
     }
   }
+  async flushWorkspaceSave() {
+    if (!this.state.ready || this.state.lockedTab) return
+    clearTimeout(this.saveTimer)
+    await this.persistWorkspaces()
+  }
   log(text: string, type: Activity['type'] = 'info') {
     this.emit({
       activities: [
@@ -438,7 +443,7 @@ export class DeskStore {
         ),
       })
   }
-  saveView(view: DeskView) {
+  async saveView(view: DeskView) {
     if (!this.canEdit()) return
     const workspace = this.state.workspace
     const views = workspace.views ?? []
@@ -453,6 +458,7 @@ export class DeskStore {
           : [...views, next],
       }),
     )
+    await this.flushWorkspaceSave()
   }
   deleteView(id: string) {
     if (!this.canEdit()) return

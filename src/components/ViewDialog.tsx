@@ -18,6 +18,7 @@ export function ViewDialog({
   const [name, setName] = useState(view?.name ?? '')
   const [cards, setCards] = useState(view?.cards ?? [])
   const [error, setError] = useState('')
+  const [saving, setSaving] = useState(false)
   const available = [
     ...workspace.channels.map((channel) => ({ id: channel.id, label: channel.label, gang: false })),
     ...workspace.gangs.map((gang) => ({ id: gang.id, label: gang.name, gang: true })),
@@ -25,14 +26,17 @@ export function ViewDialog({
   return (
     <Modal title={view ? 'Edit view' : 'Create view'} close={close}>
       <form
-        onSubmit={(event) => {
+        onSubmit={async (event) => {
           event.preventDefault()
+          if (saving) return
+          setSaving(true)
           try {
             const id = view?.id ?? crypto.randomUUID()
-            desk.saveView({ id, name, cards })
+            await desk.saveView({ id, name, cards })
             saved(id)
           } catch (error) {
             setError(message(error))
+            setSaving(false)
           }
         }}
       >
@@ -76,7 +80,7 @@ export function ViewDialog({
               Delete view
             </button>
           )}
-          <button className="button primary" disabled={!name.trim() || !cards.length}>
+          <button className="button primary" disabled={saving || !name.trim() || !cards.length}>
             Save view
           </button>
         </div>

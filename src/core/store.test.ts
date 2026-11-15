@@ -72,10 +72,10 @@ function hardwareFixture(address = 'http://10.0.0.2', arm = true) {
   return { channel, adapter, result }
 }
 describe('command engine', () => {
-  it('keeps resized spacers and their order local to a view through workspace export', () => {
+  it('keeps resized spacers and their order local to a view through workspace export', async () => {
     const channel = store.getSnapshot().workspace.channels[0]
     const view = customViewKey('spacer-test')
-    store.saveView({ id: 'spacer-test', name: 'Production', cards: [channel.id] })
+    await store.saveView({ id: 'spacer-test', name: 'Production', cards: [channel.id] })
     store.addViewSpacer(view, 'card', 30)
     store.addViewSpacer(view, 'bar', 30)
     const [card, bar] = store.getSnapshot().workspace.viewSpacers![view]
@@ -95,7 +95,11 @@ describe('command engine', () => {
     const groupView = gangViewKey(gang.id)
     const customView = customViewKey('production')
     expect(cardsInView(initial.workspace, groupView)[0]).toBe(gang.id)
-    store.saveView({ id: 'production', name: 'Production', cards: [second.id, gang.id, first.id] })
+    await store.saveView({
+      id: 'production',
+      name: 'Production',
+      cards: [second.id, gang.id, first.id],
+    })
     store.moveViewCard(groupView, gang.id, first.id)
     store.moveViewCard('all', second.id, first.id)
     store.moveViewCard(customView, gang.id, first.id)
@@ -549,12 +553,12 @@ describe('command engine', () => {
       false,
     )
   })
-  it('keeps gang card membership independent across views and workspace exports', () => {
+  it('keeps gang card membership independent across views and workspace exports', async () => {
     const { gangs, channels } = store.getSnapshot().workspace
     const [gang, other] = gangs
     const custom = customViewKey('custom')
     const ownView = gangViewKey(gang.id)
-    store.saveView({ id: 'custom', name: 'Custom', cards: [channels[0].id, other.id] })
+    await store.saveView({ id: 'custom', name: 'Custom', cards: [channels[0].id, other.id] })
     const cards = (view: string) => cardsInView(store.getSnapshot().workspace, view)
 
     expect(cards(ownView)[0]).toBe(gang.id)

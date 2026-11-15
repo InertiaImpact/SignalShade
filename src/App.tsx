@@ -98,6 +98,12 @@ type Dialog =
   | 'view'
   | 'help'
   | null
+const arrowSteps = [
+  ['Fine', 1],
+  ['Normal', 3],
+  ['Coarse', 6],
+] as const
+const stepPreferenceKey = 'signalshade-arrow-step'
 let initialized = false
 export default function App() {
   const snapshot = useSyncExternalStore(desk.subscribe, desk.getSnapshot),
@@ -141,7 +147,14 @@ export default function App() {
       gangName?: string
     }>({ ids: [] }),
     [relative, setRelative] = useState(true),
-    [multiplier, setMultiplier] = useState(1)
+    [multiplier, setMultiplier] = useState<(typeof arrowSteps)[number][1]>(() => {
+      try {
+        const saved = localStorage.getItem(stepPreferenceKey)
+        return arrowSteps.find(([, step]) => String(step) === saved)?.[1] ?? 1
+      } catch {
+        return 1
+      }
+    })
   const [activity, setActivity] = useState(false),
     [editLayout, setEditLayout] = useState(false),
     [menu, setMenu] = useState(false),
@@ -737,19 +750,20 @@ export default function App() {
             <div className="arrow-step">
               <span>Step</span>
               <div className="segmented" role="group" aria-label="Arrow adjustment step">
-                {(
-                  [
-                    ['Fine', 1],
-                    ['Normal', 3],
-                    ['Coarse', 6],
-                  ] as const
-                ).map(([label, step]) => (
+                {arrowSteps.map(([label, step]) => (
                   <button
                     key={step}
                     className={multiplier === step ? 'active' : ''}
                     aria-pressed={multiplier === step}
                     title={`${label} · ×${step}`}
-                    onClick={() => setMultiplier(step)}
+                    onClick={() => {
+                      setMultiplier(step)
+                      try {
+                        localStorage.setItem(stepPreferenceKey, String(step))
+                      } catch {
+                        // Step selection still works when browser storage is unavailable.
+                      }
+                    }}
                   >
                     {label}
                   </button>
@@ -851,7 +865,9 @@ export default function App() {
             <button
               className="button small"
               disabled={snapshot.busy > 0 || recorderBusy}
-              onClick={() => {
+              onClick={async () => {
+                await desk.flushWorkspaceSave()
+                if (desk.getSnapshot().busy || desk.recorders.pending) return
                 navigator.serviceWorker.addEventListener(
                   'controllerchange',
                   () => location.reload(),
